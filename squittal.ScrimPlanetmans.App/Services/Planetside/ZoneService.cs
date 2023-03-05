@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.CensusServices;
 using squittal.ScrimPlanetmans.App.CensusServices.Models;
+using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.Services.Interfaces;
@@ -22,9 +23,9 @@ public class ZoneService : IZoneService
     private readonly ISqlScriptRunner _sqlScriptRunner;
     private readonly ILogger<ZoneService> _logger;
 
-    private ConcurrentDictionary<int, Zone> ZonesMap { get; set; } = new ConcurrentDictionary<int, Zone>();
-    private readonly SemaphoreSlim _mapSetUpSemaphore = new SemaphoreSlim(1);
-        
+    private readonly ConcurrentDictionary<int, Zone> _zoneMaps = new();
+    private readonly SemaphoreSlim _mapSetUpSemaphore = new(1);
+
     public string BackupSqlScriptFileName => "CensusBackups\\dbo.Zone.Table.sql";
 
     public ZoneService(IDbContextHelper dbContextHelper, CensusZone censusZone, ISqlScriptRunner sqlScriptRunner, ILogger<ZoneService> logger)
@@ -37,32 +38,26 @@ public class ZoneService : IZoneService
 
     public async Task<IEnumerable<Zone>> GetAllZones()
     {
-        if (ZonesMap.Count == 0 || !ZonesMap.Any())
-        {
+        if (_zoneMaps.IsEmpty)
             await SetupZonesMapAsync();
-        }
 
-        return ZonesMap.Values.ToList();
+        return _zoneMaps.Values.ToList();
     }
 
     public async Task<IEnumerable<Zone>> GetAllZonesAsync()
     {
-        using (var factory = _dbContextHelper.GetFactory())
-        {
-            var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            return await dbContext.Zones.ToListAsync();
-        }
+        return await dbContext.Zones.ToListAsync();
     }
 
-    public async Task<Zone> GetZoneAsync(int zoneId)
+    public async Task<Zone?> GetZoneAsync(int zoneId)
     {
-        if (ZonesMap.Count == 0 || !ZonesMap.Any())
-        {
+        if (_zoneMaps.IsEmpty)
             await SetupZonesMapAsync();
-        }
 
-        ZonesMap.TryGetValue(zoneId, out var zone);
+        _zoneMaps.TryGetValue(zoneId, out Zone? zone);
 
         return zone;
     }
@@ -73,34 +68,28 @@ public class ZoneService : IZoneService
 
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var storeZones = await dbContext.Zones.ToListAsync();
+            List<Zone> storeZones = await dbContext.Zones.ToListAsync();
 
-            foreach (var zoneId in ZonesMap.Keys)
+            foreach (int zoneId in _zoneMaps.Keys)
             {
-                if (!storeZones.Any(z => z.Id == zoneId))
-                {
-                    ZonesMap.TryRemove(zoneId, out var removedZone);
-                }
+                if (storeZones.All(z => z.Id != zoneId))
+                    _zoneMaps.TryRemove(zoneId, out _);
             }
 
-            foreach (var zone in storeZones)
+            foreach (Zone zone in storeZones)
             {
-                if (ZonesMap.ContainsKey(zone.Id))
-                {
-                    ZonesMap[zone.Id] = zone;
-                }
+                if (_zoneMaps.ContainsKey(zone.Id))
+                    _zoneMaps[zone.Id] = zone;
                 else
-                {
-                    ZonesMap.TryAdd(zone.Id, zone);
-                }
+                    _zoneMaps.TryAdd(zone.Id, zone);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error setting up Zones Map: {ex}");
+            _logger.LogError(ex, "Error setting up Zones Map");
         }
         finally
         {
@@ -112,10 +101,10 @@ public class ZoneService : IZoneService
     {
         if (onlyQueryCensusIfEmpty)
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var anyZones = await dbContext.Zones.AnyAsync();
+            bool anyZones = await dbContext.Zones.AnyAsync();
             if (anyZones)
             {
                 await SetupZonesMapAsync();
@@ -124,26 +113,22 @@ public class ZoneService : IZoneService
             }
         }
 
-        var success = await RefreshStoreFromCensus();
+        bool success = await RefreshStoreFromCensus();
 
         if (!success && canUseBackupScript)
-        {
             RefreshStoreFromBackup();
-        }
 
         await SetupZonesMapAsync();
     }
 
     public async Task<bool> RefreshStoreFromCensus()
     {
-        var result = new List<Zone>();
-        var createdEntities = new List<Zone>();
-
-        IEnumerable<CensusZoneModel> zones = new List<CensusZoneModel>();
+        List<Zone> createdEntities = new();
+        List<CensusZoneModel> zones;
 
         try
         {
-            zones = await _censusZone.GetAllZones();
+            zones = (await _censusZone.GetAllZones()).ToList();
         }
         catch
         {
@@ -151,69 +136,60 @@ public class ZoneService : IZoneService
             return false;
         }
 
-        if (zones != null && zones.Any())
-        {
-            var censusEntities = zones.Select(ConvertToDbModel);
-
-            using (var factory = _dbContextHelper.GetFactory())
-            {
-                var dbContext = factory.GetDbContext();
-
-                var storedEntities = await dbContext.Zones.ToListAsync();
-
-                foreach (var censusEntity in censusEntities)
-                {
-                    var storeEntity = storedEntities.FirstOrDefault(storedEntity => storedEntity.Id == censusEntity.Id);
-                    if (storeEntity == null)
-                    {
-                        createdEntities.Add(censusEntity);
-                    }
-                    else
-                    {
-                        storeEntity = censusEntity;
-                        dbContext.Zones.Update(storeEntity);
-                    }
-                }
-
-                if (createdEntities.Any())
-                {
-                    await dbContext.Zones.AddRangeAsync(createdEntities);
-                }
-
-                await dbContext.SaveChangesAsync();
-
-                _logger.LogInformation($"Refreshed Zones store");
-            }
-
-            return true;
-        }
-        else
-        {
+        if (zones.Count is 0)
             return false;
+
+        IEnumerable<Zone> censusEntities = zones.Select(ConvertToDbModel);
+
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
+
+        List<Zone> storedEntities = await dbContext.Zones.ToListAsync();
+
+        foreach (Zone censusEntity in censusEntities)
+        {
+            Zone? storeEntity = storedEntities.FirstOrDefault(storedEntity => storedEntity.Id == censusEntity.Id);
+            if (storeEntity == null)
+            {
+                createdEntities.Add(censusEntity);
+            }
+            else
+            {
+                storeEntity = censusEntity;
+                dbContext.Zones.Update(storeEntity);
+            }
         }
+
+        if (createdEntities.Any())
+            await dbContext.Zones.AddRangeAsync(createdEntities);
+
+        await dbContext.SaveChangesAsync();
+        _logger.LogInformation("Refreshed Zones store");
+
+        return true;
     }
 
     public static Zone ConvertToDbModel(CensusZoneModel censusModel)
     {
+        string defaultZoneName = "Zone " + censusModel.ZoneId;
+
         return new Zone
         {
             Id = censusModel.ZoneId,
-            Name = censusModel.Name.English,
-            Description = censusModel.Description.English,
+            Name = censusModel.Name?.English ?? defaultZoneName,
+            Description = censusModel.Description?.English ?? defaultZoneName,
             Code = censusModel.Code,
             HexSize = censusModel.HexSize
         };
     }
 
     public async Task<int> GetCensusCountAsync()
-    {
-        return await _censusZone.GetZonesCount();
-    }
+        => await _censusZone.GetZonesCount();
 
     public async Task<int> GetStoreCountAsync()
     {
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
         return await dbContext.Zones.CountAsync();
     }
