@@ -1,6 +1,5 @@
-﻿namespace squittal.ScrimPlanetmans.Services
+﻿namespace squittal.ScrimPlanetmans.Services;
+
+public interface ILocallyBackedCensusStore : ICountableStore, ILocallyBackedStore, IUpdateable
 {
-    public interface ILocallyBackedCensusStore : ICountableStore, ILocallyBackedStore, IUpdateable
-    {
-    }
 }

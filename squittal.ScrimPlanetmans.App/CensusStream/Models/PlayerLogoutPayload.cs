@@ -1,61 +1,60 @@
-﻿namespace squittal.ScrimPlanetmans.CensusStream.Models
+﻿namespace squittal.ScrimPlanetmans.CensusStream.Models;
+
+public class PlayerLogoutPayload : PayloadBase, IEquitablePayload<PlayerLogoutPayload>
 {
-    public class PlayerLogoutPayload : PayloadBase, IEquitablePayload<PlayerLogoutPayload>
+    public string CharacterId { get; set; }
+
+
+    #region IEquitable
+    public override bool Equals(object obj)
     {
-        public string CharacterId { get; set; }
+        return this.Equals(obj as PlayerLogoutPayload);
+    }
 
-
-        #region IEquitable
-        public override bool Equals(object obj)
+    public bool Equals(PlayerLogoutPayload p)
+    {
+        if (ReferenceEquals(p, null))
         {
-            return this.Equals(obj as PlayerLogoutPayload);
+            return false;
         }
 
-        public bool Equals(PlayerLogoutPayload p)
+        if (ReferenceEquals(this, p))
         {
-            if (ReferenceEquals(p, null))
-            {
-                return false;
-            }
+            return true;
+        }
 
-            if (ReferenceEquals(this, p))
+        if (this.GetType() != p.GetType())
+        {
+            return false;
+        }
+
+        return (p.Timestamp == Timestamp
+            && p.CharacterId == CharacterId);
+    }
+
+    public static bool operator ==(PlayerLogoutPayload lhs, PlayerLogoutPayload rhs)
+    {
+        if (ReferenceEquals(lhs, null))
+        {
+            if (ReferenceEquals(rhs, null))
             {
                 return true;
             }
 
-            if (this.GetType() != p.GetType())
-            {
-                return false;
-            }
-
-            return (p.Timestamp == Timestamp
-                    && p.CharacterId == CharacterId);
+            return false;
         }
-
-        public static bool operator ==(PlayerLogoutPayload lhs, PlayerLogoutPayload rhs)
-        {
-            if (ReferenceEquals(lhs, null))
-            {
-                if (ReferenceEquals(rhs, null))
-                {
-                    return true;
-                }
-
-                return false;
-            }
-            return lhs.Equals(rhs);
-        }
-
-        public static bool operator !=(PlayerLogoutPayload lhs, PlayerLogoutPayload rhs)
-        {
-            return !(lhs == rhs);
-        }
-
-        public override int GetHashCode()
-        {
-            var id = $"t{Timestamp:yyyyMMddTHHmmss}c{CharacterId}";
-            return id.GetHashCode();
-        }
-        #endregion IEquitable
+        return lhs.Equals(rhs);
     }
+
+    public static bool operator !=(PlayerLogoutPayload lhs, PlayerLogoutPayload rhs)
+    {
+        return !(lhs == rhs);
+    }
+
+    public override int GetHashCode()
+    {
+        var id = $"t{Timestamp:yyyyMMddTHHmmss}c{CharacterId}";
+        return id.GetHashCode();
+    }
+    #endregion IEquitable
 }

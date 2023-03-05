@@ -2,9 +2,8 @@
 using squittal.ScrimPlanetmans.ScrimMatch.Models;
 using System;
 
-namespace squittal.ScrimPlanetmans.CensusStream
+namespace squittal.ScrimPlanetmans.CensusStream;
+
+public interface IEquitablePayload<T> : IEquitable<T> where T : PayloadBase
 {
-    public interface IEquitablePayload<T> : IEquitable<T> where T : PayloadBase
-    {
-    }
 }

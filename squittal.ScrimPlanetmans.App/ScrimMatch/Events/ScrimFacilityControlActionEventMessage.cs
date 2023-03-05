@@ -2,38 +2,37 @@
 using squittal.ScrimPlanetmans.ScrimMatch.Models;
 using System;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages
+namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+
+public class ScrimFacilityControlActionEventMessage : ScrimActionEventMessage
 {
-    public class ScrimFacilityControlActionEventMessage : ScrimActionEventMessage
+    public ScrimFacilityControlActionEvent FacilityControl { get; set; }
+
+    public ScrimFacilityControlActionEventMessage(ScrimFacilityControlActionEvent facilityControl)
     {
-        public ScrimFacilityControlActionEvent FacilityControl { get; set; }
+        FacilityControl = facilityControl;
 
-        public ScrimFacilityControlActionEventMessage(ScrimFacilityControlActionEvent facilityControl)
-        {
-            FacilityControl = facilityControl;
+        Info = GetInfo();
 
-            Info = GetInfo();
+        Timestamp = facilityControl.Timestamp;
 
-            Timestamp = facilityControl.Timestamp;
+        LogLevel = facilityControl.IsBanned ? ScrimMessageLogLevel.MatchEventRuleBreak : ScrimMessageLogLevel.MatchEventMajor;
+    }
 
-            LogLevel = facilityControl.IsBanned ? ScrimMessageLogLevel.MatchEventRuleBreak : ScrimMessageLogLevel.MatchEventMajor;
-        }
+    private string GetInfo()
+    {
+        var teamOrdinal = FacilityControl.ControllingTeamOrdinal;
 
-        private string GetInfo()
-        {
-            var teamOrdinal = FacilityControl.ControllingTeamOrdinal;
+        var actionDisplay = GetEnumValueName(FacilityControl.ActionType);
+        var controlTypeDisplay = Enum.GetName(typeof(FacilityControlType), FacilityControl.ControlType).ToUpper();
 
-            var actionDisplay = GetEnumValueName(FacilityControl.ActionType);
-            var controlTypeDisplay = Enum.GetName(typeof(FacilityControlType), FacilityControl.ControlType).ToUpper();
+        var facilityName = FacilityControl.FacilityName;
+        var facilityId = FacilityControl.FacilityId;
 
-            var facilityName = FacilityControl.FacilityName;
-            var facilityId = FacilityControl.FacilityId;
+        var pointsDisplay = GetPointsDisplay(FacilityControl.Points);
 
-            var pointsDisplay = GetPointsDisplay(FacilityControl.Points);
+        var bannedDisplay = FacilityControl.IsBanned ? "RULE BREAK - " : string.Empty;
 
-            var bannedDisplay = FacilityControl.IsBanned ? "RULE BREAK - " : string.Empty;
-
-            return $"{bannedDisplay}Team {teamOrdinal} {actionDisplay} {controlTypeDisplay}: {pointsDisplay} {facilityName} [{facilityId}]";
-        }
+        return $"{bannedDisplay}Team {teamOrdinal} {actionDisplay} {controlTypeDisplay}: {pointsDisplay} {facilityName} [{facilityId}]";
     }
 }

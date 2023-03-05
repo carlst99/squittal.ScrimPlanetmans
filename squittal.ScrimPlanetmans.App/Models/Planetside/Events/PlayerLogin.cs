@@ -1,15 +1,14 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace squittal.ScrimPlanetmans.Models.Planetside.Events
-{
-    public class PlayerLogin
-    {
-        [Required]
-        public string CharacterId { get; set; }
-        [Required]
-        public DateTime Timestamp { get; set; }
+namespace squittal.ScrimPlanetmans.Models.Planetside.Events;
 
-        public int WorldId { get; set; }
-    }
+public class PlayerLogin
+{
+    [Required]
+    public string CharacterId { get; set; }
+    [Required]
+    public DateTime Timestamp { get; set; }
+
+    public int WorldId { get; set; }
 }

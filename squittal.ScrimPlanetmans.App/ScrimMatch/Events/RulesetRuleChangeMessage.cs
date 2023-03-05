@@ -1,32 +1,31 @@
 ﻿using squittal.ScrimPlanetmans.ScrimMatch.Models;
 using System;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages
+namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+
+public class RulesetRuleChangeMessage
 {
-    public class RulesetRuleChangeMessage
+    public Ruleset Ruleset { get; set; }
+    public RulesetRuleChangeType RuleChangeType { get; set; }
+    public string Info { get; set; }
+
+    public RulesetRuleChangeMessage(Ruleset ruleset, RulesetRuleChangeType changeType)
     {
-        public Ruleset Ruleset { get; set; }
-        public RulesetRuleChangeType RuleChangeType { get; set; }
-        public string Info { get; set; }
-
-        public RulesetRuleChangeMessage(Ruleset ruleset, RulesetRuleChangeType changeType)
-        {
-            Ruleset = ruleset;
-            RuleChangeType = changeType;
-            Info = $"Rules changed for ruleset {Ruleset.Name} [{Ruleset.Id}]: {GetEnumValueName(changeType)}";
-        }
-
-        public string GetEnumValueName(RulesetRuleChangeType type)
-        {
-            return Enum.GetName(typeof(RulesetRuleChangeType), type);
-        }
+        Ruleset = ruleset;
+        RuleChangeType = changeType;
+        Info = $"Rules changed for ruleset {Ruleset.Name} [{Ruleset.Id}]: {GetEnumValueName(changeType)}";
     }
 
-    public enum RulesetRuleChangeType
+    public string GetEnumValueName(RulesetRuleChangeType type)
     {
-        ActionRule,
-        ItemCategoryRule,
-        FacilityRule,
-        ItemRule
+        return Enum.GetName(typeof(RulesetRuleChangeType), type);
     }
+}
+
+public enum RulesetRuleChangeType
+{
+    ActionRule,
+    ItemCategoryRule,
+    FacilityRule,
+    ItemRule
 }

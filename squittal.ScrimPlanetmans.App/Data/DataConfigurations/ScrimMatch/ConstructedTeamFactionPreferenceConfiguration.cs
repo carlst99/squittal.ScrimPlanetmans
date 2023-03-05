@@ -2,23 +2,22 @@
 using Microsoft.EntityFrameworkCore;
 using squittal.ScrimPlanetmans.Data.Models;
 
-namespace squittal.ScrimPlanetmans.Data.DataConfigurations
+namespace squittal.ScrimPlanetmans.Data.DataConfigurations;
+
+public class ConstructedTeamFactionPreferenceConfiguration : IEntityTypeConfiguration<ConstructedTeamFactionPreference>
 {
-    public class ConstructedTeamFactionPreferenceConfiguration : IEntityTypeConfiguration<ConstructedTeamFactionPreference>
+    public void Configure(EntityTypeBuilder<ConstructedTeamFactionPreference> builder)
     {
-        public void Configure(EntityTypeBuilder<ConstructedTeamFactionPreference> builder)
+        builder.ToTable("ConstructedTeamFactionPreference");
+
+        builder.HasKey(e => new
         {
-            builder.ToTable("ConstructedTeamFactionPreference");
+            e.ConstructedTeamId,
+            e.PreferenceOrdinalValue
+        });
 
-            builder.HasKey(e => new
-            {
-                e.ConstructedTeamId,
-                e.PreferenceOrdinalValue
-            });
-
-            //builder.HasOne(faction => faction.ConstructedTeam)
-            //    .WithMany(team => team.FactionPreferences)
-            //    .HasForeignKey(faction => faction.ConstructedTeamId);
-        }
+        //builder.HasOne(faction => faction.ConstructedTeam)
+        //    .WithMany(team => team.FactionPreferences)
+        //    .HasForeignKey(faction => faction.ConstructedTeamId);
     }
 }

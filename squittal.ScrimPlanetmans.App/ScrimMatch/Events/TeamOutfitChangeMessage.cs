@@ -1,32 +1,31 @@
 ﻿using squittal.ScrimPlanetmans.Models.Planetside;
 using System;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages
+namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+
+public class TeamOutfitChangeMessage
 {
-    public class TeamOutfitChangeMessage
+    public Outfit Outfit { get; set; }
+    public TeamChangeType ChangeType { get; set; }
+    public string Info { get; set; }
+
+    public TeamOutfitChangeMessage(Outfit outfit, TeamChangeType changeType)
     {
-        public Outfit Outfit { get; set; }
-        public TeamChangeType ChangeType { get; set; }
-        public string Info { get; set; }
+        Outfit = outfit;
+        ChangeType = changeType;
 
-        public TeamOutfitChangeMessage(Outfit outfit, TeamChangeType changeType)
+        Info = GetInfoMessage();
+    }
+
+    private string GetInfoMessage()
+    {
+        if (Outfit == null)
         {
-            Outfit = outfit;
-            ChangeType = changeType;
-
-            Info = GetInfoMessage();
+            return string.Empty;
         }
 
-        private string GetInfoMessage()
-        {
-            if (Outfit == null)
-            {
-                return string.Empty;
-            }
+        var type = Enum.GetName(typeof(TeamChangeType), ChangeType).ToUpper();
 
-            var type = Enum.GetName(typeof(TeamChangeType), ChangeType).ToUpper();
-
-            return $"Team {Outfit.TeamOrdinal} Outfit {type}: [{Outfit.Alias}] {Outfit.Name} [{Outfit.Id}]";
-        }
+        return $"Team {Outfit.TeamOrdinal} Outfit {type}: [{Outfit.Alias}] {Outfit.Name} [{Outfit.Id}]";
     }
 }

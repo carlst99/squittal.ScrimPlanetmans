@@ -4,80 +4,79 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages
+namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+
+public class RulesetOverlayConfigurationChangeMessage
 {
-    public class RulesetOverlayConfigurationChangeMessage
+    public Ruleset Ruleset { get; set; }
+    public RulesetOverlayConfiguration OverlayConfiguration { get; set; }
+    public List<RulesetOverlayConfigurationChange> ChangedSettings { get; set; } = new List<RulesetOverlayConfigurationChange>();
+    public string Info => GetInfoString();
+
+    public RulesetOverlayConfigurationChangeMessage(Ruleset ruleset, RulesetOverlayConfiguration newConfiguration, RulesetOverlayConfiguration previousConfiguration)
     {
-        public Ruleset Ruleset { get; set; }
-        public RulesetOverlayConfiguration OverlayConfiguration { get; set; }
-        public List<RulesetOverlayConfigurationChange> ChangedSettings { get; set; } = new List<RulesetOverlayConfigurationChange>();
-        public string Info => GetInfoString();
+        Ruleset = ruleset;
+        OverlayConfiguration = newConfiguration;
 
-        public RulesetOverlayConfigurationChangeMessage(Ruleset ruleset, RulesetOverlayConfiguration newConfiguration, RulesetOverlayConfiguration previousConfiguration)
+        CalculateSettingChanges(newConfiguration, previousConfiguration);
+    }
+
+    private void CalculateSettingChanges(RulesetOverlayConfiguration newConfiguration, RulesetOverlayConfiguration previousConfiguration)
+    {
+        if (newConfiguration.UseCompactLayout != previousConfiguration?.UseCompactLayout)
         {
-            Ruleset = ruleset;
-            OverlayConfiguration = newConfiguration;
-
-            CalculateSettingChanges(newConfiguration, previousConfiguration);
+            ChangedSettings.Add(RulesetOverlayConfigurationChange.UseCompactLayout);
         }
 
-        private void CalculateSettingChanges(RulesetOverlayConfiguration newConfiguration, RulesetOverlayConfiguration previousConfiguration)
+        if (newConfiguration.StatsDisplayType != previousConfiguration?.StatsDisplayType)
         {
-            if (newConfiguration.UseCompactLayout != previousConfiguration?.UseCompactLayout)
-            {
-                ChangedSettings.Add(RulesetOverlayConfigurationChange.UseCompactLayout);
-            }
-
-            if (newConfiguration.StatsDisplayType != previousConfiguration?.StatsDisplayType)
-            {
-                ChangedSettings.Add(RulesetOverlayConfigurationChange.StatsDisplayType);
-            }
-
-            if (newConfiguration.ShowStatusPanelScores != previousConfiguration?.ShowStatusPanelScores)
-            {
-                ChangedSettings.Add(RulesetOverlayConfigurationChange.ShowStatusPanelScores);
-            }
+            ChangedSettings.Add(RulesetOverlayConfigurationChange.StatsDisplayType);
         }
 
-        private string GetInfoString()
+        if (newConfiguration.ShowStatusPanelScores != previousConfiguration?.ShowStatusPanelScores)
         {
-            if (Ruleset == null)
-            {
-                return string.Empty;
-            }
+            ChangedSettings.Add(RulesetOverlayConfigurationChange.ShowStatusPanelScores);
+        }
+    }
 
-            var stringBuilder = new StringBuilder($"Overlay Configuration changed for Ruleset {Ruleset.Name} [{Ruleset.Id}]: ");
+    private string GetInfoString()
+    {
+        if (Ruleset == null)
+        {
+            return string.Empty;
+        }
 
-            if (ChangedSettings == null || !ChangedSettings.Any())
-            {
-                stringBuilder.Append("none");
+        var stringBuilder = new StringBuilder($"Overlay Configuration changed for Ruleset {Ruleset.Name} [{Ruleset.Id}]: ");
 
-                return stringBuilder.ToString();
-            }
-
-            var isFirst = true;
-            foreach (var setting in ChangedSettings)
-            {
-                var settingString = isFirst ? GetEnumValueName(setting) : $", {GetEnumValueName(setting)}";
-
-                stringBuilder.Append(settingString);
-
-                isFirst = false;
-            }
+        if (ChangedSettings == null || !ChangedSettings.Any())
+        {
+            stringBuilder.Append("none");
 
             return stringBuilder.ToString();
         }
 
-        private string GetEnumValueName(RulesetOverlayConfigurationChange type)
+        var isFirst = true;
+        foreach (var setting in ChangedSettings)
         {
-            return Enum.GetName(typeof(RulesetOverlayConfigurationChange), type);
+            var settingString = isFirst ? GetEnumValueName(setting) : $", {GetEnumValueName(setting)}";
+
+            stringBuilder.Append(settingString);
+
+            isFirst = false;
         }
+
+        return stringBuilder.ToString();
     }
 
-    public enum RulesetOverlayConfigurationChange
+    private string GetEnumValueName(RulesetOverlayConfigurationChange type)
     {
-        UseCompactLayout,
-        StatsDisplayType,
-        ShowStatusPanelScores
+        return Enum.GetName(typeof(RulesetOverlayConfigurationChange), type);
     }
+}
+
+public enum RulesetOverlayConfigurationChange
+{
+    UseCompactLayout,
+    StatsDisplayType,
+    ShowStatusPanelScores
 }

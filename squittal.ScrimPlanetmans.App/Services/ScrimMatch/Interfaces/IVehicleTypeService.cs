@@ -2,11 +2,10 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.Services.ScrimMatch
+namespace squittal.ScrimPlanetmans.Services.ScrimMatch;
+
+public interface IVehicleTypeService
 {
-    public interface IVehicleTypeService
-    {
-        Task SeedVehicleClasses();
-        IEnumerable<VehicleType> GetVehicleTypes();
-    }
+    Task SeedVehicleClasses();
+    IEnumerable<VehicleType> GetVehicleTypes();
 }

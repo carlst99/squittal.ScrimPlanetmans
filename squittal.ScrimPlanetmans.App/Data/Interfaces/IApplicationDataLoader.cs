@@ -1,11 +1,10 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.Data
+namespace squittal.ScrimPlanetmans.Data;
+
+public interface IApplicationDataLoader
 {
-    public interface IApplicationDataLoader
-    {
-        Task OnApplicationStartup(CancellationToken cancellationToken);
-        Task OnApplicationShutdown(CancellationToken cancellationToken);
-    }
+    Task OnApplicationStartup(CancellationToken cancellationToken);
+    Task OnApplicationShutdown(CancellationToken cancellationToken);
 }

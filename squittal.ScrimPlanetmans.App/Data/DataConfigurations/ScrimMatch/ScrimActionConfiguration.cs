@@ -2,15 +2,14 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using squittal.ScrimPlanetmans.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.Data.DataConfigurations
-{
-    public class ScrimActionConfiguration : IEntityTypeConfiguration<ScrimAction>
-    {
-        public void Configure(EntityTypeBuilder<ScrimAction> builder)
-        {
-            builder.ToTable("ScrimAction");
+namespace squittal.ScrimPlanetmans.Data.DataConfigurations;
 
-            builder.HasKey(e => e.Action);
-        }
+public class ScrimActionConfiguration : IEntityTypeConfiguration<ScrimAction>
+{
+    public void Configure(EntityTypeBuilder<ScrimAction> builder)
+    {
+        builder.ToTable("ScrimAction");
+
+        builder.HasKey(e => e.Action);
     }
 }

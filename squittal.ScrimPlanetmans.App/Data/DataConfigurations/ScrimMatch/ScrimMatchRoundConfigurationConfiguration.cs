@@ -2,25 +2,24 @@
 using Microsoft.EntityFrameworkCore;
 using squittal.ScrimPlanetmans.Data.Models;
 
-namespace squittal.ScrimPlanetmans.Data.DataConfigurations
+namespace squittal.ScrimPlanetmans.Data.DataConfigurations;
+
+public class ScrimMatchRoundConfigurationConfiguration : IEntityTypeConfiguration<ScrimMatchRoundConfiguration>
 {
-    public class ScrimMatchRoundConfigurationConfiguration : IEntityTypeConfiguration<ScrimMatchRoundConfiguration>
+    public void Configure(EntityTypeBuilder<ScrimMatchRoundConfiguration> builder)
     {
-        public void Configure(EntityTypeBuilder<ScrimMatchRoundConfiguration> builder)
+        builder.ToTable("ScrimMatchRoundConfiguration");
+
+        builder.HasKey(e => new
         {
-            builder.ToTable("ScrimMatchRoundConfiguration");
+            e.ScrimMatchId,
+            e.ScrimMatchRound
+        });
 
-            builder.HasKey(e => new
-            {
-                e.ScrimMatchId,
-                e.ScrimMatchRound
-            });
+        builder.Property(e => e.IsManualWorldId).HasDefaultValue(false);
+        builder.Property(e => e.IsRoundEndedOnFacilityCapture).HasDefaultValue(false);
 
-            builder.Property(e => e.IsManualWorldId).HasDefaultValue(false);
-            builder.Property(e => e.IsRoundEndedOnFacilityCapture).HasDefaultValue(false);
-
-            builder.Ignore(e => e.ScrimMatch);
-            builder.Ignore(e => e.World);
-        }
+        builder.Ignore(e => e.ScrimMatch);
+        builder.Ignore(e => e.World);
     }
 }

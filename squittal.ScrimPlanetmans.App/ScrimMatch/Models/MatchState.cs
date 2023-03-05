@@ -1,10 +1,9 @@
-﻿namespace squittal.ScrimPlanetmans.ScrimMatch.Models
+﻿namespace squittal.ScrimPlanetmans.ScrimMatch.Models;
+
+public enum MatchState
 {
-    public enum MatchState
-    {
-        Uninitialized = 0,
-        Running,
-        Stopped,
-        Paused
-    }
+    Uninitialized = 0,
+    Running,
+    Stopped,
+    Paused
 }

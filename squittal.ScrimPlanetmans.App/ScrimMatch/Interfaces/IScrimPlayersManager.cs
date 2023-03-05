@@ -4,11 +4,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch
+namespace squittal.ScrimPlanetmans.ScrimMatch;
+
+public interface IScrimPlayersManager
 {
-    public interface IScrimPlayersManager
-    {
-        Task<Player> GetPlayerFromCharacterId(string characterId);
-        Task<IEnumerable<Player>> GetPlayersFromOutfitAlias(string alias);
-    }
+    Task<Player> GetPlayerFromCharacterId(string characterId);
+    Task<IEnumerable<Player>> GetPlayersFromOutfitAlias(string alias);
 }

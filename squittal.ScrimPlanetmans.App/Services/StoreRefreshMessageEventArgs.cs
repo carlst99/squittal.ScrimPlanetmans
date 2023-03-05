@@ -1,20 +1,19 @@
 ﻿using System;
 
-namespace squittal.ScrimPlanetmans.Services
+namespace squittal.ScrimPlanetmans.Services;
+
+public class StoreRefreshMessageEventArgs : EventArgs
 {
-    public class StoreRefreshMessageEventArgs : EventArgs
-    {
-        public StoreRefreshSource RefreshSource { get; set; }
+    public StoreRefreshSource RefreshSource { get; set; }
 
-        public StoreRefreshMessageEventArgs(StoreRefreshSource refreshSource)
-        {
-            RefreshSource = refreshSource;
-        }
-    }
-
-    public enum StoreRefreshSource
+    public StoreRefreshMessageEventArgs(StoreRefreshSource refreshSource)
     {
-        CensusApi,
-        BackupSqlScript
+        RefreshSource = refreshSource;
     }
+}
+
+public enum StoreRefreshSource
+{
+    CensusApi,
+    BackupSqlScript
 }

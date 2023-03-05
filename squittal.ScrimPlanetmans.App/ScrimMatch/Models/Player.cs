@@ -3,274 +3,273 @@ using System.Text.RegularExpressions;
 using squittal.ScrimPlanetmans.Models.Planetside;
 using squittal.ScrimPlanetmans.Services.Planetside;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Models
+namespace squittal.ScrimPlanetmans.ScrimMatch.Models;
+
+public class Player : IEquitable<Player>
 {
-    public class Player : IEquitable<Player>
+    public string Id { get; }
+
+    public int TeamOrdinal { get; set; }
+
+    public ScrimEventAggregate EventAggregate => EventAggregateTracker.TotalStats;
+    public ScrimEventAggregateRoundTracker EventAggregateTracker { get; set; } = new();
+
+    public string NameFull { get; }
+    public string NameTrimmed { get; private set; }
+    public string? NameAlias { get; private set; }
+
+    public string NameDisplay
     {
-        public string Id { get; }
-
-        public int TeamOrdinal { get; set; }
-
-        public ScrimEventAggregate EventAggregate => EventAggregateTracker.TotalStats;
-        public ScrimEventAggregateRoundTracker EventAggregateTracker { get; set; } = new();
-
-        public string NameFull { get; }
-        public string NameTrimmed { get; private set; }
-        public string? NameAlias { get; private set; }
-
-        public string NameDisplay
+        get
         {
-            get
-            {
-                if (!string.IsNullOrWhiteSpace(NameAlias))
-                    return NameAlias;
+            if (!string.IsNullOrWhiteSpace(NameAlias))
+                return NameAlias;
 
-                return !string.IsNullOrWhiteSpace(NameTrimmed)
-                    ? NameTrimmed
-                    : NameFull;
+            return !string.IsNullOrWhiteSpace(NameTrimmed)
+                ? NameTrimmed
+                : NameFull;
+        }
+    }
+
+    public int FactionId { get; set; }
+    public int WorldId { get; set; }
+
+    public int PrestigeLevel { get; set; }
+
+    public string OutfitId { get; set; }
+    public string OutfitAlias { get; set; }
+    public string OutfitAliasLower { get; set; }
+    public bool IsOutfitless { get; set; }
+
+    public int? ConstructedTeamId { get; set; }
+    public bool IsFromConstructedTeam => ConstructedTeamId != null;
+
+    // Dynamic Attributes
+    public int? LoadoutId { get; set; }
+    public PlayerStatus Status { get; set; } = PlayerStatus.Unknown;
+
+    public bool IsOnline { get; set; }
+    public bool IsActive { get; set; }
+    public bool IsParticipating { get; set; }
+    public bool IsBenched { get; set; }
+
+    public bool IsVisibleInTeamComposer => GetIsVisibleInTeamComposer();
+
+    public bool IsAdHocPlayer => GetIsAdHocPlayer();
+
+    private static readonly Regex _nameRegex = new Regex("^[A-Za-z0-9]{1,32}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    // Format for Planetside Infantry League: Season 2 => Namex##
+    private static readonly Regex _pil2NameRegex = new Regex("^[A-z0-9]{2,}(x[0-9]{2})$", RegexOptions.Compiled);
+
+    // Format for Legacy Jaeger Characters => TAGxName(VS|NC|TR)
+    private static readonly Regex _legacyJaegerNameRegex = new("^([A-z0-9]{0,4}x).{2,}(?<!(x[0-9]{2}))$", RegexOptions.Compiled);
+
+    private static readonly Regex _factionSufficRegex = new("^[A-z0-9]+(VS|NC|TR)$", RegexOptions.Compiled);
+
+    public Player(Character character)
+    {
+        Id = character.Id;
+        NameFull = character.Name;
+        IsOnline = character.IsOnline;
+        PrestigeLevel = character.PrestigeLevel;
+        FactionId = character.FactionId;
+        WorldId = character.WorldId;
+        OutfitId = character.OutfitId;
+        OutfitAlias = character.OutfitAlias;
+        OutfitAliasLower = character.OutfitAliasLower;
+
+        // Last because it requires WorldId being set
+        NameTrimmed = GetTrimmedPlayerName(NameFull, WorldId);
+    }
+
+    #region Temporary Alias
+    public static string GetTrimmedPlayerName(string name, int worldId)
+    {
+        bool isPil2NameFormat = false;
+        bool isLegacyJaegerNameFormat = false;
+
+        if (WorldService.IsJaegerWorldId(worldId))
+        {
+            if (_pil2NameRegex.Match(name).Success)
+            {
+                isPil2NameFormat = true;
+            }
+            else if (_legacyJaegerNameRegex.Match(name).Success)
+            {
+                isLegacyJaegerNameFormat = true;
             }
         }
 
-        public int FactionId { get; set; }
-        public int WorldId { get; set; }
+        string trimmed = name;
+        int initLength = name.Length;
 
-        public int PrestigeLevel { get; set; }
-
-        public string OutfitId { get; set; }
-        public string OutfitAlias { get; set; }
-        public string OutfitAliasLower { get; set; }
-        public bool IsOutfitless { get; set; }
-
-        public int? ConstructedTeamId { get; set; }
-        public bool IsFromConstructedTeam => ConstructedTeamId != null;
-
-        // Dynamic Attributes
-        public int? LoadoutId { get; set; }
-        public PlayerStatus Status { get; set; } = PlayerStatus.Unknown;
-
-        public bool IsOnline { get; set; }
-        public bool IsActive { get; set; }
-        public bool IsParticipating { get; set; }
-        public bool IsBenched { get; set; }
-
-        public bool IsVisibleInTeamComposer => GetIsVisibleInTeamComposer();
-
-        public bool IsAdHocPlayer => GetIsAdHocPlayer();
-
-        private static readonly Regex _nameRegex = new Regex("^[A-Za-z0-9]{1,32}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-        // Format for Planetside Infantry League: Season 2 => Namex##
-        private static readonly Regex _pil2NameRegex = new Regex("^[A-z0-9]{2,}(x[0-9]{2})$", RegexOptions.Compiled);
-
-        // Format for Legacy Jaeger Characters => TAGxName(VS|NC|TR)
-        private static readonly Regex _legacyJaegerNameRegex = new("^([A-z0-9]{0,4}x).{2,}(?<!(x[0-9]{2}))$", RegexOptions.Compiled);
-
-        private static readonly Regex _factionSufficRegex = new("^[A-z0-9]+(VS|NC|TR)$", RegexOptions.Compiled);
-
-        public Player(Character character)
+        if (isPil2NameFormat)
         {
-            Id = character.Id;
-            NameFull = character.Name;
-            IsOnline = character.IsOnline;
-            PrestigeLevel = character.PrestigeLevel;
-            FactionId = character.FactionId;
-            WorldId = character.WorldId;
-            OutfitId = character.OutfitId;
-            OutfitAlias = character.OutfitAlias;
-            OutfitAliasLower = character.OutfitAliasLower;
-
-            // Last because it requires WorldId being set
-            NameTrimmed = GetTrimmedPlayerName(NameFull, WorldId);
+            trimmed = name[..(initLength - 3)];
+        }
+        else if (isLegacyJaegerNameFormat)
+        {
+            // Remove outfit tag from beginning of name
+            int idx = name.IndexOf("x", StringComparison.Ordinal);
+            if (idx is >= 0 and < 5 && idx != initLength - 1)
+            {
+                trimmed = name.Substring(idx + 1, initLength - idx - 1);
+            }
         }
 
-        #region Temporary Alias
-        public static string GetTrimmedPlayerName(string name, int worldId)
+        if (!isPil2NameFormat && _factionSufficRegex.Match(trimmed).Success)
         {
-            bool isPil2NameFormat = false;
-            bool isLegacyJaegerNameFormat = false;
-
-            if (WorldService.IsJaegerWorldId(worldId))
-            {
-                if (_pil2NameRegex.Match(name).Success)
-                {
-                    isPil2NameFormat = true;
-                }
-                else if (_legacyJaegerNameRegex.Match(name).Success)
-                {
-                    isLegacyJaegerNameFormat = true;
-                }
-            }
-
-            string trimmed = name;
-            int initLength = name.Length;
-
-            if (isPil2NameFormat)
-            {
-                trimmed = name[..(initLength - 3)];
-            }
-            else if (isLegacyJaegerNameFormat)
-            {
-                // Remove outfit tag from beginning of name
-                int idx = name.IndexOf("x", StringComparison.Ordinal);
-                if (idx is >= 0 and < 5 && idx != initLength - 1)
-                {
-                    trimmed = name.Substring(idx + 1, initLength - idx - 1);
-                }
-            }
-
-            if (!isPil2NameFormat && _factionSufficRegex.Match(trimmed).Success)
-            {
-                // Remove faction abbreviation from end of name
-                int end = trimmed.Length - 2;
-                trimmed = trimmed[..end];
-            }
-
-            if (string.IsNullOrWhiteSpace(trimmed) || trimmed.Length <= 1)
-            {
-                trimmed = name;
-            }
-
-            return trimmed;
+            // Remove faction abbreviation from end of name
+            int end = trimmed.Length - 2;
+            trimmed = trimmed[..end];
         }
 
-        public void UpdateNameTrimmed()
+        if (string.IsNullOrWhiteSpace(trimmed) || trimmed.Length <= 1)
         {
-            NameTrimmed = GetTrimmedPlayerName(NameFull, WorldId);
+            trimmed = name;
         }
 
-        public bool TrySetNameAlias(string alias)
+        return trimmed;
+    }
+
+    public void UpdateNameTrimmed()
+    {
+        NameTrimmed = GetTrimmedPlayerName(NameFull, WorldId);
+    }
+
+    public bool TrySetNameAlias(string alias)
+    {
+        if (string.IsNullOrWhiteSpace(alias))
         {
-            if (string.IsNullOrWhiteSpace(alias))
-            {
-                return false;
-            }
+            return false;
+        }
 
-            Match match = _nameRegex.Match(alias);
-            if (!match.Success)
-            {
-                return false;
-            }
+        Match match = _nameRegex.Match(alias);
+        if (!match.Success)
+        {
+            return false;
+        }
 
-            NameAlias = alias;
+        NameAlias = alias;
 
+        return true;
+    }
+
+    public void ClearAllDisplayNameSources()
+    {
+        NameAlias = string.Empty;
+        NameTrimmed = string.Empty;
+    }
+    #endregion Temporary Alias
+
+    #region Event Aggregate & Stat Updates
+    public void AddStatsUpdate(ScrimEventAggregate update)
+    {
+        EventAggregateTracker.AddToCurrent(update);
+    }
+
+    public void SubtractStatsUpdate(ScrimEventAggregate update)
+    {
+        EventAggregateTracker.SubtractFromCurrent(update);
+    }
+
+    public void ClearEventAggregateHistory()
+    {
+        EventAggregateTracker = new ScrimEventAggregateRoundTracker();
+    }
+    #endregion Event Aggregate & Stat Updates
+
+    public void ResetMatchData()
+    {
+        ClearEventAggregateHistory();
+
+        LoadoutId = null;
+        Status = PlayerStatus.Unknown;
+        IsActive = false;
+        IsParticipating = false;
+    }
+
+    private bool GetIsVisibleInTeamComposer()
+    {
+        if (IsParticipating || IsOnline)
+        {
             return true;
         }
-
-        public void ClearAllDisplayNameSources()
+        else if (IsAdHocPlayer)
         {
-            NameAlias = string.Empty;
-            NameTrimmed = string.Empty;
+            return true;
         }
-        #endregion Temporary Alias
-
-        #region Event Aggregate & Stat Updates
-        public void AddStatsUpdate(ScrimEventAggregate update)
+        else if (IsFromConstructedTeam)
         {
-            EventAggregateTracker.AddToCurrent(update);
+            return true;
         }
-
-        public void SubtractStatsUpdate(ScrimEventAggregate update)
+        else if (!IsOutfitless)
         {
-            EventAggregateTracker.SubtractFromCurrent(update);
+            return false;
         }
-
-        public void ClearEventAggregateHistory()
+        else
         {
-            EventAggregateTracker = new ScrimEventAggregateRoundTracker();
+            return false;
         }
-        #endregion Event Aggregate & Stat Updates
-
-        public void ResetMatchData()
-        {
-            ClearEventAggregateHistory();
-
-            LoadoutId = null;
-            Status = PlayerStatus.Unknown;
-            IsActive = false;
-            IsParticipating = false;
-        }
-
-        private bool GetIsVisibleInTeamComposer()
-        {
-            if (IsParticipating || IsOnline)
-            {
-                return true;
-            }
-            else if (IsAdHocPlayer)
-            {
-                return true;
-            }
-            else if (IsFromConstructedTeam)
-            {
-                return true;
-            }
-            else if (!IsOutfitless)
-            {
-                return false;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-
-        private bool GetIsAdHocPlayer()
-        {
-            if (IsFromConstructedTeam || !IsOutfitless)
-            {
-                return false;
-            }
-            else
-            {
-                return true;
-            }
-        }
-        #region Eqaulity
-
-        public override bool Equals(object? obj)
-            => obj is Player player
-                && Equals(player);
-
-        public bool Equals(Player? p)
-            => p is not null
-                && p.Id == Id;
-
-        public static bool operator ==(Player lhs, Player rhs)
-        {
-            if (ReferenceEquals(lhs, null))
-            {
-                if (ReferenceEquals(rhs, null))
-                {
-                    return true;
-                }
-
-                return false;
-            }
-            return lhs.Equals(rhs);
-        }
-
-        public static bool operator !=(Player lhs, Player rhs)
-        {
-            return !(lhs == rhs);
-        }
-
-        public override int GetHashCode()
-        {
-            return Id.GetHashCode();
-        }
-        #endregion Eqaulity
     }
 
 
-    public enum PlayerStatus
+    private bool GetIsAdHocPlayer()
     {
-        Unknown,
-        Alive,
-        Respawning,
-        Revived,
-        ContestingObjective,
-        Benched,
-        Offline
+        if (IsFromConstructedTeam || !IsOutfitless)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
     }
+    #region Eqaulity
+
+    public override bool Equals(object? obj)
+        => obj is Player player
+            && Equals(player);
+
+    public bool Equals(Player? p)
+        => p is not null
+            && p.Id == Id;
+
+    public static bool operator ==(Player lhs, Player rhs)
+    {
+        if (ReferenceEquals(lhs, null))
+        {
+            if (ReferenceEquals(rhs, null))
+            {
+                return true;
+            }
+
+            return false;
+        }
+        return lhs.Equals(rhs);
+    }
+
+    public static bool operator !=(Player lhs, Player rhs)
+    {
+        return !(lhs == rhs);
+    }
+
+    public override int GetHashCode()
+    {
+        return Id.GetHashCode();
+    }
+    #endregion Eqaulity
+}
+
+
+public enum PlayerStatus
+{
+    Unknown,
+    Alive,
+    Respawning,
+    Revived,
+    ContestingObjective,
+    Benched,
+    Offline
 }

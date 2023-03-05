@@ -3,150 +3,149 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.Models
+namespace squittal.ScrimPlanetmans.Models;
+
+public class CensusStoreDataComparisonRow
 {
-    public class CensusStoreDataComparisonRow
-    {
-        private readonly ICountableStore _countService;
-        private readonly IUpdateable _refreshService;
-        private readonly ILocallyBackedStore _localBackupService;
+    private readonly ICountableStore _countService;
+    private readonly IUpdateable _refreshService;
+    private readonly ILocallyBackedStore _localBackupService;
         
-        public string Name { get; set; }
-        public int StoreCount { get; set; } = 0;
-        public int CensusCount { get; set; } = 0;
-        public bool IsRefreshable { get; private set; } = false;
+    public string Name { get; set; }
+    public int StoreCount { get; set; } = 0;
+    public int CensusCount { get; set; } = 0;
+    public bool IsRefreshable { get; private set; } = false;
 
-        public bool IsLoadingStoreCount { get; private set; } = false;
-        public bool IsLoadingCensusCount { get; private set; } = false;
-        public bool IsRefreshingStore { get; private set; } = false;
+    public bool IsLoadingStoreCount { get; private set; } = false;
+    public bool IsLoadingCensusCount { get; private set; } = false;
+    public bool IsRefreshingStore { get; private set; } = false;
 
-        private readonly AutoResetEvent _autoEvent = new AutoResetEvent(true);
+    private readonly AutoResetEvent _autoEvent = new AutoResetEvent(true);
 
-        // TODO: add CancellationTokens
+    // TODO: add CancellationTokens
 
-        public CensusStoreDataComparisonRow(string name, ILocallyBackedCensusStore locallyBackedCensusStore)
-        {
-            Name = name;
-            _countService = locallyBackedCensusStore;
-            _localBackupService = locallyBackedCensusStore;
-            _refreshService = locallyBackedCensusStore;
-            IsRefreshable = true;
-        }
+    public CensusStoreDataComparisonRow(string name, ILocallyBackedCensusStore locallyBackedCensusStore)
+    {
+        Name = name;
+        _countService = locallyBackedCensusStore;
+        _localBackupService = locallyBackedCensusStore;
+        _refreshService = locallyBackedCensusStore;
+        IsRefreshable = true;
+    }
 
-        public CensusStoreDataComparisonRow(string name, ICountableStore countService, ILocallyBackedStore localBackupService)
-        {
-            Name = name;
-            _countService = countService;
-            _localBackupService = localBackupService;
-            IsRefreshable = false;
-        }
+    public CensusStoreDataComparisonRow(string name, ICountableStore countService, ILocallyBackedStore localBackupService)
+    {
+        Name = name;
+        _countService = countService;
+        _localBackupService = localBackupService;
+        IsRefreshable = false;
+    }
 
-        public CensusStoreDataComparisonRow(string name, ICountableStore countService, ILocallyBackedStore localBackupService, IUpdateable refreshService)
-        {
-            Name = name;
-            _countService = countService;
-            _localBackupService = localBackupService;
-            _refreshService = refreshService;
-            IsRefreshable = true;
-        }
+    public CensusStoreDataComparisonRow(string name, ICountableStore countService, ILocallyBackedStore localBackupService, IUpdateable refreshService)
+    {
+        Name = name;
+        _countService = countService;
+        _localBackupService = localBackupService;
+        _refreshService = refreshService;
+        IsRefreshable = true;
+    }
 
-        public async Task SetCounts()
-        {
-            _autoEvent.WaitOne();
+    public async Task SetCounts()
+    {
+        _autoEvent.WaitOne();
 
-            var TaskList = new List<Task>();
+        var TaskList = new List<Task>();
 
-            var storeCountTask = SetStoreCount(true);
-            TaskList.Add(storeCountTask);
+        var storeCountTask = SetStoreCount(true);
+        TaskList.Add(storeCountTask);
 
-            var censusCountTask = SetCensusCount(true);
-            TaskList.Add(censusCountTask);
+        var censusCountTask = SetCensusCount(true);
+        TaskList.Add(censusCountTask);
 
-            await Task.WhenAll(TaskList);
+        await Task.WhenAll(TaskList);
 
-            _autoEvent.Set();
-        }
+        _autoEvent.Set();
+    }
 
-        public async Task SetStoreCount(bool noLock = false)
-        {
-            if (!noLock)
-            {
-                _autoEvent.WaitOne();
-            }
-
-            if (_countService != null && !IsLoadingStoreCount)
-            {
-                IsLoadingStoreCount = true;
-                StoreCount = await _countService.GetStoreCountAsync();
-                IsLoadingStoreCount = false;
-            }
-
-            if (!noLock)
-            {
-                _autoEvent.Set();
-            }
-        }
-
-        public async Task SetCensusCount(bool noLock = false)
-        {
-            if (!noLock)
-            {
-                _autoEvent.WaitOne();
-            }
-
-            if (_countService != null && !IsLoadingCensusCount)
-            {
-                IsLoadingCensusCount = true;
-
-                int censusCount;
-
-                try
-                {
-                    censusCount = await _countService.GetCensusCountAsync();
-                }
-                catch
-                {
-                    censusCount = -1;
-                }
-
-                CensusCount = censusCount;
-
-                IsLoadingCensusCount = false;
-            }
-
-            if (!noLock)
-            {
-                _autoEvent.Set();
-            }
-        }
-
-        public async Task RefreshStoreFromCensus()
+    public async Task SetStoreCount(bool noLock = false)
+    {
+        if (!noLock)
         {
             _autoEvent.WaitOne();
-            if (IsRefreshable && !IsRefreshingStore)
-            {
-                IsRefreshingStore = true;
-                await _refreshService.RefreshStore();
-                IsRefreshingStore = false;
-            }
-            _autoEvent.Set();
-
-            await SetStoreCount();
-            await SetCensusCount();
         }
 
-        public async Task RefreshStoreFromBackup()
+        if (_countService != null && !IsLoadingStoreCount)
+        {
+            IsLoadingStoreCount = true;
+            StoreCount = await _countService.GetStoreCountAsync();
+            IsLoadingStoreCount = false;
+        }
+
+        if (!noLock)
+        {
+            _autoEvent.Set();
+        }
+    }
+
+    public async Task SetCensusCount(bool noLock = false)
+    {
+        if (!noLock)
         {
             _autoEvent.WaitOne();
-            if (!IsRefreshingStore)
-            {
-                IsRefreshingStore = true;
-                _localBackupService.RefreshStoreFromBackup();
-                IsRefreshingStore = false;
-            }
-            _autoEvent.Set();
-
-            await SetStoreCount();
         }
+
+        if (_countService != null && !IsLoadingCensusCount)
+        {
+            IsLoadingCensusCount = true;
+
+            int censusCount;
+
+            try
+            {
+                censusCount = await _countService.GetCensusCountAsync();
+            }
+            catch
+            {
+                censusCount = -1;
+            }
+
+            CensusCount = censusCount;
+
+            IsLoadingCensusCount = false;
+        }
+
+        if (!noLock)
+        {
+            _autoEvent.Set();
+        }
+    }
+
+    public async Task RefreshStoreFromCensus()
+    {
+        _autoEvent.WaitOne();
+        if (IsRefreshable && !IsRefreshingStore)
+        {
+            IsRefreshingStore = true;
+            await _refreshService.RefreshStore();
+            IsRefreshingStore = false;
+        }
+        _autoEvent.Set();
+
+        await SetStoreCount();
+        await SetCensusCount();
+    }
+
+    public async Task RefreshStoreFromBackup()
+    {
+        _autoEvent.WaitOne();
+        if (!IsRefreshingStore)
+        {
+            IsRefreshingStore = true;
+            _localBackupService.RefreshStoreFromBackup();
+            IsRefreshingStore = false;
+        }
+        _autoEvent.Set();
+
+        await SetStoreCount();
     }
 }

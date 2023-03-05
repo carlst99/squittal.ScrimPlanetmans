@@ -1,10 +1,9 @@
 ﻿using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.Services
+namespace squittal.ScrimPlanetmans.Services;
+
+public interface ICountableStore
 {
-    public interface ICountableStore
-    {
-        Task<int> GetCensusCountAsync();
-        Task<int> GetStoreCountAsync();
-    }
+    Task<int> GetCensusCountAsync();
+    Task<int> GetStoreCountAsync();
 }

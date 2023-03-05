@@ -3,21 +3,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using squittal.ScrimPlanetmans.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch
+namespace squittal.ScrimPlanetmans.ScrimMatch;
+
+public interface IScrimRulesetManager
 {
-    public interface IScrimRulesetManager
-    {
-        Ruleset? ActiveRuleset { get; }
+    Ruleset? ActiveRuleset { get; }
 
-        Task<Ruleset?> GetActiveRulesetAsync(bool forceRefresh = false);
-        Task<Ruleset?> GetDefaultRulesetAsync();
+    Task<Ruleset?> GetActiveRulesetAsync(bool forceRefresh = false);
+    Task<Ruleset?> GetDefaultRulesetAsync();
 
-        Task<Ruleset?> ActivateRulesetAsync(int rulesetId);
-        Task SetUpActiveRulesetAsync();
+    Task<Ruleset?> ActivateRulesetAsync(int rulesetId);
+    Task SetUpActiveRulesetAsync();
 
-        Task SeedDefaultRuleset();
-        Task SeedScrimActionModels();
-        Task<IEnumerable<Ruleset>> GetRulesetsAsync(CancellationToken cancellationToken);
-        Task<Ruleset?> ActivateDefaultRulesetAsync();
-    }
+    Task SeedDefaultRuleset();
+    Task SeedScrimActionModels();
+    Task<IEnumerable<Ruleset>> GetRulesetsAsync(CancellationToken cancellationToken);
+    Task<Ruleset?> ActivateDefaultRulesetAsync();
 }

@@ -4,38 +4,37 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace squittal.ScrimPlanetmans.Logging
+namespace squittal.ScrimPlanetmans.Logging;
+
+public class SqlScriptFileHandler
 {
-    public class SqlScriptFileHandler
+    public static IEnumerable<string> GetAdHocSqlFileNames()
     {
-        public static IEnumerable<string> GetAdHocSqlFileNames()
+        var basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+        var adhocScriptDirectory = Path.GetFullPath(Path.Combine(basePath, "..", "..", "..", "..\\sql_adhoc"));
+
+        var scripts = new List<string>();
+
+        try
         {
-            var basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
-            var adhocScriptDirectory = Path.GetFullPath(Path.Combine(basePath, "..", "..", "..", "..\\sql_adhoc"));
+            var files = Directory.GetFiles(adhocScriptDirectory);
 
-            var scripts = new List<string>();
-
-            try
+            foreach (var file in files)
             {
-                var files = Directory.GetFiles(adhocScriptDirectory);
-
-                foreach (var file in files)
+                if (!file.EndsWith(".sql"))
                 {
-                    if (!file.EndsWith(".sql"))
-                    {
-                        continue;
-                    }
-
-                    scripts.Add(Path.GetFileName(file));
+                    continue;
                 }
 
-                return scripts.OrderBy(f => f).ToList();
+                scripts.Add(Path.GetFileName(file));
             }
-            catch
-            {
-                // Ignore
-                return null;
-            }
+
+            return scripts.OrderBy(f => f).ToList();
+        }
+        catch
+        {
+            // Ignore
+            return null;
         }
     }
 }

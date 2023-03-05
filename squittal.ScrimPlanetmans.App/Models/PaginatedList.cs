@@ -5,63 +5,62 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.Models
+namespace squittal.ScrimPlanetmans.Models;
+
+public class PaginatedList<T>
 {
-    public class PaginatedList<T>
+    public int PageIndex { get; set; }
+    public int PageCount { get; set; }
+    public List<T> Contents { get; set; }
+
+    public bool HasPreviousPage => PageIndex > 1;
+    public bool HasNextPage => PageIndex < PageCount;
+
+    public PaginatedList(List<T> contents, int count, int pageIndex = 1, int pageSize = 10)
     {
-        public int PageIndex { get; set; }
-        public int PageCount { get; set; }
-        public List<T> Contents { get; set; }
+        PageCount = (int)Math.Ceiling(count / (double)pageSize);
 
-        public bool HasPreviousPage => PageIndex > 1;
-        public bool HasNextPage => PageIndex < PageCount;
-
-        public PaginatedList(List<T> contents, int count, int pageIndex = 1, int pageSize = 10)
+        if (pageIndex < 0)
         {
-            PageCount = (int)Math.Ceiling(count / (double)pageSize);
-
-            if (pageIndex < 0)
-            {
-                PageIndex = 1;
-            }
-            else if (pageIndex > PageCount)
-            {
-                PageIndex = PageCount;
-            }
-            else
-            {
-                PageIndex = pageIndex;
-            }
-
-            Contents = new List<T>();
-            Contents.AddRange(contents);
+            PageIndex = 1;
+        }
+        else if (pageIndex > PageCount)
+        {
+            PageIndex = PageCount;
+        }
+        else
+        {
+            PageIndex = pageIndex;
         }
 
-        public static async Task<PaginatedList<T>> CreateAsync(IQueryable<T> source, int pageIndex, int pageSize, CancellationToken cancellationToken)
+        Contents = new List<T>();
+        Contents.AddRange(contents);
+    }
+
+    public static async Task<PaginatedList<T>> CreateAsync(IQueryable<T> source, int pageIndex, int pageSize, CancellationToken cancellationToken)
+    {
+        try
         {
-            try
-            {
 
-                var count = await source.CountAsync(cancellationToken);
+            var count = await source.CountAsync(cancellationToken);
 
-                cancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
-                var items = await source.Skip((pageIndex - 1) * pageSize)
-                                        .Take(pageSize)
-                                        .ToListAsync(cancellationToken);
+            var items = await source.Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
 
-                cancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
-                return new PaginatedList<T>(items, count, pageIndex, pageSize);
-            }
-            catch (OperationCanceledException)
-            {
-                return null;
-            }
-            catch
-            {
-                return null;
-            }
+            return new PaginatedList<T>(items, count, pageIndex, pageSize);
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+        catch
+        {
+            return null;
         }
     }
 }

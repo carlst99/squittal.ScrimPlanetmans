@@ -4,144 +4,143 @@ using squittal.ScrimPlanetmans.Logging;
 using squittal.ScrimPlanetmans.Models;
 using squittal.ScrimPlanetmans.Services.Planetside;
 
-namespace squittal.ScrimPlanetmans.Services
+namespace squittal.ScrimPlanetmans.Services;
+
+public class DatabaseMaintenanceService
 {
-    public class DatabaseMaintenanceService
+    private readonly IFacilityTypeService _facilityTypeService;
+    private readonly IFacilityService _facilityService;
+    private readonly IItemService _itemService;
+    private readonly IItemCategoryService _itemCategoryService;
+    private readonly IProfileService _profileService;
+    private readonly ILoadoutService _loadoutService;
+    private readonly IZoneService _zoneService;
+    private readonly IWorldService _worldService;
+    private readonly IFactionService _factionService;
+    private readonly IVehicleService _vehicleService;
+
+    private readonly ISqlScriptRunner _adhocScriptRunner;
+
+    private readonly CensusStoreDataComparisonRow _mapRegions;
+    private readonly CensusStoreDataComparisonRow _facilityTypes;
+    private readonly CensusStoreDataComparisonRow _items;
+    private readonly CensusStoreDataComparisonRow _itemCategories;
+    private readonly CensusStoreDataComparisonRow _profiles;
+    private readonly CensusStoreDataComparisonRow _loadouts;
+    private readonly CensusStoreDataComparisonRow _zones;
+    private readonly CensusStoreDataComparisonRow _worlds;
+    private readonly CensusStoreDataComparisonRow _factions;
+    private readonly CensusStoreDataComparisonRow _vehicles;
+
+    public List<CensusStoreDataComparisonRow> Comparisons { get; private set; } = new List<CensusStoreDataComparisonRow>();
+
+    private bool _isInitialLoadComplete = false;
+
+    public DatabaseMaintenanceService(
+        IFacilityTypeService facilityTypeService,
+        IFacilityService facilityService,
+        IItemService itemService,
+        IItemCategoryService itemCategoryService,
+        IProfileService profileService,
+        ILoadoutService loadoutService,
+        IZoneService zoneService,
+        IWorldService worldService,
+        IFactionService factionService,
+        IVehicleService vehicleService,
+        ISqlScriptRunner adhocScriptRunner
+    )
     {
-        private readonly IFacilityTypeService _facilityTypeService;
-        private readonly IFacilityService _facilityService;
-        private readonly IItemService _itemService;
-        private readonly IItemCategoryService _itemCategoryService;
-        private readonly IProfileService _profileService;
-        private readonly ILoadoutService _loadoutService;
-        private readonly IZoneService _zoneService;
-        private readonly IWorldService _worldService;
-        private readonly IFactionService _factionService;
-        private readonly IVehicleService _vehicleService;
+        _facilityService = facilityService;
+        _facilityTypeService = facilityTypeService;
+        _itemService = itemService;
+        _itemCategoryService = itemCategoryService;
+        _profileService = profileService;
+        _loadoutService = loadoutService;
+        _zoneService = zoneService;
+        _worldService = worldService;
+        _factionService = factionService;
+        _vehicleService = vehicleService;
+        _adhocScriptRunner = adhocScriptRunner;
 
-        private readonly ISqlScriptRunner _adhocScriptRunner;
+        _mapRegions = new CensusStoreDataComparisonRow("Map Regions", _facilityService);
+        _facilityTypes = new CensusStoreDataComparisonRow("Facility Types", _facilityTypeService);
+        _items = new CensusStoreDataComparisonRow("Items", _itemService);
+        _itemCategories = new CensusStoreDataComparisonRow("Item Categories", _itemCategoryService);
+        _profiles = new CensusStoreDataComparisonRow("Profiles", _profileService);
+        _loadouts = new CensusStoreDataComparisonRow("Loadouts", _loadoutService);
+        _zones = new CensusStoreDataComparisonRow("Zones", _zoneService);
+        _worlds = new CensusStoreDataComparisonRow("Worlds", _worldService);
+        _factions = new CensusStoreDataComparisonRow("Factions", _factionService);
+        _vehicles = new CensusStoreDataComparisonRow("Vehicles", _vehicleService);
 
-        private readonly CensusStoreDataComparisonRow _mapRegions;
-        private readonly CensusStoreDataComparisonRow _facilityTypes;
-        private readonly CensusStoreDataComparisonRow _items;
-        private readonly CensusStoreDataComparisonRow _itemCategories;
-        private readonly CensusStoreDataComparisonRow _profiles;
-        private readonly CensusStoreDataComparisonRow _loadouts;
-        private readonly CensusStoreDataComparisonRow _zones;
-        private readonly CensusStoreDataComparisonRow _worlds;
-        private readonly CensusStoreDataComparisonRow _factions;
-        private readonly CensusStoreDataComparisonRow _vehicles;
+        Comparisons.Add(_mapRegions);
+        Comparisons.Add(_facilityTypes);
+        Comparisons.Add(_items);
+        Comparisons.Add(_itemCategories);
+        Comparisons.Add(_profiles);
+        Comparisons.Add(_loadouts);
+        Comparisons.Add(_zones);
+        Comparisons.Add(_worlds);
+        Comparisons.Add(_factions);
+        Comparisons.Add(_vehicles);
+    }
 
-        public List<CensusStoreDataComparisonRow> Comparisons { get; private set; } = new List<CensusStoreDataComparisonRow>();
-
-        private bool _isInitialLoadComplete = false;
-
-        public DatabaseMaintenanceService(
-            IFacilityTypeService facilityTypeService,
-            IFacilityService facilityService,
-            IItemService itemService,
-            IItemCategoryService itemCategoryService,
-            IProfileService profileService,
-            ILoadoutService loadoutService,
-            IZoneService zoneService,
-            IWorldService worldService,
-            IFactionService factionService,
-            IVehicleService vehicleService,
-            ISqlScriptRunner adhocScriptRunner
-            )
+    public async Task InitializeCounts()
+    {
+        if (_isInitialLoadComplete)
         {
-            _facilityService = facilityService;
-            _facilityTypeService = facilityTypeService;
-            _itemService = itemService;
-            _itemCategoryService = itemCategoryService;
-            _profileService = profileService;
-            _loadoutService = loadoutService;
-            _zoneService = zoneService;
-            _worldService = worldService;
-            _factionService = factionService;
-            _vehicleService = vehicleService;
-            _adhocScriptRunner = adhocScriptRunner;
+            return;
+        }
+        else
+        {
+            await SetAllCounts();
+            _isInitialLoadComplete = true;
+        }
+    }
 
-            _mapRegions = new CensusStoreDataComparisonRow("Map Regions", _facilityService);
-            _facilityTypes = new CensusStoreDataComparisonRow("Facility Types", _facilityTypeService);
-            _items = new CensusStoreDataComparisonRow("Items", _itemService);
-            _itemCategories = new CensusStoreDataComparisonRow("Item Categories", _itemCategoryService);
-            _profiles = new CensusStoreDataComparisonRow("Profiles", _profileService);
-            _loadouts = new CensusStoreDataComparisonRow("Loadouts", _loadoutService);
-            _zones = new CensusStoreDataComparisonRow("Zones", _zoneService);
-            _worlds = new CensusStoreDataComparisonRow("Worlds", _worldService);
-            _factions = new CensusStoreDataComparisonRow("Factions", _factionService);
-            _vehicles = new CensusStoreDataComparisonRow("Vehicles", _vehicleService);
+    public async Task SetAllCounts()
+    {
+        var TaskList = new List<Task>();
 
-            Comparisons.Add(_mapRegions);
-            Comparisons.Add(_facilityTypes);
-            Comparisons.Add(_items);
-            Comparisons.Add(_itemCategories);
-            Comparisons.Add(_profiles);
-            Comparisons.Add(_loadouts);
-            Comparisons.Add(_zones);
-            Comparisons.Add(_worlds);
-            Comparisons.Add(_factions);
-            Comparisons.Add(_vehicles);
+        foreach (var comparisonRow in Comparisons)
+        {
+            TaskList.Add(comparisonRow.SetCounts());
         }
 
-        public async Task InitializeCounts()
+        await Task.WhenAll(TaskList);
+    }
+
+    public async Task RefreshAllFromCensus()
+    {
+        var TaskList = new List<Task>();
+
+        foreach (var comparisonRow in Comparisons)
         {
-            if (_isInitialLoadComplete)
-            {
-                return;
-            }
-            else
-            {
-                await SetAllCounts();
-                _isInitialLoadComplete = true;
-            }
+            TaskList.Add(comparisonRow.RefreshStoreFromCensus());
         }
 
-        public async Task SetAllCounts()
+        await Task.WhenAll(TaskList);
+    }
+
+    public async Task RefreshAllFromBackup()
+    {
+        var TaskList = new List<Task>();
+
+        foreach (var comparisonRow in Comparisons)
         {
-            var TaskList = new List<Task>();
-
-            foreach (var comparisonRow in Comparisons)
-            {
-                TaskList.Add(comparisonRow.SetCounts());
-            }
-
-            await Task.WhenAll(TaskList);
+            TaskList.Add(comparisonRow.RefreshStoreFromBackup());
         }
 
-        public async Task RefreshAllFromCensus()
-        {
-            var TaskList = new List<Task>();
+        await Task.WhenAll(TaskList);
+    }
 
-            foreach (var comparisonRow in Comparisons)
-            {
-                TaskList.Add(comparisonRow.RefreshStoreFromCensus());
-            }
+    public IEnumerable<string> GetAdHocSqlFileNames()
+    {
+        return SqlScriptFileHandler.GetAdHocSqlFileNames();
+    }
 
-            await Task.WhenAll(TaskList);
-        }
-
-        public async Task RefreshAllFromBackup()
-        {
-            var TaskList = new List<Task>();
-
-            foreach (var comparisonRow in Comparisons)
-            {
-                TaskList.Add(comparisonRow.RefreshStoreFromBackup());
-            }
-
-            await Task.WhenAll(TaskList);
-        }
-
-        public IEnumerable<string> GetAdHocSqlFileNames()
-        {
-            return SqlScriptFileHandler.GetAdHocSqlFileNames();
-        }
-
-        public bool TryRunAdHocSqlScript(string fileName, out string info)
-        {
-            return _adhocScriptRunner.TryRunAdHocSqlScript(fileName, out info);
-        }
+    public bool TryRunAdHocSqlScript(string fileName, out string info)
+    {
+        return _adhocScriptRunner.TryRunAdHocSqlScript(fileName, out info);
     }
 }

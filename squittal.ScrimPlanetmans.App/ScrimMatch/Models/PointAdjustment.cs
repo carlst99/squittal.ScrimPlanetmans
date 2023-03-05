@@ -1,27 +1,26 @@
 ﻿using System;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Models
+namespace squittal.ScrimPlanetmans.ScrimMatch.Models;
+
+public class PointAdjustment
 {
-    public class PointAdjustment
-    {
-        public int Points { get; set; }
+    public int Points { get; set; }
 
-        public PointAdjustmentType AdjustmentType
+    public PointAdjustmentType AdjustmentType
+    {
+        get
         {
-            get
-            {
-                return Points >= 0 ? PointAdjustmentType.Bonus : PointAdjustmentType.Penalty;
-            }
+            return Points >= 0 ? PointAdjustmentType.Bonus : PointAdjustmentType.Penalty;
         }
-
-        public string Rationale { get; set; }
-
-        public DateTime Timestamp { get; set; }
     }
 
-    public enum PointAdjustmentType
-    {
-        Penalty,
-        Bonus
-    }
+    public string Rationale { get; set; }
+
+    public DateTime Timestamp { get; set; }
+}
+
+public enum PointAdjustmentType
+{
+    Penalty,
+    Bonus
 }

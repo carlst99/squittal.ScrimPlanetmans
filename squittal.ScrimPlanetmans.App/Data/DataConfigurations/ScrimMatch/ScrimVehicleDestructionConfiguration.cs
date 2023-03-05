@@ -2,35 +2,34 @@
 using Microsoft.EntityFrameworkCore;
 using squittal.ScrimPlanetmans.Data.Models;
 
-namespace squittal.ScrimPlanetmans.Data.DataConfigurations
+namespace squittal.ScrimPlanetmans.Data.DataConfigurations;
+
+public class ScrimVehicleDestructionConfiguration : IEntityTypeConfiguration<ScrimVehicleDestruction>
 {
-    public class ScrimVehicleDestructionConfiguration : IEntityTypeConfiguration<ScrimVehicleDestruction>
+    public void Configure(EntityTypeBuilder<ScrimVehicleDestruction> builder)
     {
-        public void Configure(EntityTypeBuilder<ScrimVehicleDestruction> builder)
+        builder.ToTable("ScrimVehicleDestruction");
+
+        builder.HasKey(e => new
         {
-            builder.ToTable("ScrimVehicleDestruction");
+            e.ScrimMatchId,
+            e.Timestamp,
+            e.AttackerCharacterId,
+            e.VictimCharacterId,
+            e.VictimVehicleId
+        });
 
-            builder.HasKey(e => new
-            {
-                e.ScrimMatchId,
-                e.Timestamp,
-                e.AttackerCharacterId,
-                e.VictimCharacterId,
-                e.VictimVehicleId
-            });
+        builder.Property(e => e.ScrimMatchRound).HasDefaultValue(-1);
+        builder.Property(e => e.Points).HasDefaultValue(0);
 
-            builder.Property(e => e.ScrimMatchRound).HasDefaultValue(-1);
-            builder.Property(e => e.Points).HasDefaultValue(0);
-
-            builder.Ignore(e => e.ScrimMatch);
-            builder.Ignore(e => e.AttackerFaction);
-            builder.Ignore(e => e.VictimFaction);
-            builder.Ignore(e => e.Weapon);
-            builder.Ignore(e => e.WeaponItemCategory);
-            builder.Ignore(e => e.AttackerVehicle);
-            builder.Ignore(e => e.VictimVehicle);
-            builder.Ignore(e => e.World);
-            builder.Ignore(e => e.Zone);
-        }
+        builder.Ignore(e => e.ScrimMatch);
+        builder.Ignore(e => e.AttackerFaction);
+        builder.Ignore(e => e.VictimFaction);
+        builder.Ignore(e => e.Weapon);
+        builder.Ignore(e => e.WeaponItemCategory);
+        builder.Ignore(e => e.AttackerVehicle);
+        builder.Ignore(e => e.VictimVehicle);
+        builder.Ignore(e => e.World);
+        builder.Ignore(e => e.Zone);
     }
 }

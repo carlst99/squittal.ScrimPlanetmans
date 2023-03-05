@@ -1,9 +1,8 @@
 ﻿using static squittal.ScrimPlanetmans.Data.DbContextHelper;
 
-namespace squittal.ScrimPlanetmans.Data
+namespace squittal.ScrimPlanetmans.Data;
+
+public interface IDbContextHelper
 {
-    public interface IDbContextHelper
-    {
-        DbContextFactory GetFactory();
-    }
+    DbContextFactory GetFactory();
 }

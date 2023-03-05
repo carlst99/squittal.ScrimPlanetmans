@@ -2,11 +2,10 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.Services.ScrimMatch
+namespace squittal.ScrimPlanetmans.Services.ScrimMatch;
+
+public interface IDeathEventTypeService
 {
-    public interface IDeathEventTypeService
-    {
-        Task SeedDeathTypes();
-        IEnumerable<DeathEventType> GetDeathEventTypes();
-    }
+    Task SeedDeathTypes();
+    IEnumerable<DeathEventType> GetDeathEventTypes();
 }

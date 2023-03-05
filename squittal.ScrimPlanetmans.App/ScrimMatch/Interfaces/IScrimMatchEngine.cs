@@ -3,29 +3,28 @@ using squittal.ScrimPlanetmans.ScrimMatch.Messages;
 using squittal.ScrimPlanetmans.ScrimMatch.Models;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch
-{
-    public interface IScrimMatchEngine
-    {
-        MatchConfiguration MatchConfiguration { get; set; }
-        Ruleset MatchRuleset { get; }
-        
-        Task Start();
-        Task InitializeNewMatch();
-        void ConfigureMatch(MatchConfiguration configuration);
-        Task InitializeNewRound();
-        void StartRound();
-        void PauseRound();
-        void ResumeRound();
-        Task EndRound();
-        Task ResetRound();
-        Task ClearMatch(bool isRematch);
-        MatchTimerTickMessage GetLatestTimerTickMessage();
-        bool IsRunning();
-        int GetCurrentRound();
-        MatchState GetMatchState();
+namespace squittal.ScrimPlanetmans.ScrimMatch;
 
-        void SubmitPlayersList();
-        string GetMatchId();
-    }
+public interface IScrimMatchEngine
+{
+    MatchConfiguration MatchConfiguration { get; set; }
+    Ruleset MatchRuleset { get; }
+        
+    Task Start();
+    Task InitializeNewMatch();
+    void ConfigureMatch(MatchConfiguration configuration);
+    Task InitializeNewRound();
+    void StartRound();
+    void PauseRound();
+    void ResumeRound();
+    Task EndRound();
+    Task ResetRound();
+    Task ClearMatch(bool isRematch);
+    MatchTimerTickMessage GetLatestTimerTickMessage();
+    bool IsRunning();
+    int GetCurrentRound();
+    MatchState GetMatchState();
+
+    void SubmitPlayersList();
+    string GetMatchId();
 }

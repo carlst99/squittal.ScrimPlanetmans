@@ -2,17 +2,16 @@
 using Microsoft.EntityFrameworkCore;
 using squittal.ScrimPlanetmans.Data.Models;
 
-namespace squittal.ScrimPlanetmans.Data.DataConfigurations
+namespace squittal.ScrimPlanetmans.Data.DataConfigurations;
+
+public class ConstructedTeamConfiguration : IEntityTypeConfiguration<ConstructedTeam>
 {
-    public class ConstructedTeamConfiguration : IEntityTypeConfiguration<ConstructedTeam>
+    public void Configure(EntityTypeBuilder<ConstructedTeam> builder)
     {
-        public void Configure(EntityTypeBuilder<ConstructedTeam> builder)
-        {
-            builder.ToTable("ConstructedTeam");
+        builder.ToTable("ConstructedTeam");
 
-            builder.HasKey(e => e.Id);
+        builder.HasKey(e => e.Id);
 
-            builder.Property(e => e.IsHiddenFromSelection).HasDefaultValue(false);
-        }
+        builder.Property(e => e.IsHiddenFromSelection).HasDefaultValue(false);
     }
 }

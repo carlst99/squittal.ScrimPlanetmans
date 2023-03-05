@@ -2,12 +2,11 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.Services.Planetside
+namespace squittal.ScrimPlanetmans.Services.Planetside;
+
+public interface IWorldService : ILocallyBackedCensusStore
 {
-    public interface IWorldService : ILocallyBackedCensusStore
-    {
-        Task<IEnumerable<World>> GetAllWorldsAsync();
-        Task<World> GetWorldAsync(int worldId);
-        Task SetUpWorldsMap();
-    }
+    Task<IEnumerable<World>> GetAllWorldsAsync();
+    Task<World> GetWorldAsync(int worldId);
+    Task SetUpWorldsMap();
 }

@@ -1,21 +1,20 @@
-﻿namespace squittal.ScrimPlanetmans.ScrimMatch.Models
+﻿namespace squittal.ScrimPlanetmans.ScrimMatch.Models;
+
+public class ScrimSeriesMatchResult
 {
-    public class ScrimSeriesMatchResult
-    {
-        public int MatchNumber { get; set; }
-        public ScrimSeriesMatchResultType ResultType { get; set; }
+    public int MatchNumber { get; set; }
+    public ScrimSeriesMatchResultType ResultType { get; set; }
 
-        public ScrimSeriesMatchResult(int seriesMatchNumber, ScrimSeriesMatchResultType matchResultType)
-        {
-            MatchNumber = seriesMatchNumber;
-            ResultType = matchResultType;
-        }
-    }
-
-    public enum ScrimSeriesMatchResultType
+    public ScrimSeriesMatchResult(int seriesMatchNumber, ScrimSeriesMatchResultType matchResultType)
     {
-        Win,
-        Loss,
-        Draw
+        MatchNumber = seriesMatchNumber;
+        ResultType = matchResultType;
     }
+}
+
+public enum ScrimSeriesMatchResultType
+{
+    Win,
+    Loss,
+    Draw
 }

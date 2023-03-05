@@ -3,105 +3,104 @@ using System.IO;
 using Microsoft.SqlServer.Management.Smo;
 using Microsoft.Extensions.Logging;
 
-namespace squittal.ScrimPlanetmans.Services
+namespace squittal.ScrimPlanetmans.Services;
+
+public class SqlScriptRunner : ISqlScriptRunner
 {
-    public class SqlScriptRunner : ISqlScriptRunner
+    private readonly string _sqlDirectory = "Data\\SQL";
+    private readonly string _basePath;
+    private readonly string _scriptDirectory;
+    private readonly string _adhocScriptDirectory;
+
+    private readonly Server _server = new Server("(LocalDB)\\MSSQLLocalDB");
+
+    private readonly ILogger<SqlScriptRunner> _logger;
+
+    public SqlScriptRunner(ILogger<SqlScriptRunner> logger)
     {
-        private readonly string _sqlDirectory = "Data\\SQL";
-        private readonly string _basePath;
-        private readonly string _scriptDirectory;
-        private readonly string _adhocScriptDirectory;
+        _logger = logger;
 
-        private readonly Server _server = new Server("(LocalDB)\\MSSQLLocalDB");
+        _basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+        _scriptDirectory = Path.Combine(_basePath, _sqlDirectory);
 
-        private readonly ILogger<SqlScriptRunner> _logger;
+        _adhocScriptDirectory = Path.GetFullPath(Path.Combine(_basePath, "..", "..", "..", "..\\sql_adhoc"));
+    }
 
-        public SqlScriptRunner(ILogger<SqlScriptRunner> logger)
-        {
-            _logger = logger;
-
-            _basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
-            _scriptDirectory = Path.Combine(_basePath, _sqlDirectory);
-
-            _adhocScriptDirectory = Path.GetFullPath(Path.Combine(_basePath, "..", "..", "..", "..\\sql_adhoc"));
-        }
-
-        public void RunSqlScript(string fileName, bool minimalLogging = false)
-        {
-            var scriptPath = Path.Combine(_scriptDirectory, fileName);
+    public void RunSqlScript(string fileName, bool minimalLogging = false)
+    {
+        var scriptPath = Path.Combine(_scriptDirectory, fileName);
             
-            try
-            {
-                var scriptFileInfo = new FileInfo(scriptPath);
+        try
+        {
+            var scriptFileInfo = new FileInfo(scriptPath);
 
-                string scriptText = scriptFileInfo.OpenText().ReadToEnd();
+            string scriptText = scriptFileInfo.OpenText().ReadToEnd();
                 
-                _server.ConnectionContext.ExecuteNonQuery(scriptText);
+            _server.ConnectionContext.ExecuteNonQuery(scriptText);
 
-                if (!minimalLogging)
-                {
-                    _logger.LogInformation($"Successfully ran sql script at {scriptPath}");
-                }
-            }
-            catch (Exception ex)
+            if (!minimalLogging)
             {
-                _logger.LogError($"Error running sql script {scriptPath}: {ex}");
+                _logger.LogInformation($"Successfully ran sql script at {scriptPath}");
             }
         }
-
-        public bool TryRunAdHocSqlScript(string fileName, out string info, bool minimalLogging = false)
+        catch (Exception ex)
         {
-            var scriptPath = Path.Combine(_adhocScriptDirectory, fileName);
+            _logger.LogError($"Error running sql script {scriptPath}: {ex}");
+        }
+    }
 
-            try
+    public bool TryRunAdHocSqlScript(string fileName, out string info, bool minimalLogging = false)
+    {
+        var scriptPath = Path.Combine(_adhocScriptDirectory, fileName);
+
+        try
+        {
+            var scriptFileInfo = new FileInfo(scriptPath);
+
+            string scriptText = scriptFileInfo.OpenText().ReadToEnd();
+
+            _server.ConnectionContext.ExecuteNonQuery(scriptText);
+
+            info = $"Successfully ran sql script at {scriptPath}";
+
+            if (!minimalLogging)
             {
-                var scriptFileInfo = new FileInfo(scriptPath);
+                _logger.LogInformation(info);
+            }
 
-                string scriptText = scriptFileInfo.OpenText().ReadToEnd();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            info = $"Error running sql script {scriptPath}: {ex}";
 
-                _server.ConnectionContext.ExecuteNonQuery(scriptText);
+            _logger.LogError(info);
 
-                info = $"Successfully ran sql script at {scriptPath}";
+            return false;
+        }
+    }
 
-                if (!minimalLogging)
+    public void RunSqlDirectoryScripts(string directoryName)
+    {
+        var directoryPath = Path.Combine(_scriptDirectory, directoryName);
+
+        try
+        {
+            var files = Directory.GetFiles(directoryPath);
+
+            foreach (var file in files)
+            {
+                if (!file.EndsWith(".sql"))
                 {
-                    _logger.LogInformation(info);
+                    continue;
                 }
 
-                return true;
-            }
-            catch (Exception ex)
-            {
-                info = $"Error running sql script {scriptPath}: {ex}";
-
-                _logger.LogError(info);
-
-                return false;
+                RunSqlScript(file, true);
             }
         }
-
-        public void RunSqlDirectoryScripts(string directoryName)
+        catch (Exception ex)
         {
-            var directoryPath = Path.Combine(_scriptDirectory, directoryName);
-
-            try
-            {
-                var files = Directory.GetFiles(directoryPath);
-
-                foreach (var file in files)
-                {
-                    if (!file.EndsWith(".sql"))
-                    {
-                        continue;
-                    }
-
-                    RunSqlScript(file, true);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error running SQL scripts in directory {directoryName}: {ex}");
-            }
+            _logger.LogError($"Error running SQL scripts in directory {directoryName}: {ex}");
         }
     }
 }

@@ -1,9 +1,8 @@
-﻿namespace squittal.ScrimPlanetmans.Models.Forms
+﻿namespace squittal.ScrimPlanetmans.Models.Forms;
+
+public enum ConstructedTeamMemberChangeType
 {
-    public enum ConstructedTeamMemberChangeType
-    {
-        Add = 1,
-        Remove = 2,
-        UpdateAlias = 3
-    }
+    Add = 1,
+    Remove = 2,
+    UpdateAlias = 3
 }

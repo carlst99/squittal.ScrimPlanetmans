@@ -4,32 +4,31 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.CensusServices
+namespace squittal.ScrimPlanetmans.CensusServices;
+
+public class CensusItemCategory
 {
-    public class CensusItemCategory
+    private readonly ICensusQueryFactory _queryFactory;
+
+    public CensusItemCategory(ICensusQueryFactory queryFactory)
     {
-        private readonly ICensusQueryFactory _queryFactory;
+        _queryFactory = queryFactory;
+    }
 
-        public CensusItemCategory(ICensusQueryFactory queryFactory)
-        {
-            _queryFactory = queryFactory;
-        }
+    public async Task<IEnumerable<CensusItemCategoryModel>> GetAllItemCategories()
+    {
+        var query = _queryFactory.Create("item_category");
+        query.SetLanguage("en");
 
-        public async Task<IEnumerable<CensusItemCategoryModel>> GetAllItemCategories()
-        {
-            var query = _queryFactory.Create("item_category");
-            query.SetLanguage("en");
+        query.ShowFields("item_category_id", "name");
 
-            query.ShowFields("item_category_id", "name");
+        return await query.GetBatchAsync<CensusItemCategoryModel>();
+    }
 
-            return await query.GetBatchAsync<CensusItemCategoryModel>();
-        }
+    public async Task<int> GetItemCategoriesCount()
+    {
+        var results = await GetAllItemCategories();
 
-        public async Task<int> GetItemCategoriesCount()
-        {
-            var results = await GetAllItemCategories();
-
-            return results.Count();
-        }
+        return results.Count();
     }
 }

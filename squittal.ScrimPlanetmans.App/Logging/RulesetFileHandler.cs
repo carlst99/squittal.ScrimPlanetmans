@@ -7,89 +7,88 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace squittal.ScrimPlanetmans.Logging
+namespace squittal.ScrimPlanetmans.Logging;
+
+public class RulesetFileHandler
 {
-    public class RulesetFileHandler
+    public async static Task<bool> WriteToJsonFile(string fileName, JsonRuleset ruleset)
     {
-        public async static Task<bool> WriteToJsonFile(string fileName, JsonRuleset ruleset)
+        var basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+        var rulesetsDirectory = Path.GetFullPath(Path.Combine(basePath, "..", "..", "..", "..\\rulesets"));
+
+        var path = fileName.EndsWith(".json") ? $"{rulesetsDirectory}\\{fileName}" : $"{rulesetsDirectory}\\{fileName}.json";
+
+        try
         {
-            var basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
-            var rulesetsDirectory = Path.GetFullPath(Path.Combine(basePath, "..", "..", "..", "..\\rulesets"));
-
-            var path = fileName.EndsWith(".json") ? $"{rulesetsDirectory}\\{fileName}" : $"{rulesetsDirectory}\\{fileName}.json";
-
-            try
+            using (FileStream fileStream = File.Create(path))
             {
-                using (FileStream fileStream = File.Create(path))
+                var options = new JsonSerializerOptions
                 {
-                    var options = new JsonSerializerOptions
-                    {
-                        WriteIndented = true
-                    };
+                    WriteIndented = true
+                };
 
-                    await JsonSerializer.SerializeAsync(fileStream, ruleset, options);
-                }
-
-                return true;
+                await JsonSerializer.SerializeAsync(fileStream, ruleset, options);
             }
-            catch
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async static Task<JsonRuleset> ReadFromJsonFile(string fileName)
+    {
+        var basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+        var rulesetsDirectory = Path.GetFullPath(Path.Combine(basePath, "..", "..", "..", "..\\rulesets"));
+
+        var path = fileName.EndsWith(".json") ? $"{rulesetsDirectory}\\{fileName}" : $"{rulesetsDirectory}\\{fileName}.json";
+
+        try
+        {
+            using (FileStream fileStream = File.OpenRead(path))
             {
-                return false;
+                var ruleset = await JsonSerializer.DeserializeAsync<JsonRuleset>(fileStream);
+
+                return ruleset;
             }
         }
-
-        public async static Task<JsonRuleset> ReadFromJsonFile(string fileName)
+        catch (Exception ex)
         {
-            var basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
-            var rulesetsDirectory = Path.GetFullPath(Path.Combine(basePath, "..", "..", "..", "..\\rulesets"));
-
-            var path = fileName.EndsWith(".json") ? $"{rulesetsDirectory}\\{fileName}" : $"{rulesetsDirectory}\\{fileName}.json";
-
-            try
-            {
-                using (FileStream fileStream = File.OpenRead(path))
-                {
-                    var ruleset = await JsonSerializer.DeserializeAsync<JsonRuleset>(fileStream);
-
-                    return ruleset;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"{ex}");
+            Console.WriteLine($"{ex}");
                 
-                return null;
-            }
+            return null;
         }
+    }
 
-        public static IEnumerable<string> GetJsonRulesetFileNames()
+    public static IEnumerable<string> GetJsonRulesetFileNames()
+    {
+        var basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+        var rulesetsDirectory = Path.GetFullPath(Path.Combine(basePath, "..", "..", "..", "..\\rulesets"));
+
+        var rulesets = new List<string>();
+
+        try
         {
-            var basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
-            var rulesetsDirectory = Path.GetFullPath(Path.Combine(basePath, "..", "..", "..", "..\\rulesets"));
+            var files = Directory.GetFiles(rulesetsDirectory);
 
-            var rulesets = new List<string>();
-
-            try
+            foreach (var file in files)
             {
-                var files = Directory.GetFiles(rulesetsDirectory);
-
-                foreach (var file in files)
+                if (!file.EndsWith(".json"))
                 {
-                    if (!file.EndsWith(".json"))
-                    {
-                        continue;
-                    }
-
-                    rulesets.Add(Path.GetFileName(file));
+                    continue;
                 }
 
-                return rulesets.OrderBy(f => f).ToList();
+                rulesets.Add(Path.GetFileName(file));
             }
-            catch
-            {
-                // Ignore
-                return null;
-            }
+
+            return rulesets.OrderBy(f => f).ToList();
+        }
+        catch
+        {
+            // Ignore
+            return null;
         }
     }
 }

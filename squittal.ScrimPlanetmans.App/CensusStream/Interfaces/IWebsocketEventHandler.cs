@@ -2,14 +2,13 @@
 using System;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.CensusStream
+namespace squittal.ScrimPlanetmans.CensusStream;
+
+public interface IWebsocketEventHandler : IDisposable
 {
-    public interface IWebsocketEventHandler : IDisposable
-    {
-        Task Process(JToken jPayload);
-        void DisableScoring();
-        void EnabledScoring();
-        void EnabledEventStoring();
-        void DisableEventStoring();
-    }
+    Task Process(JToken jPayload);
+    void DisableScoring();
+    void EnabledScoring();
+    void EnabledEventStoring();
+    void DisableEventStoring();
 }

@@ -2,23 +2,22 @@
 using Microsoft.EntityFrameworkCore;
 using squittal.ScrimPlanetmans.Data.Models;
 
-namespace squittal.ScrimPlanetmans.Data.DataConfigurations
+namespace squittal.ScrimPlanetmans.Data.DataConfigurations;
+
+public class ConstructedTeamPlayerMembershipConfiguration : IEntityTypeConfiguration<ConstructedTeamPlayerMembership>
 {
-    public class ConstructedTeamPlayerMembershipConfiguration : IEntityTypeConfiguration<ConstructedTeamPlayerMembership>
+    public void Configure(EntityTypeBuilder<ConstructedTeamPlayerMembership> builder)
     {
-        public void Configure(EntityTypeBuilder<ConstructedTeamPlayerMembership> builder)
+        builder.ToTable("ConstructedTeamPlayerMembership");
+
+        builder.HasKey(e => new
         {
-            builder.ToTable("ConstructedTeamPlayerMembership");
+            e.ConstructedTeamId,
+            e.CharacterId
+        });
 
-            builder.HasKey(e => new
-            {
-                e.ConstructedTeamId,
-                e.CharacterId
-            });
-
-            builder.HasOne(member => member.ConstructedTeam)
-                .WithMany(team => team.PlayerMemberships)
-                .HasForeignKey(member => member.ConstructedTeamId);
-        }
+        builder.HasOne(member => member.ConstructedTeam)
+            .WithMany(team => team.PlayerMemberships)
+            .HasForeignKey(member => member.ConstructedTeamId);
     }
 }

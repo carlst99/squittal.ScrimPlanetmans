@@ -1,10 +1,9 @@
-﻿namespace squittal.ScrimPlanetmans.ScrimMatch.Models
+﻿namespace squittal.ScrimPlanetmans.ScrimMatch.Models;
+
+public enum KillfeedEventType
 {
-    public enum KillfeedEventType
-    {
-        Kill = 1,
-        Revive = 2,
-        PointControl = 3,
-        FacilityCapture = 4
-    }
+    Kill = 1,
+    Revive = 2,
+    PointControl = 3,
+    FacilityCapture = 4
 }

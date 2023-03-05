@@ -8,165 +8,164 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.Services.Planetside
+namespace squittal.ScrimPlanetmans.Services.Planetside;
+
+public class LoadoutService : ILoadoutService
 {
-    public class LoadoutService : ILoadoutService
+    private readonly IDbContextHelper _dbContextHelper;
+    private readonly CensusLoadout _censusLoadout;
+    private readonly ISqlScriptRunner _sqlScriptRunner;
+    private readonly ILogger<LoadoutService> _logger;
+
+    public string BackupSqlScriptFileName => "CensusBackups\\dbo.Loadout.Table.sql";
+
+
+    public LoadoutService(IDbContextHelper dbContextHelper, CensusLoadout censusLoadout, ISqlScriptRunner sqlScriptRunner, ILogger<LoadoutService> logger)
     {
-        private readonly IDbContextHelper _dbContextHelper;
-        private readonly CensusLoadout _censusLoadout;
-        private readonly ISqlScriptRunner _sqlScriptRunner;
-        private readonly ILogger<LoadoutService> _logger;
+        _dbContextHelper = dbContextHelper;
+        _censusLoadout = censusLoadout;
+        _sqlScriptRunner = sqlScriptRunner;
+        _logger = logger;
+    }
 
-        public string BackupSqlScriptFileName => "CensusBackups\\dbo.Loadout.Table.sql";
+    public async Task<int> GetCensusCountAsync()
+    {
+        return await _censusLoadout.GetLoadoutsCount();
+    }
 
+    public async Task<int> GetStoreCountAsync()
+    {
+        using var factory = _dbContextHelper.GetFactory();
+        var dbContext = factory.GetDbContext();
 
-        public LoadoutService(IDbContextHelper dbContextHelper, CensusLoadout censusLoadout, ISqlScriptRunner sqlScriptRunner, ILogger<LoadoutService> logger)
-        {
-            _dbContextHelper = dbContextHelper;
-            _censusLoadout = censusLoadout;
-            _sqlScriptRunner = sqlScriptRunner;
-            _logger = logger;
-        }
+        return await dbContext.Loadouts.CountAsync();
+    }
 
-        public async Task<int> GetCensusCountAsync()
-        {
-            return await _censusLoadout.GetLoadoutsCount();
-        }
-
-        public async Task<int> GetStoreCountAsync()
+    public async Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false)
+    {
+        if (onlyQueryCensusIfEmpty)
         {
             using var factory = _dbContextHelper.GetFactory();
             var dbContext = factory.GetDbContext();
 
-            return await dbContext.Loadouts.CountAsync();
-        }
-
-        public async Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false)
-        {
-            if (onlyQueryCensusIfEmpty)
+            var anyLoadouts = await dbContext.Loadouts.AnyAsync();
+            if (anyLoadouts)
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
-
-                var anyLoadouts = await dbContext.Loadouts.AnyAsync();
-                if (anyLoadouts)
-                {
-                    return;
-                }
-            }
-
-            var success = await RefreshStoreFromCensus();
-
-            if (!success && canUseBackupScript)
-            {
-                RefreshStoreFromBackup();
+                return;
             }
         }
 
-        public async Task<bool> RefreshStoreFromCensus()
+        var success = await RefreshStoreFromCensus();
+
+        if (!success && canUseBackupScript)
         {
-            IEnumerable<CensusLoadoutModel> censusLoadouts = new List<CensusLoadoutModel>();
+            RefreshStoreFromBackup();
+        }
+    }
 
-            try
+    public async Task<bool> RefreshStoreFromCensus()
+    {
+        IEnumerable<CensusLoadoutModel> censusLoadouts = new List<CensusLoadoutModel>();
+
+        try
+        {
+            censusLoadouts = await _censusLoadout.GetAllLoadoutsAsync();
+        }
+        catch
+        {
+            _logger.LogError("Census API query failed: get all Loadouts. Refreshing store from backup...");
+            return false;
+        }
+
+        if (censusLoadouts != null && censusLoadouts.Any())
+        {
+            var allLoadouts = new List<CensusLoadoutModel>();
+
+            allLoadouts.AddRange(censusLoadouts.ToList());
+            allLoadouts.AddRange(GetFakeNsCensusLoadoutModels());
+
+            await UpsertRangeAsync(allLoadouts.AsEnumerable().Select(ConvertToDbModel));
+
+            _logger.LogInformation($"Refreshed Loadouts store");
+
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    private async Task UpsertRangeAsync(IEnumerable<Loadout> censusEntities)
+    {
+        var createdEntities = new List<Loadout>();
+
+        using var factory = _dbContextHelper.GetFactory();
+        var dbContext = factory.GetDbContext();
+
+        var storedEntities = await dbContext.Loadouts.ToListAsync();
+
+        foreach (var censusEntity in censusEntities)
+        {
+            var storeEntity = storedEntities.FirstOrDefault(e => e.Id == censusEntity.Id);
+            if (storeEntity == null)
             {
-                censusLoadouts = await _censusLoadout.GetAllLoadoutsAsync();
-            }
-            catch
-            {
-                _logger.LogError("Census API query failed: get all Loadouts. Refreshing store from backup...");
-                return false;
-            }
-
-            if (censusLoadouts != null && censusLoadouts.Any())
-            {
-                var allLoadouts = new List<CensusLoadoutModel>();
-
-                allLoadouts.AddRange(censusLoadouts.ToList());
-                allLoadouts.AddRange(GetFakeNsCensusLoadoutModels());
-
-                await UpsertRangeAsync(allLoadouts.AsEnumerable().Select(ConvertToDbModel));
-
-                _logger.LogInformation($"Refreshed Loadouts store");
-
-                return true;
+                createdEntities.Add(censusEntity);
             }
             else
             {
-                return false;
+                storeEntity = censusEntity;
+                dbContext.Loadouts.Update(storeEntity);
             }
         }
 
-        private async Task UpsertRangeAsync(IEnumerable<Loadout> censusEntities)
+        if (createdEntities.Any())
         {
-            var createdEntities = new List<Loadout>();
-
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
-
-            var storedEntities = await dbContext.Loadouts.ToListAsync();
-
-            foreach (var censusEntity in censusEntities)
-            {
-                var storeEntity = storedEntities.FirstOrDefault(e => e.Id == censusEntity.Id);
-                if (storeEntity == null)
-                {
-                    createdEntities.Add(censusEntity);
-                }
-                else
-                {
-                    storeEntity = censusEntity;
-                    dbContext.Loadouts.Update(storeEntity);
-                }
-            }
-
-            if (createdEntities.Any())
-            {
-                await dbContext.Loadouts.AddRangeAsync(createdEntities);
-            }
-
-            await dbContext.SaveChangesAsync();
+            await dbContext.Loadouts.AddRangeAsync(createdEntities);
         }
 
-        private Loadout ConvertToDbModel(CensusLoadoutModel censusModel)
-        {
-            return new Loadout
-            {
-                Id = censusModel.LoadoutId,
-                ProfileId = censusModel.ProfileId,
-                FactionId = censusModel.FactionId,
-                CodeName = censusModel.CodeName,
-            };
-        }
+        await dbContext.SaveChangesAsync();
+    }
 
-        private IEnumerable<CensusLoadoutModel> GetFakeNsCensusLoadoutModels()
+    private Loadout ConvertToDbModel(CensusLoadoutModel censusModel)
+    {
+        return new Loadout
         {
-            var nsLoadouts = new List<CensusLoadoutModel>
-            {
-                GetNewCensusLoadoutModel(28, 190, 4, "NS Infiltrator"),
-                GetNewCensusLoadoutModel(29, 191, 4, "NS Light Assault"),
-                GetNewCensusLoadoutModel(30, 192, 4, "NS Combat Medic"),
-                GetNewCensusLoadoutModel(31, 193, 4, "NS Engineer"),
-                GetNewCensusLoadoutModel(32, 194, 4, "NS Heavy Assault"),
-                GetNewCensusLoadoutModel(45, 252, 4, "NS Defector")
-            };
+            Id = censusModel.LoadoutId,
+            ProfileId = censusModel.ProfileId,
+            FactionId = censusModel.FactionId,
+            CodeName = censusModel.CodeName,
+        };
+    }
 
-            return nsLoadouts;
-        }
-
-        private CensusLoadoutModel GetNewCensusLoadoutModel(int loadoutId, int profileId, int factionId, string codeName)
+    private IEnumerable<CensusLoadoutModel> GetFakeNsCensusLoadoutModels()
+    {
+        var nsLoadouts = new List<CensusLoadoutModel>
         {
-            return new CensusLoadoutModel()
-            {
-                LoadoutId = loadoutId,
-                ProfileId = profileId,
-                FactionId = factionId,
-                CodeName = codeName
-            };
-        }
+            GetNewCensusLoadoutModel(28, 190, 4, "NS Infiltrator"),
+            GetNewCensusLoadoutModel(29, 191, 4, "NS Light Assault"),
+            GetNewCensusLoadoutModel(30, 192, 4, "NS Combat Medic"),
+            GetNewCensusLoadoutModel(31, 193, 4, "NS Engineer"),
+            GetNewCensusLoadoutModel(32, 194, 4, "NS Heavy Assault"),
+            GetNewCensusLoadoutModel(45, 252, 4, "NS Defector")
+        };
 
-        public void RefreshStoreFromBackup()
+        return nsLoadouts;
+    }
+
+    private CensusLoadoutModel GetNewCensusLoadoutModel(int loadoutId, int profileId, int factionId, string codeName)
+    {
+        return new CensusLoadoutModel()
         {
-            _sqlScriptRunner.RunSqlScript(BackupSqlScriptFileName);
-        }
+            LoadoutId = loadoutId,
+            ProfileId = profileId,
+            FactionId = factionId,
+            CodeName = codeName
+        };
+    }
+
+    public void RefreshStoreFromBackup()
+    {
+        _sqlScriptRunner.RunSqlScript(BackupSqlScriptFileName);
     }
 }

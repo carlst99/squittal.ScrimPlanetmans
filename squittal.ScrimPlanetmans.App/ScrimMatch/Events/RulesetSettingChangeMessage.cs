@@ -4,84 +4,83 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages
+namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+
+public class RulesetSettingChangeMessage
 {
-    public class RulesetSettingChangeMessage
+    public Ruleset Ruleset { get; set; }
+    public List<RulesetSettingChange> ChangedSettings { get; set; } = new List<RulesetSettingChange>();
+    public string Info => GetInfoString();
+
+    public RulesetSettingChangeMessage(Ruleset ruleset, Ruleset previousRuleset)
     {
-        public Ruleset Ruleset { get; set; }
-        public List<RulesetSettingChange> ChangedSettings { get; set; } = new List<RulesetSettingChange>();
-        public string Info => GetInfoString();
+        Ruleset = ruleset;
 
-        public RulesetSettingChangeMessage(Ruleset ruleset, Ruleset previousRuleset)
+        CalculateSettingChanges(ruleset, previousRuleset);
+    }
+
+    private void CalculateSettingChanges(Ruleset ruleset, Ruleset previousRuleset)
+    {
+        if (ruleset.Name != previousRuleset.Name)
         {
-            Ruleset = ruleset;
-
-            CalculateSettingChanges(ruleset, previousRuleset);
+            ChangedSettings.Add(RulesetSettingChange.Name);
         }
 
-        private void CalculateSettingChanges(Ruleset ruleset, Ruleset previousRuleset)
+        if (ruleset.DefaultMatchTitle != previousRuleset.DefaultMatchTitle)
         {
-            if (ruleset.Name != previousRuleset.Name)
-            {
-                ChangedSettings.Add(RulesetSettingChange.Name);
-            }
-
-            if (ruleset.DefaultMatchTitle != previousRuleset.DefaultMatchTitle)
-            {
-                ChangedSettings.Add(RulesetSettingChange.DefaultMatchTitle);
-            }
-
-            if (ruleset.DefaultRoundLength != previousRuleset.DefaultRoundLength)
-            {
-                ChangedSettings.Add(RulesetSettingChange.DefaultRoundLength);
-            }
-
-            if (ruleset.DefaultEndRoundOnFacilityCapture != previousRuleset.DefaultEndRoundOnFacilityCapture)
-            {
-                ChangedSettings.Add(RulesetSettingChange.DefaultEndRoundOnFacilityCapture);
-            }
+            ChangedSettings.Add(RulesetSettingChange.DefaultMatchTitle);
         }
 
-        private string GetInfoString()
+        if (ruleset.DefaultRoundLength != previousRuleset.DefaultRoundLength)
         {
-            if (Ruleset == null)
-            {
-                return string.Empty;
-            }
+            ChangedSettings.Add(RulesetSettingChange.DefaultRoundLength);
+        }
 
-            var stringBuilder = new StringBuilder($"Settings changed for Ruleset {Ruleset.Name} [{Ruleset.Id}]: ");
+        if (ruleset.DefaultEndRoundOnFacilityCapture != previousRuleset.DefaultEndRoundOnFacilityCapture)
+        {
+            ChangedSettings.Add(RulesetSettingChange.DefaultEndRoundOnFacilityCapture);
+        }
+    }
 
-            if (ChangedSettings == null || !ChangedSettings.Any())
-            {
-                stringBuilder.Append("none");
+    private string GetInfoString()
+    {
+        if (Ruleset == null)
+        {
+            return string.Empty;
+        }
 
-                return stringBuilder.ToString();
-            }
+        var stringBuilder = new StringBuilder($"Settings changed for Ruleset {Ruleset.Name} [{Ruleset.Id}]: ");
 
-            var isFirst = true;
-            foreach (var setting in ChangedSettings)
-            {
-                var settingString = isFirst ? GetEnumValueName(setting) : $", {GetEnumValueName(setting)}";
-
-                stringBuilder.Append(settingString);
-
-                isFirst = false;
-            }
+        if (ChangedSettings == null || !ChangedSettings.Any())
+        {
+            stringBuilder.Append("none");
 
             return stringBuilder.ToString();
         }
 
-        private string GetEnumValueName(RulesetSettingChange type)
+        var isFirst = true;
+        foreach (var setting in ChangedSettings)
         {
-            return Enum.GetName(typeof(RulesetSettingChange), type);
+            var settingString = isFirst ? GetEnumValueName(setting) : $", {GetEnumValueName(setting)}";
+
+            stringBuilder.Append(settingString);
+
+            isFirst = false;
         }
+
+        return stringBuilder.ToString();
     }
 
-    public enum RulesetSettingChange
+    private string GetEnumValueName(RulesetSettingChange type)
     {
-        Name,
-        DefaultMatchTitle,
-        DefaultRoundLength,
-        DefaultEndRoundOnFacilityCapture
+        return Enum.GetName(typeof(RulesetSettingChange), type);
     }
+}
+
+public enum RulesetSettingChange
+{
+    Name,
+    DefaultMatchTitle,
+    DefaultRoundLength,
+    DefaultEndRoundOnFacilityCapture
 }

@@ -1,9 +1,8 @@
-﻿namespace squittal.ScrimPlanetmans.ScrimMatch.Models
+﻿namespace squittal.ScrimPlanetmans.ScrimMatch.Models;
+
+public enum FacilityControlType
 {
-    public enum FacilityControlType
-    {
-        Unknown = 0,
-        Capture = 1,
-        Defense = 2
-    };
-}
+    Unknown = 0,
+    Capture = 1,
+    Defense = 2
+};

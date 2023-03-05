@@ -1,36 +1,35 @@
 ﻿using squittal.ScrimPlanetmans.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages
+namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+
+public class PlayerStatUpdateMessage
 {
-    public class PlayerStatUpdateMessage
+    public Player Player { get; set; }
+
+    public OverlayMessageData OverlayMessageData { get; set; }
+
+    public string Info { get; set; } = string.Empty;
+
+    public PlayerStatUpdateMessage(Player player)
     {
-        public Player Player { get; set; }
+        Player = player;
 
-        public OverlayMessageData OverlayMessageData { get; set; }
+        OverlayMessageData = new OverlayMessageData();
 
-        public string Info { get; set; } = string.Empty;
+        Info = Info = $"Player Stat Update: {player.NameDisplay} [{player.Id}]";
+    }
 
-        public PlayerStatUpdateMessage(Player player)
-        {
-            Player = player;
+    public PlayerStatUpdateMessage(Player player, OverlayMessageData overlayMessageData)
+    {
+        Player = player;
 
-            OverlayMessageData = new OverlayMessageData();
+        OverlayMessageData = overlayMessageData;
 
-            Info = Info = $"Player Stat Update: {player.NameDisplay} [{player.Id}]";
-        }
+        Info = GetInfo();
+    }
 
-        public PlayerStatUpdateMessage(Player player, OverlayMessageData overlayMessageData)
-        {
-            Player = player;
-
-            OverlayMessageData = overlayMessageData;
-
-            Info = GetInfo();
-        }
-
-        private string GetInfo()
-        {
-            return $"Player Stat Update: {Player.NameDisplay} [{Player.Id}]";
-        }
+    private string GetInfo()
+    {
+        return $"Player Stat Update: {Player.NameDisplay} [{Player.Id}]";
     }
 }

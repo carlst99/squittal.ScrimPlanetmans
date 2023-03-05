@@ -1,6 +1,5 @@
-﻿namespace squittal.ScrimPlanetmans.Services.Planetside
+﻿namespace squittal.ScrimPlanetmans.Services.Planetside;
+
+public interface IFacilityTypeService : ILocallyBackedCensusStore
 {
-    public interface IFacilityTypeService : ILocallyBackedCensusStore
-    {
-    }
 }

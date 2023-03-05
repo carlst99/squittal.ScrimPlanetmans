@@ -2,12 +2,11 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.Services.Planetside
+namespace squittal.ScrimPlanetmans.Services.Planetside;
+
+public interface IFactionService : ILocallyBackedCensusStore
 {
-    public interface IFactionService : ILocallyBackedCensusStore
-    {
-        Task<IEnumerable<Faction>> GetAllFactionsAsync();
-        string GetFactionAbbrevFromId(int factionId);
-        Task<Faction> GetFactionAsync(int factionId);
-    }
+    Task<IEnumerable<Faction>> GetAllFactionsAsync();
+    string GetFactionAbbrevFromId(int factionId);
+    Task<Faction> GetFactionAsync(int factionId);
 }

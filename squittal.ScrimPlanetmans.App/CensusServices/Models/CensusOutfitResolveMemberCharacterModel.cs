@@ -1,10 +1,9 @@
 ﻿using squittal.ScrimPlanetmans.CensusServices.Models;
 using System.Collections.Generic;
 
-namespace squittal.ScrimPlanetmans.CensusServices.Models
+namespace squittal.ScrimPlanetmans.CensusServices.Models;
+
+public class CensusOutfitResolveMemberCharacterModel : CensusOutfitModel
 {
-    public class CensusOutfitResolveMemberCharacterModel : CensusOutfitModel
-    {
-        public IEnumerable<CensusOutfitMemberCharacterModel> Members { get; set; }
-    }
+    public IEnumerable<CensusOutfitMemberCharacterModel> Members { get; set; }
 }

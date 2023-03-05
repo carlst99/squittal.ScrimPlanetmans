@@ -4,31 +4,30 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.CensusServices
+namespace squittal.ScrimPlanetmans.CensusServices;
+
+public class CensusZone
 {
-    public class CensusZone
-    {
-        public readonly ICensusQueryFactory _queryFactory;
+    public readonly ICensusQueryFactory _queryFactory;
         
-        public CensusZone(ICensusQueryFactory queryFactory)
-        {
-            _queryFactory = queryFactory;
-        }
+    public CensusZone(ICensusQueryFactory queryFactory)
+    {
+        _queryFactory = queryFactory;
+    }
 
-        public async Task<IEnumerable<CensusZoneModel>> GetAllZones()
-        {
-            var query = _queryFactory.Create("zone");
-            query.SetLanguage("en");
+    public async Task<IEnumerable<CensusZoneModel>> GetAllZones()
+    {
+        var query = _queryFactory.Create("zone");
+        query.SetLanguage("en");
 
-            query.ShowFields("zone_id", "code", "name", "description", "hex_size");
+        query.ShowFields("zone_id", "code", "name", "description", "hex_size");
 
-            return await query.GetBatchAsync<CensusZoneModel>();
-        }
+        return await query.GetBatchAsync<CensusZoneModel>();
+    }
 
-        public async Task<int> GetZonesCount()
-        {
-            var results = await GetAllZones();
-            return results.Count();
-        }
+    public async Task<int> GetZonesCount()
+    {
+        var results = await GetAllZones();
+        return results.Count();
     }
 }

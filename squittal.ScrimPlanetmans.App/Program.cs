@@ -5,37 +5,36 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.Data;
 
-namespace squittal.ScrimPlanetmans.App
+namespace squittal.ScrimPlanetmans.App;
+
+public class Program
 {
-    public class Program
+    public static void Main(string[] args)
     {
-        public static void Main(string[] args)
+        var host = CreateHostBuilder(args).Build();
+
+        using (var scope = host.Services.CreateScope())
         {
-            var host = CreateHostBuilder(args).Build();
+            var services = scope.ServiceProvider;
 
-            using (var scope = host.Services.CreateScope())
+            try
             {
-                var services = scope.ServiceProvider;
-
-                try
-                {
-                    DbInitializer.Initialize(services);
-                }
-                catch (Exception ex)
-                {
-                    var logger = services.GetRequiredService<ILogger<Program>>();
-                    logger.LogError(ex, "An error occured initializing the DB.");
-                }
+                DbInitializer.Initialize(services);
             }
-
-            host.Run();
+            catch (Exception ex)
+            {
+                var logger = services.GetRequiredService<ILogger<Program>>();
+                logger.LogError(ex, "An error occured initializing the DB.");
+            }
         }
 
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
-            Host.CreateDefaultBuilder(args)
-                .ConfigureWebHostDefaults(webBuilder =>
-                {
-                    webBuilder.UseStartup<Startup>();
-                });
+        host.Run();
     }
+
+    public static IHostBuilder CreateHostBuilder(string[] args) =>
+        Host.CreateDefaultBuilder(args)
+            .ConfigureWebHostDefaults(webBuilder =>
+            {
+                webBuilder.UseStartup<Startup>();
+            });
 }

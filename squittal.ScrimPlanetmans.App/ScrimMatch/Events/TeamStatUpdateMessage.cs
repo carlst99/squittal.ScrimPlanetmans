@@ -1,36 +1,35 @@
 ﻿using squittal.ScrimPlanetmans.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages
+namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+
+public class TeamStatUpdateMessage
 {
-    public class TeamStatUpdateMessage
+    public Team Team { get; set; }
+
+    public OverlayMessageData OverlayMessageData { get; set;}
+
+    public string Info { get; set; } = string.Empty;
+
+    public TeamStatUpdateMessage(Team team)
     {
-        public Team Team { get; set; }
+        Team = team;
 
-        public OverlayMessageData OverlayMessageData { get; set;}
+        OverlayMessageData = new OverlayMessageData();
 
-        public string Info { get; set; } = string.Empty;
+        Info = GetInfo();
+    }
 
-        public TeamStatUpdateMessage(Team team)
-        {
-            Team = team;
+    public TeamStatUpdateMessage(Team team, OverlayMessageData overlayMessageData)
+    {
+        Team = team;
 
-            OverlayMessageData = new OverlayMessageData();
+        OverlayMessageData = overlayMessageData;
 
-            Info = GetInfo();
-        }
+        Info = GetInfo();
+    }
 
-        public TeamStatUpdateMessage(Team team, OverlayMessageData overlayMessageData)
-        {
-            Team = team;
-
-            OverlayMessageData = overlayMessageData;
-
-            Info = GetInfo();
-        }
-
-        private string GetInfo()
-        {
-            return $"Team {Team.TeamOrdinal} [{Team.Alias}] Stat Update";
-        }
+    private string GetInfo()
+    {
+        return $"Team {Team.TeamOrdinal} [{Team.Alias}] Stat Update";
     }
 }

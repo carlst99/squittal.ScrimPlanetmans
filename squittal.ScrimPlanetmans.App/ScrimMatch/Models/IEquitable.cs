@@ -1,6 +1,5 @@
-﻿namespace squittal.ScrimPlanetmans.ScrimMatch.Models
+﻿namespace squittal.ScrimPlanetmans.ScrimMatch.Models;
+
+public interface IEquitable<T>
 {
-    public interface IEquitable<T>
-    {
-    }
 }

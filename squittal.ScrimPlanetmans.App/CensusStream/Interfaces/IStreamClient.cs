@@ -4,14 +4,13 @@ using System;
 using System.Threading.Tasks;
 using Websocket.Client;
 
-namespace squittal.ScrimPlanetmans.CensusStream
+namespace squittal.ScrimPlanetmans.CensusStream;
+
+public interface IStreamClient : IDisposable
 {
-    public interface IStreamClient : IDisposable
-    {
-        StreamClient OnDisconnect(Func<DisconnectionInfo, Task> onDisconnect);
-        StreamClient OnMessage(Func<string, Task> onMessage);
-        Task ConnectAsync(CensusStreamSubscription subscription);
-        Task DisconnectAsync();
-        Task ReconnectAsync();
-    }
+    StreamClient OnDisconnect(Func<DisconnectionInfo, Task> onDisconnect);
+    StreamClient OnMessage(Func<string, Task> onMessage);
+    Task ConnectAsync(CensusStreamSubscription subscription);
+    Task DisconnectAsync();
+    Task ReconnectAsync();
 }

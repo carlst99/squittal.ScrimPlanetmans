@@ -1,10 +1,9 @@
 ﻿using Newtonsoft.Json;
 
-namespace squittal.ScrimPlanetmans.CensusServices.Models
+namespace squittal.ScrimPlanetmans.CensusServices.Models;
+
+public class MultiLanguageString
 {
-    public class MultiLanguageString
-    {
-        [JsonProperty("en")]
-        public string English { get; set; }
-    }
+    [JsonProperty("en")]
+    public string English { get; set; }
 }

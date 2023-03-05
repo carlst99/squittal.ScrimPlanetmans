@@ -1,131 +1,130 @@
 ﻿using squittal.ScrimPlanetmans.Models.MessageLogs;
 using squittal.ScrimPlanetmans.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages
+namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+
+public class ScrimDeathActionEventMessage : ScrimActionEventMessage
 {
-    public class ScrimDeathActionEventMessage : ScrimActionEventMessage
+    public ScrimDeathActionEvent DeathEvent { get; set; }
+
+    public ScrimDeathActionEventMessage(ScrimDeathActionEvent deathEvent)
     {
-        public ScrimDeathActionEvent DeathEvent { get; set; }
+        DeathEvent = deathEvent;
 
-        public ScrimDeathActionEventMessage(ScrimDeathActionEvent deathEvent)
+        Timestamp = deathEvent.Timestamp;
+
+        if (deathEvent.ActionType == ScrimActionType.OutsideInterference)
         {
-            DeathEvent = deathEvent;
+            LogLevel = ScrimMessageLogLevel.MatchEventWarning;
 
-            Timestamp = deathEvent.Timestamp;
+            Info = GetOutsideInterferenceInfo(deathEvent);
+        }
+        else
+        {
+            LogLevel = deathEvent.IsBanned ? ScrimMessageLogLevel.MatchEventRuleBreak : ScrimMessageLogLevel.MatchEventMajor;
 
-            if (deathEvent.ActionType == ScrimActionType.OutsideInterference)
+            switch (deathEvent.DeathType)
             {
-                LogLevel = ScrimMessageLogLevel.MatchEventWarning;
+                case DeathEventType.Kill:
+                    Info = GetKillInfo(deathEvent);
+                    break;
 
-                Info = GetOutsideInterferenceInfo(deathEvent);
-            }
-            else
-            {
-                LogLevel = deathEvent.IsBanned ? ScrimMessageLogLevel.MatchEventRuleBreak : ScrimMessageLogLevel.MatchEventMajor;
+                case DeathEventType.Teamkill:
+                    Info = GetTeamkillInfo(deathEvent);
+                    break;
 
-                switch (deathEvent.DeathType)
-                {
-                    case DeathEventType.Kill:
-                        Info = GetKillInfo(deathEvent);
-                        break;
-
-                    case DeathEventType.Teamkill:
-                        Info = GetTeamkillInfo(deathEvent);
-                        break;
-
-                    case DeathEventType.Suicide:
-                        Info = GetSuicideInfo(deathEvent);
-                        break;
-                }
+                case DeathEventType.Suicide:
+                    Info = GetSuicideInfo(deathEvent);
+                    break;
             }
         }
+    }
 
-        private string GetOutsideInterferenceInfo(ScrimDeathActionEvent deathEvent)
+    private string GetOutsideInterferenceInfo(ScrimDeathActionEvent deathEvent)
+    {
+        Player player;
+        string otherCharacterId;
+
+        var weaponName = deathEvent.Weapon != null ? deathEvent.Weapon.Name : "Unknown weapon";
+        var actionDisplay = GetEnumValueName(deathEvent.ActionType);
+
+        if (deathEvent.AttackerPlayer != null)
         {
-            Player player;
-            string otherCharacterId;
+            player = deathEvent.AttackerPlayer;
+            otherCharacterId = deathEvent.VictimCharacterId;
 
-            var weaponName = deathEvent.Weapon != null ? deathEvent.Weapon.Name : "Unknown weapon";
-            var actionDisplay = GetEnumValueName(deathEvent.ActionType);
+            var playerName = player.NameDisplay;
+            var outfitDisplay = !string.IsNullOrWhiteSpace(player.OutfitAlias)
+                ? $"[{player.OutfitAlias}] "
+                : string.Empty;
 
-            if (deathEvent.AttackerPlayer != null)
-            {
-                player = deathEvent.AttackerPlayer;
-                otherCharacterId = deathEvent.VictimCharacterId;
-
-                var playerName = player.NameDisplay;
-                var outfitDisplay = !string.IsNullOrWhiteSpace(player.OutfitAlias)
-                                        ? $"[{player.OutfitAlias}] "
-                                        : string.Empty;
-
-                return $"{actionDisplay} KILL: {outfitDisplay}{playerName} {{{weaponName}}} {otherCharacterId}";
-            }
-            else
-            {
-                player = deathEvent.VictimPlayer;
-                otherCharacterId = deathEvent.AttackerCharacterId;
-
-                var playerName = player.NameDisplay;
-                var outfitDisplay = !string.IsNullOrWhiteSpace(player.OutfitAlias)
-                                        ? $"[{player.OutfitAlias}] "
-                                        : string.Empty;
-
-                return $"{actionDisplay} DEATH: {otherCharacterId} {{{weaponName}}} {outfitDisplay}{playerName}";
-            }
+            return $"{actionDisplay} KILL: {outfitDisplay}{playerName} {{{weaponName}}} {otherCharacterId}";
         }
-
-        private string GetKillInfo(ScrimDeathActionEvent deathEvent)
+        else
         {
-            var attacker = deathEvent.AttackerPlayer;
-            var victim = deathEvent.VictimPlayer;
+            player = deathEvent.VictimPlayer;
+            otherCharacterId = deathEvent.AttackerCharacterId;
 
-            var attackerTeam = attacker.TeamOrdinal.ToString();
+            var playerName = player.NameDisplay;
+            var outfitDisplay = !string.IsNullOrWhiteSpace(player.OutfitAlias)
+                ? $"[{player.OutfitAlias}] "
+                : string.Empty;
 
-            var attackerName = attacker.NameDisplay;
-            var victimName = victim.NameDisplay;
-
-            var attackerOutfit = !string.IsNullOrWhiteSpace(attacker.OutfitAlias)
-                                            ? $"[{attacker.OutfitAlias}] "
-                                            : string.Empty;
-
-            var victimOutfit = !string.IsNullOrWhiteSpace(victim.OutfitAlias)
-                                            ? $"[{victim.OutfitAlias}] "
-                                            : string.Empty;
-
-            var actionDisplay = GetEnumValueName(deathEvent.ActionType);
-            var pointsDisplay = GetPointsDisplay(deathEvent.Points);
-            var weaponName = deathEvent.Weapon != null ? deathEvent.Weapon.Name : "Unknown weapon";
-            var headshot = deathEvent.IsHeadshot ? "_" : "^";
-
-            var bannedDisplay = deathEvent.IsBanned ? "RULE BREAK - " : string.Empty;
-
-            return $"{bannedDisplay}Team {attackerTeam} {actionDisplay}: {pointsDisplay} {attackerOutfit}{attackerName} {headshot} {{{weaponName}}} {victimOutfit}{victimName}";
+            return $"{actionDisplay} DEATH: {otherCharacterId} {{{weaponName}}} {outfitDisplay}{playerName}";
         }
+    }
 
-        private string GetTeamkillInfo(ScrimDeathActionEvent deathEvent)
-        {
-            return GetKillInfo(deathEvent);
-        }
+    private string GetKillInfo(ScrimDeathActionEvent deathEvent)
+    {
+        var attacker = deathEvent.AttackerPlayer;
+        var victim = deathEvent.VictimPlayer;
 
-        private string GetSuicideInfo(ScrimDeathActionEvent deathEvent)
-        {
-            var attacker = deathEvent.AttackerPlayer;
+        var attackerTeam = attacker.TeamOrdinal.ToString();
 
-            var attackerTeam = attacker.TeamOrdinal.ToString();
+        var attackerName = attacker.NameDisplay;
+        var victimName = victim.NameDisplay;
 
-            var attackerName = attacker.NameDisplay;
+        var attackerOutfit = !string.IsNullOrWhiteSpace(attacker.OutfitAlias)
+            ? $"[{attacker.OutfitAlias}] "
+            : string.Empty;
 
-            var attackerOutfit = !string.IsNullOrWhiteSpace(attacker.OutfitAlias)
-                                            ? $"[{attacker.OutfitAlias}] "
-                                            : string.Empty;
+        var victimOutfit = !string.IsNullOrWhiteSpace(victim.OutfitAlias)
+            ? $"[{victim.OutfitAlias}] "
+            : string.Empty;
 
-            var actionDisplay = GetEnumValueName(deathEvent.ActionType);
-            var pointsDisplay = GetPointsDisplay(deathEvent.Points);
-            var weaponName = deathEvent.Weapon != null ? deathEvent.Weapon.Name : "Unknown weapon";
+        var actionDisplay = GetEnumValueName(deathEvent.ActionType);
+        var pointsDisplay = GetPointsDisplay(deathEvent.Points);
+        var weaponName = deathEvent.Weapon != null ? deathEvent.Weapon.Name : "Unknown weapon";
+        var headshot = deathEvent.IsHeadshot ? "_" : "^";
 
-            var bannedDisplay = deathEvent.IsBanned ? "RULE BREAK - " : string.Empty;
+        var bannedDisplay = deathEvent.IsBanned ? "RULE BREAK - " : string.Empty;
 
-            return $"{bannedDisplay}Team {attackerTeam} {actionDisplay}: {pointsDisplay} {attackerOutfit}{attackerName} {{{weaponName}}}";
-        }
+        return $"{bannedDisplay}Team {attackerTeam} {actionDisplay}: {pointsDisplay} {attackerOutfit}{attackerName} {headshot} {{{weaponName}}} {victimOutfit}{victimName}";
+    }
+
+    private string GetTeamkillInfo(ScrimDeathActionEvent deathEvent)
+    {
+        return GetKillInfo(deathEvent);
+    }
+
+    private string GetSuicideInfo(ScrimDeathActionEvent deathEvent)
+    {
+        var attacker = deathEvent.AttackerPlayer;
+
+        var attackerTeam = attacker.TeamOrdinal.ToString();
+
+        var attackerName = attacker.NameDisplay;
+
+        var attackerOutfit = !string.IsNullOrWhiteSpace(attacker.OutfitAlias)
+            ? $"[{attacker.OutfitAlias}] "
+            : string.Empty;
+
+        var actionDisplay = GetEnumValueName(deathEvent.ActionType);
+        var pointsDisplay = GetPointsDisplay(deathEvent.Points);
+        var weaponName = deathEvent.Weapon != null ? deathEvent.Weapon.Name : "Unknown weapon";
+
+        var bannedDisplay = deathEvent.IsBanned ? "RULE BREAK - " : string.Empty;
+
+        return $"{bannedDisplay}Team {attackerTeam} {actionDisplay}: {pointsDisplay} {attackerOutfit}{attackerName} {{{weaponName}}}";
     }
 }

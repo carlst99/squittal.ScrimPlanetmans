@@ -1,9 +1,8 @@
 ﻿using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.Services
+namespace squittal.ScrimPlanetmans.Services;
+
+public interface IUpdateable
 {
-    public interface IUpdateable
-    {
-        Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false);
-    }
+    Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false);
 }

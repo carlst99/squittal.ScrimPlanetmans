@@ -1,9 +1,8 @@
-﻿namespace squittal.ScrimPlanetmans.Services
-{
-    public interface ILocallyBackedStore
-    {
-        string BackupSqlScriptFileName { get; }
+﻿namespace squittal.ScrimPlanetmans.Services;
 
-        void RefreshStoreFromBackup();
-    }
+public interface ILocallyBackedStore
+{
+    string BackupSqlScriptFileName { get; }
+
+    void RefreshStoreFromBackup();
 }

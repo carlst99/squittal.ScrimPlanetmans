@@ -6,56 +6,55 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.Services
+namespace squittal.ScrimPlanetmans.Services;
+
+public class ScrimPlayersService : IScrimPlayersService
 {
-    public class ScrimPlayersService : IScrimPlayersService
+    private readonly IOutfitService _outfits;
+    private readonly ICharacterService _characters;
+
+    public ScrimPlayersService(IOutfitService outfits, ICharacterService characters)
     {
-        private readonly IOutfitService _outfits;
-        private readonly ICharacterService _characters;
+        _outfits = outfits;
+        _characters = characters;
+    }
+    public async Task<Player> GetPlayerFromCharacterId(string characterId)
+    {
+        var character = await _characters.GetCharacterAsync(characterId);
 
-        public ScrimPlayersService(IOutfitService outfits, ICharacterService characters)
+        if (character == null)
         {
-            _outfits = outfits;
-            _characters = characters;
-        }
-        public async Task<Player> GetPlayerFromCharacterId(string characterId)
-        {
-            var character = await _characters.GetCharacterAsync(characterId);
-
-            if (character == null)
-            {
-                return null;
-            }
-
-            return new Player(character);
+            return null;
         }
 
-        public async Task<Player> GetPlayerFromCharacterName(string characterName)
+        return new Player(character);
+    }
+
+    public async Task<Player> GetPlayerFromCharacterName(string characterName)
+    {
+        var character = await _characters.GetCharacterByNameAsync(characterName);
+
+        if (character == null)
         {
-            var character = await _characters.GetCharacterByNameAsync(characterName);
-
-            if (character == null)
-            {
-                return null;
-            }
-
-            return new Player(character);
+            return null;
         }
 
-        public async Task<IEnumerable<Player>> GetPlayersFromOutfitAlias(string alias)
+        return new Player(character);
+    }
+
+    public async Task<IEnumerable<Player>> GetPlayersFromOutfitAlias(string alias)
+    {
+        var censusMembers = await _outfits.GetOutfitMembersByAlias(alias);
+
+        if (censusMembers == null || !censusMembers.Any())
         {
-            var censusMembers = await _outfits.GetOutfitMembersByAlias(alias);
-
-            if (censusMembers == null || !censusMembers.Any())
-            {
-                return null;
-            }
-
-            return censusMembers
-                    .Where(m => !string.IsNullOrWhiteSpace(m.Id) && m.Name != null)
-                    .Select(m => new Player(m))
-                    .Distinct()
-                    .ToList();
+            return null;
         }
+
+        return censusMembers
+            .Where(m => !string.IsNullOrWhiteSpace(m.Id) && m.Name != null)
+            .Select(m => new Player(m))
+            .Distinct()
+            .ToList();
     }
 }

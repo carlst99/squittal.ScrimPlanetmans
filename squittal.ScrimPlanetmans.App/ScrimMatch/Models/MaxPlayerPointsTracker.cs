@@ -1,55 +1,54 @@
 ﻿using System.Threading;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Models
+namespace squittal.ScrimPlanetmans.ScrimMatch.Models;
+
+public class MaxPlayerPointsTracker
 {
-    public class MaxPlayerPointsTracker
+    private int _points = 0;
+    public string _owningCharacterId;
+
+    private readonly AutoResetEvent _autoEvent = new AutoResetEvent(true);
+
+    public bool TryUpdateMaxPoints(int points, string characterId)
     {
-        private int _points = 0;
-        public string _owningCharacterId;
-
-        private readonly AutoResetEvent _autoEvent = new AutoResetEvent(true);
-
-        public bool TryUpdateMaxPoints(int points, string characterId)
+        if (string.IsNullOrWhiteSpace(characterId))
         {
-            if (string.IsNullOrWhiteSpace(characterId))
-            {
-                return false;
-            }
-
-            _autoEvent.WaitOne();
-
-            if (string.IsNullOrWhiteSpace(_owningCharacterId))
-            {
-                _points = points;
-                _owningCharacterId = characterId;
-
-                _autoEvent.Set();
-
-                return true;
-            }
-
-            if (points > _points)
-            {
-                _points = points;
-                _owningCharacterId = characterId;
-
-                _autoEvent.Set();
-
-                return true;
-            }
-
-            _autoEvent.Set();
             return false;
         }
 
-        public int GetMaxPoints()
+        _autoEvent.WaitOne();
+
+        if (string.IsNullOrWhiteSpace(_owningCharacterId))
         {
-            return _points;
+            _points = points;
+            _owningCharacterId = characterId;
+
+            _autoEvent.Set();
+
+            return true;
         }
 
-        public string GetOwningCharacterId()
+        if (points > _points)
         {
-            return _owningCharacterId;
+            _points = points;
+            _owningCharacterId = characterId;
+
+            _autoEvent.Set();
+
+            return true;
         }
+
+        _autoEvent.Set();
+        return false;
+    }
+
+    public int GetMaxPoints()
+    {
+        return _points;
+    }
+
+    public string GetOwningCharacterId()
+    {
+        return _owningCharacterId;
     }
 }

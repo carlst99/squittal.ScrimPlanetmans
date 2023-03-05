@@ -4,30 +4,29 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.CensusServices
+namespace squittal.ScrimPlanetmans.CensusServices;
+
+public class CensusLoadout
 {
-    public class CensusLoadout
+    private readonly ICensusQueryFactory _queryFactory;
+
+    public CensusLoadout(ICensusQueryFactory queryFactory)
     {
-        private readonly ICensusQueryFactory _queryFactory;
+        _queryFactory = queryFactory;
+    }
 
-        public CensusLoadout(ICensusQueryFactory queryFactory)
-        {
-            _queryFactory = queryFactory;
-        }
+    public async Task<IEnumerable<CensusLoadoutModel>> GetAllLoadoutsAsync()
+    {
+        var query = _queryFactory.Create("loadout");
 
-        public async Task<IEnumerable<CensusLoadoutModel>> GetAllLoadoutsAsync()
-        {
-            var query = _queryFactory.Create("loadout");
+        query.ShowFields("loadout_id", "profile_id", "faction_id", "code_name");
 
-            query.ShowFields("loadout_id", "profile_id", "faction_id", "code_name");
+        return await query.GetBatchAsync<CensusLoadoutModel>();
+    }
 
-            return await query.GetBatchAsync<CensusLoadoutModel>();
-        }
-
-        public async Task<int> GetLoadoutsCount()
-        {
-            var results = await GetAllLoadoutsAsync();
-            return results.Count();
-        }
+    public async Task<int> GetLoadoutsCount()
+    {
+        var results = await GetAllLoadoutsAsync();
+        return results.Count();
     }
 }

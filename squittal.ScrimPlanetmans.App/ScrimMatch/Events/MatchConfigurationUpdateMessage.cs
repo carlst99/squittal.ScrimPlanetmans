@@ -1,17 +1,16 @@
 ﻿using squittal.ScrimPlanetmans.Models.ScrimEngine;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages
+namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+
+public class MatchConfigurationUpdateMessage
 {
-    public class MatchConfigurationUpdateMessage
+    public MatchConfiguration MatchConfiguration { get; set; }
+    public string Info { get; set; }
+
+    public MatchConfigurationUpdateMessage(MatchConfiguration matchConfiguration)
     {
-        public MatchConfiguration MatchConfiguration { get; set; }
-        public string Info { get; set; }
+        MatchConfiguration = matchConfiguration;
 
-        public MatchConfigurationUpdateMessage(MatchConfiguration matchConfiguration)
-        {
-            MatchConfiguration = matchConfiguration;
-
-            Info = "Match Configuration updated";
-        }
+        Info = "Match Configuration updated";
     }
 }

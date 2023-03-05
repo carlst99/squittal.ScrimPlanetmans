@@ -1,9 +1,8 @@
 ﻿using static squittal.ScrimPlanetmans.CensusServices.Models.CensusCharacterModel;
 
-namespace squittal.ScrimPlanetmans.CensusServices.Models
+namespace squittal.ScrimPlanetmans.CensusServices.Models;
+
+public class CensusOutfitMemberCharacterNameModel : CensusOutfitMemberModel
 {
-    public class CensusOutfitMemberCharacterNameModel : CensusOutfitMemberModel
-    {
-        public CharacterName Name { get; set; }
-    }
+    public CharacterName Name { get; set; }
 }

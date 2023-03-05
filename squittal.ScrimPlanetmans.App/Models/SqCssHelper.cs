@@ -1,54 +1,53 @@
-﻿namespace squittal.ScrimPlanetmans.Models
+﻿namespace squittal.ScrimPlanetmans.Models;
+
+public static class SqCssHelper
 {
-    public static class SqCssHelper
+    public static string GetFactionClassFromId(int? factionId)
     {
-        public static string GetFactionClassFromId(int? factionId)
+        var cssClass = factionId switch
         {
-            var cssClass = factionId switch
-            {
-                1 => "vs",
-                2 => "nc",
-                3 => "tr",
-                4 => "ns",
-                _ => "default",
-            };
-            return cssClass;
-        }
+            1 => "vs",
+            2 => "nc",
+            3 => "tr",
+            4 => "ns",
+            _ => "default",
+        };
+        return cssClass;
+    }
 
-        public static string GetOnlineStatusEmoji(bool isOnline)
+    public static string GetOnlineStatusEmoji(bool isOnline)
+    {
+        if (isOnline)
         {
-            if (isOnline)
-            {
-                return "🌐";
-            }
-            else
-            {
-                return "💤"; // 🌙 
-            }
+            return "🌐";
         }
+        else
+        {
+            return "💤"; // 🌙 
+        }
+    }
 
-        public static string GetParticipatingStatusEmoji(bool isParticipating)
+    public static string GetParticipatingStatusEmoji(bool isParticipating)
+    {
+        if (isParticipating)
         {
-            if (isParticipating)
-            {
-                return "∙";
-            }
-            else
-            {
-                return string.Empty;
-            }
+            return "∙";
         }
+        else
+        {
+            return string.Empty;
+        }
+    }
 
-        public static string GetZoneDisplayEmojiFromName(string zoneName)
+    public static string GetZoneDisplayEmojiFromName(string zoneName)
+    {
+        return zoneName switch
         {
-            return zoneName switch
-            {
-                "Amerish" => "🗻",
-                "Esamir" => "❄️",
-                "Hossin" => "🌳",
-                "Indar" => "☀️",
-                _ => "❔",
-            };
-        }
+            "Amerish" => "🗻",
+            "Esamir" => "❄️",
+            "Hossin" => "🌳",
+            "Indar" => "☀️",
+            _ => "❔",
+        };
     }
 }

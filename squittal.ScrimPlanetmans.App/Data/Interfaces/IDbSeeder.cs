@@ -2,10 +2,9 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.Data
+namespace squittal.ScrimPlanetmans.Data;
+
+public interface IDbSeeder
 {
-    public interface IDbSeeder
-    {
-        Task SeedDatabase(CancellationToken cancellationToken);
-    }
+    Task SeedDatabase(CancellationToken cancellationToken);
 }

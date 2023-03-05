@@ -1,17 +1,16 @@
 ﻿using System;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages
+namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+
+public class ScrimMessageEventArgs<T> : EventArgs
 {
-    public class ScrimMessageEventArgs<T> : EventArgs
+    public ScrimMessageEventArgs(T m)
     {
-        public ScrimMessageEventArgs(T m)
-        {
-            Message = m;
+        Message = m;
 
-            CreatedTime = DateTime.UtcNow;
-        }
-
-        public T Message { get; set; }
-        public DateTime CreatedTime { get; }
+        CreatedTime = DateTime.UtcNow;
     }
+
+    public T Message { get; set; }
+    public DateTime CreatedTime { get; }
 }

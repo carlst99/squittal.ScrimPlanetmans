@@ -2,70 +2,69 @@
 using squittal.ScrimPlanetmans.CensusServices.Models;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.CensusServices
+namespace squittal.ScrimPlanetmans.CensusServices;
+
+public class CensusCharacter
 {
-    public class CensusCharacter
+    private readonly ICensusQueryFactory _queryFactory;
+
+    public CensusCharacter(ICensusQueryFactory queryFactory)
     {
-        private readonly ICensusQueryFactory _queryFactory;
+        _queryFactory = queryFactory;
+    }
 
-        public CensusCharacter(ICensusQueryFactory queryFactory)
-        {
-            _queryFactory = queryFactory;
-        }
+    public async Task<CensusCharacterModel> GetCharacter(string characterId)
+    {
+        var query = _queryFactory.Create("character");
+        query.AddResolve("world");
+        query.AddResolve("online_status");
+        query.ShowFields("character_id", "name.first", "faction_id", "world_id", "battle_rank.value", "battle_rank.percent_to_next", "certs.earned_points", "title_id", "prestige_level", "online_status");
+        query.Where("character_id").Equals(characterId);
 
-        public async Task<CensusCharacterModel> GetCharacter(string characterId)
-        {
-            var query = _queryFactory.Create("character");
-            query.AddResolve("world");
-            query.AddResolve("online_status");
-            query.ShowFields("character_id", "name.first", "faction_id", "world_id", "battle_rank.value", "battle_rank.percent_to_next", "certs.earned_points", "title_id", "prestige_level", "online_status");
-            query.Where("character_id").Equals(characterId);
+        return await query.GetAsync<CensusCharacterModel>();
+    }
 
-            return await query.GetAsync<CensusCharacterModel>();
-        }
+    public async Task<CensusCharacterModel> GetCharacterByName(string characterName)
+    {
+        var query = _queryFactory.Create("character");
+        query.AddResolve("world");
+        query.AddResolve("online_status");
+        query.ShowFields("character_id", "name.first", "faction_id", "world_id", "battle_rank.value", "battle_rank.percent_to_next", "certs.earned_points", "title_id", "prestige_level", "online_status");
+        query.Where("name.first_lower").Equals(characterName.ToLower());
 
-        public async Task<CensusCharacterModel> GetCharacterByName(string characterName)
-        {
-            var query = _queryFactory.Create("character");
-            query.AddResolve("world");
-            query.AddResolve("online_status");
-            query.ShowFields("character_id", "name.first", "faction_id", "world_id", "battle_rank.value", "battle_rank.percent_to_next", "certs.earned_points", "title_id", "prestige_level", "online_status");
-            query.Where("name.first_lower").Equals(characterName.ToLower());
+        return await query.GetAsync<CensusCharacterModel>();
+    }
 
-            return await query.GetAsync<CensusCharacterModel>();
-        }
+    public async Task<string> GetCharacterIdByName(string characterName)
+    {
+        var query = _queryFactory.Create("character_name");
 
-        public async Task<string> GetCharacterIdByName(string characterName)
-        {
-            var query = _queryFactory.Create("character_name");
+        query.Where("name.first_lower").Equals(characterName.ToLower());
 
-            query.Where("name.first_lower").Equals(characterName.ToLower());
+        var result = await query.GetAsync<CensusCharacterModel>();
 
-            var result = await query.GetAsync<CensusCharacterModel>();
+        return result?.CharacterId;
+    }
 
-            return result?.CharacterId;
-        }
+    public async Task<CensusOutfitMemberModel> GetCharacterOutfitMembership(string characterId)
+    {
+        var query = _queryFactory.Create("outfit_member");
 
-        public async Task<CensusOutfitMemberModel> GetCharacterOutfitMembership(string characterId)
-        {
-            var query = _queryFactory.Create("outfit_member");
+        query.ShowFields("character_id", "outfit_id", "member_since_date", "rank", "rank_ordinal");
+        query.Where("character_id").Equals(characterId);
 
-            query.ShowFields("character_id", "outfit_id", "member_since_date", "rank", "rank_ordinal");
-            query.Where("character_id").Equals(characterId);
+        return await query.GetAsync<CensusOutfitMemberModel>();
+    }
 
-            return await query.GetAsync<CensusOutfitMemberModel>();
-        }
+    public async Task<CensusCharacterModel.CharacterTimes> GetCharacterTimes(string characterId)
+    {
+        var query = _queryFactory.Create("character");
 
-        public async Task<CensusCharacterModel.CharacterTimes> GetCharacterTimes(string characterId)
-        {
-            var query = _queryFactory.Create("character");
+        query.ShowFields("character_id", "times.creation_date", "times.last_save_date", "times.last_login_date", "times.minutes_played");
+        query.Where("character_id").Equals(characterId);
 
-            query.ShowFields("character_id", "times.creation_date", "times.last_save_date", "times.last_login_date", "times.minutes_played");
-            query.Where("character_id").Equals(characterId);
+        var result = await query.GetAsync<CensusCharacterModel>();
 
-            var result = await query.GetAsync<CensusCharacterModel>();
-
-            return result?.Times;
-        }
+        return result?.Times;
     }
 }

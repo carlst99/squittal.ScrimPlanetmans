@@ -1,8 +1,7 @@
-﻿namespace squittal.ScrimPlanetmans.CensusServices.Models
+﻿namespace squittal.ScrimPlanetmans.CensusServices.Models;
+
+public class CensusItemCategoryModel
 {
-    public class CensusItemCategoryModel
-    {
-        public int ItemCategoryId { get; set; }
-        public MultiLanguageString Name { get; set; }
-    }
+    public int ItemCategoryId { get; set; }
+    public MultiLanguageString Name { get; set; }
 }

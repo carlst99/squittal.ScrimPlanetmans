@@ -2,17 +2,16 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using squittal.ScrimPlanetmans.Models.Planetside;
 
-namespace squittal.ScrimPlanetmans.Data.DataConfigurations
+namespace squittal.ScrimPlanetmans.Data.DataConfigurations;
+
+public class FactionConfiguration : IEntityTypeConfiguration<Faction>
 {
-    public class FactionConfiguration : IEntityTypeConfiguration<Faction>
+    public void Configure(EntityTypeBuilder<Faction> builder)
     {
-        public void Configure(EntityTypeBuilder<Faction> builder)
-        {
-            builder.ToTable("Faction");
+        builder.ToTable("Faction");
 
-            builder.HasKey(e => e.Id);
+        builder.HasKey(e => e.Id);
 
-            builder.Property(e => e.Id).ValueGeneratedNever();
-        }
+        builder.Property(e => e.Id).ValueGeneratedNever();
     }
 }
