@@ -12,12 +12,12 @@
         public bool IsHeadshot { get; set; }
 
         #region IEquitable
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return this.Equals(obj as DeathPayload);
         }
 
-        public bool Equals(DeathPayload p)
+        public bool Equals(DeathPayload? p)
         {
             if (ReferenceEquals(p, null))
             {

@@ -20,19 +20,24 @@ namespace squittal.ScrimPlanetmans.ScrimMatch.Models
         public bool IsDefault { get; set; }
         public bool IsCustomDefault { get; set; }
 
-        public string SourceFile { get; set; }
+        public string? SourceFile { get; set; }
 
-        public string DefaultMatchTitle { get; set; } = string.Empty;
-        public int DefaultRoundLength { get; set; } = 900;
-        public bool DefaultEndRoundOnFacilityCapture { get; set; } = false;
+        public string DefaultMatchTitle { get; set; }
+        public int DefaultRoundLength { get; set; }
+        public bool DefaultEndRoundOnFacilityCapture { get; set; }
 
+        public ICollection<RulesetActionRule>? RulesetActionRules { get; set; }
+        public ICollection<RulesetItemCategoryRule>? RulesetItemCategoryRules { get; set; }
+        public ICollection<RulesetItemRule>? RulesetItemRules { get; set; }
+        public ICollection<RulesetFacilityRule>? RulesetFacilityRules { get; set; }
 
-        public ICollection<RulesetActionRule> RulesetActionRules { get; set; }
-        public ICollection<RulesetItemCategoryRule> RulesetItemCategoryRules { get; set; }
-        public ICollection<RulesetItemRule> RulesetItemRules { get; set; }
-        public ICollection<RulesetFacilityRule> RulesetFacilityRules { get; set; }
+        public RulesetOverlayConfiguration? RulesetOverlayConfiguration { get; set; }
 
-        public RulesetOverlayConfiguration RulesetOverlayConfiguration { get; set; }
-
+        public Ruleset()
+        {
+            Name = "New ruleset";
+            DefaultRoundLength = 900;
+            DefaultMatchTitle = string.Empty;
+        }
     }
 }

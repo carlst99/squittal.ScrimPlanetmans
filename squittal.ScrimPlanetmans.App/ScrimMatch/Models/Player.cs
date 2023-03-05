@@ -1,6 +1,7 @@
-﻿using squittal.ScrimPlanetmans.Models.Planetside;
-using squittal.ScrimPlanetmans.Services.Planetside;
+﻿using System;
 using System.Text.RegularExpressions;
+using squittal.ScrimPlanetmans.Models.Planetside;
+using squittal.ScrimPlanetmans.Services.Planetside;
 
 namespace squittal.ScrimPlanetmans.ScrimMatch.Models
 {
@@ -10,36 +11,23 @@ namespace squittal.ScrimPlanetmans.ScrimMatch.Models
 
         public int TeamOrdinal { get; set; }
 
-        public ScrimEventAggregate EventAggregate
-        {
-            get
-            {
-                return EventAggregateTracker.TotalStats;
-            }
-        }
+        public ScrimEventAggregate EventAggregate => EventAggregateTracker.TotalStats;
+        public ScrimEventAggregateRoundTracker EventAggregateTracker { get; set; } = new();
 
-        public ScrimEventAggregateRoundTracker EventAggregateTracker { get; set; } = new ScrimEventAggregateRoundTracker();
-
-        public string NameFull { get; set; }
-        public string NameTrimmed { get; set; }
-        public string NameAlias { get; set; }
+        public string NameFull { get; }
+        public string NameTrimmed { get; private set; }
+        public string? NameAlias { get; private set; }
 
         public string NameDisplay
         {
             get
             {
                 if (!string.IsNullOrWhiteSpace(NameAlias))
-                {
                     return NameAlias;
-                }
-                else if (!string.IsNullOrWhiteSpace(NameTrimmed))
-                {
-                    return NameTrimmed;
-                }
-                else
-                {
-                    return NameFull;
-                }
+
+                return !string.IsNullOrWhiteSpace(NameTrimmed)
+                    ? NameTrimmed
+                    : NameFull;
             }
         }
 
@@ -48,38 +36,36 @@ namespace squittal.ScrimPlanetmans.ScrimMatch.Models
 
         public int PrestigeLevel { get; set; }
 
-        public string OutfitId { get; set; } = string.Empty;
-        public string OutfitAlias { get; set; } = string.Empty;
-        public string OutfitAliasLower { get; set; } = string.Empty;
-
-        public bool IsOutfitless { get; set; } = false;
+        public string OutfitId { get; set; }
+        public string OutfitAlias { get; set; }
+        public string OutfitAliasLower { get; set; }
+        public bool IsOutfitless { get; set; }
 
         public int? ConstructedTeamId { get; set; }
-
         public bool IsFromConstructedTeam => ConstructedTeamId != null;
 
         // Dynamic Attributes
         public int? LoadoutId { get; set; }
         public PlayerStatus Status { get; set; } = PlayerStatus.Unknown;
 
-        public bool IsOnline { get; set; } = false;
-        public bool IsActive { get; set; } = false;
-        public bool IsParticipating { get; set; } = false;
-        public bool IsBenched { get; set; } = false;
+        public bool IsOnline { get; set; }
+        public bool IsActive { get; set; }
+        public bool IsParticipating { get; set; }
+        public bool IsBenched { get; set; }
 
         public bool IsVisibleInTeamComposer => GetIsVisibleInTeamComposer();
 
         public bool IsAdHocPlayer => GetIsAdHocPlayer();
 
         private static readonly Regex _nameRegex = new Regex("^[A-Za-z0-9]{1,32}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        
+
         // Format for Planetside Infantry League: Season 2 => Namex##
         private static readonly Regex _pil2NameRegex = new Regex("^[A-z0-9]{2,}(x[0-9]{2})$", RegexOptions.Compiled);
 
         // Format for Legacy Jaeger Characters => TAGxName(VS|NC|TR)
-        private static readonly Regex _legacyJaegerNameRegex = new Regex("^([A-z0-9]{0,4}x).{2,}(?<!(x[0-9]{2}))$", RegexOptions.Compiled);
+        private static readonly Regex _legacyJaegerNameRegex = new("^([A-z0-9]{0,4}x).{2,}(?<!(x[0-9]{2}))$", RegexOptions.Compiled);
 
-        private static readonly Regex _factionSufficRegex = new Regex("^[A-z0-9]+(VS|NC|TR)$", RegexOptions.Compiled);
+        private static readonly Regex _factionSufficRegex = new("^[A-z0-9]+(VS|NC|TR)$", RegexOptions.Compiled);
 
         public Player(Character character)
         {
@@ -100,8 +86,8 @@ namespace squittal.ScrimPlanetmans.ScrimMatch.Models
         #region Temporary Alias
         public static string GetTrimmedPlayerName(string name, int worldId)
         {
-            var isPil2NameFormat = false;
-            var isLegacyJaegerNameFormat = false;
+            bool isPil2NameFormat = false;
+            bool isLegacyJaegerNameFormat = false;
 
             if (WorldService.IsJaegerWorldId(worldId))
             {
@@ -115,18 +101,18 @@ namespace squittal.ScrimPlanetmans.ScrimMatch.Models
                 }
             }
 
-            var trimmed = name;
-            var initLength = name.Length;
+            string trimmed = name;
+            int initLength = name.Length;
 
             if (isPil2NameFormat)
             {
-                trimmed = name.Substring(0, initLength - 3);
+                trimmed = name[..(initLength - 3)];
             }
             else if (isLegacyJaegerNameFormat)
             {
                 // Remove outfit tag from beginning of name
-                var idx = name.IndexOf("x");
-                if (idx >= 0 && idx < 5 && (idx != initLength - 1))
+                int idx = name.IndexOf("x", StringComparison.Ordinal);
+                if (idx is >= 0 and < 5 && idx != initLength - 1)
                 {
                     trimmed = name.Substring(idx + 1, initLength - idx - 1);
                 }
@@ -135,8 +121,8 @@ namespace squittal.ScrimPlanetmans.ScrimMatch.Models
             if (!isPil2NameFormat && _factionSufficRegex.Match(trimmed).Success)
             {
                 // Remove faction abbreviation from end of name
-                var end = trimmed.Length - 2;
-                trimmed = trimmed.Substring(0, end);
+                int end = trimmed.Length - 2;
+                trimmed = trimmed[..end];
             }
 
             if (string.IsNullOrWhiteSpace(trimmed) || trimmed.Length <= 1)
@@ -158,7 +144,7 @@ namespace squittal.ScrimPlanetmans.ScrimMatch.Models
             {
                 return false;
             }
-            
+
             Match match = _nameRegex.Match(alias);
             if (!match.Success)
             {
@@ -241,30 +227,14 @@ namespace squittal.ScrimPlanetmans.ScrimMatch.Models
             }
         }
         #region Eqaulity
-        public override bool Equals(object obj)
-        {
-            return this.Equals(obj as Player); 
-        }
 
-        public bool Equals(Player p)
-        {
-            if (ReferenceEquals(p, null))
-            {
-                return false;
-            }
+        public override bool Equals(object? obj)
+            => obj is Player player
+                && Equals(player);
 
-            if (ReferenceEquals(this, p))
-            {
-                return true;
-            }
-
-            if (this.GetType() != p.GetType())
-            {
-                return false;
-            }
-
-            return p.Id == Id;
-        }
+        public bool Equals(Player? p)
+            => p is not null
+                && p.Id == Id;
 
         public static bool operator ==(Player lhs, Player rhs)
         {
