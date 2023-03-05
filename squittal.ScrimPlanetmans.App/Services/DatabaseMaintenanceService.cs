@@ -1,10 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using squittal.ScrimPlanetmans.Logging;
-using squittal.ScrimPlanetmans.Models;
-using squittal.ScrimPlanetmans.Services.Planetside;
+using squittal.ScrimPlanetmans.App.Logging;
+using squittal.ScrimPlanetmans.App.Models;
+using squittal.ScrimPlanetmans.App.Services.Interfaces;
+using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 
-namespace squittal.ScrimPlanetmans.Services;
+namespace squittal.ScrimPlanetmans.App.Services;
 
 public class DatabaseMaintenanceService
 {

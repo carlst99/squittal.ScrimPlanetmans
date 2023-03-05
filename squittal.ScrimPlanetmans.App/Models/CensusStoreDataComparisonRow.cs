@@ -1,9 +1,9 @@
-﻿using squittal.ScrimPlanetmans.Services;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using squittal.ScrimPlanetmans.App.Services.Interfaces;
 
-namespace squittal.ScrimPlanetmans.Models;
+namespace squittal.ScrimPlanetmans.App.Models;
 
 public class CensusStoreDataComparisonRow
 {

@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Components;
-using System;
+﻿using System;
+using Microsoft.AspNetCore.Components;
 
-namespace squittal.ScrimPlanetmans.Models.MessageLogs;
+namespace squittal.ScrimPlanetmans.App.Models.MessageLogs;
 
 public class TimestampedLogMessage
 {

@@ -1,9 +1,10 @@
 ﻿using System.Threading.Tasks;
-using squittal.ScrimPlanetmans.CensusServices;
-using squittal.ScrimPlanetmans.CensusServices.Models;
-using squittal.ScrimPlanetmans.Models.Planetside;
+using squittal.ScrimPlanetmans.App.CensusServices;
+using squittal.ScrimPlanetmans.App.CensusServices.Models;
+using squittal.ScrimPlanetmans.App.Models.Planetside;
+using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 
-namespace squittal.ScrimPlanetmans.Services.Planetside;
+namespace squittal.ScrimPlanetmans.App.Services.Planetside;
 
 public class CharacterService : ICharacterService
 {

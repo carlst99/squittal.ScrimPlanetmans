@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Microsoft.EntityFrameworkCore;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
-namespace squittal.ScrimPlanetmans.Data.DataConfigurations;
+namespace squittal.ScrimPlanetmans.App.Data.DataConfigurations.ScrimMatch;
 
 public class RulesetItemRuleConfiguration : IEntityTypeConfiguration<RulesetItemRule>
 {

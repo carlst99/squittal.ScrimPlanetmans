@@ -1,11 +1,11 @@
-﻿using squittal.ScrimPlanetmans.Data.Models;
-using squittal.ScrimPlanetmans.Models;
-using squittal.ScrimPlanetmans.Models.Planetside;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using squittal.ScrimPlanetmans.App.Data.Models;
+using squittal.ScrimPlanetmans.App.Models;
+using squittal.ScrimPlanetmans.App.Models.Planetside;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.Services.ScrimMatch;
+namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 public interface IConstructedTeamService
 {

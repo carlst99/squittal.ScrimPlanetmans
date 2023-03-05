@@ -1,4 +1,4 @@
-﻿namespace squittal.ScrimPlanetmans.Models.ScrimMatchReports;
+﻿namespace squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
 
 public class ScrimMatchReportInfantryPlayerStats : ScrimMatchReportStats
 {

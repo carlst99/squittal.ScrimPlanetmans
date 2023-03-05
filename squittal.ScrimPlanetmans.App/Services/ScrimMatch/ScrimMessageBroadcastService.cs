@@ -1,10 +1,11 @@
-﻿using Microsoft.Extensions.Logging;
-using squittal.ScrimPlanetmans.Logging;
-using squittal.ScrimPlanetmans.ScrimMatch.Messages;
-using System;
+﻿using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Logging;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
+using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
-namespace squittal.ScrimPlanetmans.Services.ScrimMatch;
+namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 
 public class ScrimMessageBroadcastService : IScrimMessageBroadcastService
 {

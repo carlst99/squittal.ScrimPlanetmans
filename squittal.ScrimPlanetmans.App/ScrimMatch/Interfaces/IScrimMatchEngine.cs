@@ -1,14 +1,13 @@
-﻿using squittal.ScrimPlanetmans.Models.ScrimEngine;
-using squittal.ScrimPlanetmans.ScrimMatch.Messages;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 
 public interface IScrimMatchEngine
 {
     MatchConfiguration MatchConfiguration { get; set; }
-    Ruleset MatchRuleset { get; }
+    Ruleset.Models.Ruleset MatchRuleset { get; }
         
     Task Start();
     Task InitializeNewMatch();

@@ -1,7 +1,6 @@
-﻿using squittal.ScrimPlanetmans.CensusServices.Models;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
-namespace squittal.ScrimPlanetmans.CensusServices.Models;
+namespace squittal.ScrimPlanetmans.App.CensusServices.Models;
 
 public class CensusOutfitResolveMemberCharacterModel : CensusOutfitModel
 {

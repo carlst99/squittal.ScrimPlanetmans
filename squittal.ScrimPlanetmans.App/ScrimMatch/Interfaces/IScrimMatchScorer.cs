@@ -1,8 +1,8 @@
-﻿using squittal.ScrimPlanetmans.Models.Planetside.Events;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using squittal.ScrimPlanetmans.App.Models.Planetside.Events;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 
 public interface IScrimMatchScorer
 {

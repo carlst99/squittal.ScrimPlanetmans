@@ -1,8 +1,8 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
-namespace squittal.ScrimPlanetmans.CensusStream;
+namespace squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
 
 public interface IWebsocketEventHandler : IDisposable
 {

@@ -1,9 +1,10 @@
-﻿@using squittal.ScrimPlanetmans.ScrimMatch;
-@using squittal.ScrimPlanetmans.ScrimMatch.Messages;
-@using squittal.ScrimPlanetmans.ScrimMatch.Models;
-@using squittal.ScrimPlanetmans.Services.ScrimMatch;
-@using System.Collections.Concurrent;
-@using squittal.ScrimPlanetmans.Models;
+﻿@using System.Collections.Concurrent;
+@using squittal.ScrimPlanetmans.App.Models
+@using squittal.ScrimPlanetmans.App.ScrimMatch
+@using squittal.ScrimPlanetmans.App.ScrimMatch.Events
+@using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
+@using squittal.ScrimPlanetmans.App.ScrimMatch.Models
+@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 
 @inject IScrimTeamsManager ScrimTeamsManager
 @inject IScrimMessageBroadcastService MessageService

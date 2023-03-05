@@ -1,6 +1,6 @@
-﻿using squittal.ScrimPlanetmans.ScrimMatch.Messages; 
+﻿using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
-namespace squittal.ScrimPlanetmans.Models.Forms;
+namespace squittal.ScrimPlanetmans.App.Models.Forms;
 
 public class ConstructedTeamCharacterChange
 {

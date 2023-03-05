@@ -1,12 +1,11 @@
-﻿using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using squittal.ScrimPlanetmans.Services.Planetside;
-using squittal.ScrimPlanetmans.Services.ScrimMatch;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
+using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
+using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
-namespace squittal.ScrimPlanetmans.Services;
+namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 
 public class ScrimPlayersService : IScrimPlayersService
 {

@@ -1,7 +1,8 @@
 ﻿// Credit to Lampjaw @ Voidwell.DaybreakGames
+
 using System;
 
-namespace squittal.ScrimPlanetmans.CensusStream.Models;
+namespace squittal.ScrimPlanetmans.App.CensusStream.Models;
 
 public class StreamState
 {

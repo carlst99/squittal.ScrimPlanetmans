@@ -1,13 +1,12 @@
 ﻿using System;
-using System.Threading.Tasks;
-using System.IO;
-using System.Text.Json;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
-namespace squittal.ScrimPlanetmans.Logging;
+namespace squittal.ScrimPlanetmans.App.Logging;
 
 public class RulesetFileHandler
 {

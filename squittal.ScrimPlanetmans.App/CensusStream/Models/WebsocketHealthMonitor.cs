@@ -1,11 +1,13 @@
 ﻿// Credit to Lampjaw @ Voidwell.DaybreakGames
-using Microsoft.Extensions.Logging;
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
 
-namespace squittal.ScrimPlanetmans.CensusStream;
+namespace squittal.ScrimPlanetmans.App.CensusStream.Models;
 
 public class WebsocketHealthMonitor : IWebsocketHealthMonitor
 {

@@ -1,23 +1,22 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using squittal.ScrimPlanetmans.CensusServices.Models;
-using squittal.ScrimPlanetmans.Data;
-using squittal.ScrimPlanetmans.Data.Models;
-using squittal.ScrimPlanetmans.Models;
-using squittal.ScrimPlanetmans.Models.Forms;
-using squittal.ScrimPlanetmans.Models.Planetside;
-using squittal.ScrimPlanetmans.ScrimMatch;
-using squittal.ScrimPlanetmans.ScrimMatch.Messages;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using squittal.ScrimPlanetmans.Services.Planetside;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Data.Interfaces;
+using squittal.ScrimPlanetmans.App.Data.Models;
+using squittal.ScrimPlanetmans.App.Models;
+using squittal.ScrimPlanetmans.App.Models.Forms;
+using squittal.ScrimPlanetmans.App.Models.Planetside;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
+using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
+using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
-namespace squittal.ScrimPlanetmans.Services.ScrimMatch;
+namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 
 public class ConstructedTeamService : IConstructedTeamService
 {

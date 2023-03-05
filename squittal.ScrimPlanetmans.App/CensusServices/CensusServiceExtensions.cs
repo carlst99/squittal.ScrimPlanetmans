@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace squittal.ScrimPlanetmans.CensusServices;
+namespace squittal.ScrimPlanetmans.App.CensusServices;
 
 public static class CensusServiceExtensions
 {

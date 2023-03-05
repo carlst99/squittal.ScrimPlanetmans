@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text.RegularExpressions;
 
-namespace squittal.ScrimPlanetmans.Models;
+namespace squittal.ScrimPlanetmans.App.Models;
 
 public static class PlanetsideClassLoadoutTranslator
 {

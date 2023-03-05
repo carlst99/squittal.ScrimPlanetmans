@@ -1,8 +1,7 @@
-﻿using squittal.ScrimPlanetmans.ScrimMatch.Messages;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using System;
+﻿using System;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 
 public interface IStatefulTimer
 {

@@ -1,15 +1,15 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using squittal.ScrimPlanetmans.Data;
-using squittal.ScrimPlanetmans.Data.Models;
-using squittal.ScrimPlanetmans.Models.ScrimEngine;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Data.Interfaces;
+using squittal.ScrimPlanetmans.App.Data.Models;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
+using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
-namespace squittal.ScrimPlanetmans.Services.ScrimMatch;
+namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 
 public class ScrimMatchDataService : IScrimMatchDataService
 {

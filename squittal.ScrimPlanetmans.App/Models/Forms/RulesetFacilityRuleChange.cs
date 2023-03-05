@@ -1,6 +1,6 @@
-﻿using squittal.ScrimPlanetmans.ScrimMatch.Models;
+﻿using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
-namespace squittal.ScrimPlanetmans.Models.Forms;
+namespace squittal.ScrimPlanetmans.App.Models.Forms;
 
 public class RulesetFacilityRuleChange
 {

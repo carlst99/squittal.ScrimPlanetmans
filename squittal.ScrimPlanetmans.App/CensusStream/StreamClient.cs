@@ -1,15 +1,17 @@
 ﻿// Credit to Lampjaw @ Voidwell.DaybreakGames
-using DaybreakGames.Census.Stream;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
+
 using System;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
+using DaybreakGames.Census.Stream;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
 using Websocket.Client;
 
-namespace squittal.ScrimPlanetmans.CensusStream;
+namespace squittal.ScrimPlanetmans.App.CensusStream;
 
 public class StreamClient : IStreamClient
 {

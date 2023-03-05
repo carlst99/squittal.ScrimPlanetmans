@@ -1,10 +1,11 @@
 ﻿using System;
-using System.Linq;
 using System.Collections.Concurrent;
-using squittal.ScrimPlanetmans.CensusStream.Models;
+using System.Linq;
 using System.Threading.Tasks;
+using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+using squittal.ScrimPlanetmans.App.CensusStream.Models;
 
-namespace squittal.ScrimPlanetmans.CensusStream;
+namespace squittal.ScrimPlanetmans.App.CensusStream;
 
 public class PayloadUniquenessFilter<T> where T : PayloadBase, IEquitablePayload<T>
 {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace squittal.ScrimPlanetmans.CensusServices.Models;
+namespace squittal.ScrimPlanetmans.App.CensusServices.Models;
 
 public class CensusCharacterModel
 {

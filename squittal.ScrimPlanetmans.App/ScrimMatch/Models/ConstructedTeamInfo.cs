@@ -1,8 +1,7 @@
-﻿using squittal.ScrimPlanetmans.Data.Models;
-using squittal.ScrimPlanetmans.Models.Planetside;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using squittal.ScrimPlanetmans.App.Data.Models;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Models;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 public class ConstructedTeamInfo
 {

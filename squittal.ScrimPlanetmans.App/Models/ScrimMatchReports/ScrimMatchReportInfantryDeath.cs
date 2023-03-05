@@ -1,7 +1,8 @@
-﻿using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using System;
+﻿using System;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
-namespace squittal.ScrimPlanetmans.Models.ScrimMatchReports;
+namespace squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
 
 public class ScrimMatchReportInfantryDeath
 {

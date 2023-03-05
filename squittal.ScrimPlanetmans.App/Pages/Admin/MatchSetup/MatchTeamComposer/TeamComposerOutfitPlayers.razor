@@ -1,13 +1,13 @@
 ﻿@using squittal.ScrimPlanetmans.App.Pages.Shared;
-@using squittal.ScrimPlanetmans.CensusStream;
-@using squittal.ScrimPlanetmans.Models;
-@using squittal.ScrimPlanetmans.Models.Planetside;
-@using squittal.ScrimPlanetmans.ScrimMatch;
-@using squittal.ScrimPlanetmans.ScrimMatch.Messages;
-@using squittal.ScrimPlanetmans.ScrimMatch.Models;
-@using squittal.ScrimPlanetmans.Services.Planetside;
-@using squittal.ScrimPlanetmans.Services.ScrimMatch;
 @using System.Collections.Concurrent;
+@using squittal.ScrimPlanetmans.App.CensusStream.Interfaces
+@using squittal.ScrimPlanetmans.App.Models
+@using squittal.ScrimPlanetmans.App.Models.Planetside
+@using squittal.ScrimPlanetmans.App.ScrimMatch.Events
+@using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
+@using squittal.ScrimPlanetmans.App.ScrimMatch.Models
+@using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
+@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 
 @inject IScrimTeamsManager TeamsManager
 @inject IConstructedTeamService ConstructedTeamsService

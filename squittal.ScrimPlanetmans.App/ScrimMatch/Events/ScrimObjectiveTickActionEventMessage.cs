@@ -1,7 +1,7 @@
-﻿using squittal.ScrimPlanetmans.Models.MessageLogs;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
+﻿using squittal.ScrimPlanetmans.App.Models.MessageLogs;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public class ScrimObjectiveTickActionEventMessage : ScrimActionEventMessage
 {

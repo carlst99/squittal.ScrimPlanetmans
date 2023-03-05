@@ -1,8 +1,9 @@
-﻿using Microsoft.Extensions.Hosting;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
+using squittal.ScrimPlanetmans.App.Data.Interfaces;
 
-namespace squittal.ScrimPlanetmans.Data;
+namespace squittal.ScrimPlanetmans.App.Data;
 
 public class ApplicationDataLoaderHostedService : IHostedService
 {

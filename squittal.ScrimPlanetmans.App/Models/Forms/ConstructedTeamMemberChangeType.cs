@@ -1,4 +1,4 @@
-﻿namespace squittal.ScrimPlanetmans.Models.Forms;
+﻿namespace squittal.ScrimPlanetmans.App.Models.Forms;
 
 public enum ConstructedTeamMemberChangeType
 {

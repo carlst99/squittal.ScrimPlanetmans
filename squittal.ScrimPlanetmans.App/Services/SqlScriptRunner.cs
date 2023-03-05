@@ -1,9 +1,10 @@
 ﻿using System;
 using System.IO;
-using Microsoft.SqlServer.Management.Smo;
 using Microsoft.Extensions.Logging;
+using Microsoft.SqlServer.Management.Smo;
+using squittal.ScrimPlanetmans.App.Services.Interfaces;
 
-namespace squittal.ScrimPlanetmans.Services;
+namespace squittal.ScrimPlanetmans.App.Services;
 
 public class SqlScriptRunner : ISqlScriptRunner
 {

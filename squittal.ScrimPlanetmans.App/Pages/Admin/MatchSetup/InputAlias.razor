@@ -1,6 +1,6 @@
-﻿@using squittal.ScrimPlanetmans.Models.Forms;
-@using System.Text.RegularExpressions;
-@inherits InputBase<OutfitAlias>
+﻿@using System.Text.RegularExpressions;
+@using squittal.ScrimPlanetmans.App.Models.Forms
+@inherits InputBase<squittal.ScrimPlanetmans.App.Models.Forms.OutfitAlias>
 
 <input type="text" @attributes=AdditionalAttributes class=@CssClass @bind=CurrentValueAsString maxlength="4" pattern="[A-Za-z0-9]{1,4}"/>
 

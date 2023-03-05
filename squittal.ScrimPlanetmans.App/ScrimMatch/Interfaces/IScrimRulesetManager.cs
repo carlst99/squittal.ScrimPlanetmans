@@ -1,22 +1,21 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 
 public interface IScrimRulesetManager
 {
-    Ruleset? ActiveRuleset { get; }
+    Ruleset.Models.Ruleset? ActiveRuleset { get; }
 
-    Task<Ruleset?> GetActiveRulesetAsync(bool forceRefresh = false);
-    Task<Ruleset?> GetDefaultRulesetAsync();
+    Task<Ruleset.Models.Ruleset?> GetActiveRulesetAsync(bool forceRefresh = false);
+    Task<Ruleset.Models.Ruleset?> GetDefaultRulesetAsync();
 
-    Task<Ruleset?> ActivateRulesetAsync(int rulesetId);
+    Task<Ruleset.Models.Ruleset?> ActivateRulesetAsync(int rulesetId);
     Task SetUpActiveRulesetAsync();
 
     Task SeedDefaultRuleset();
     Task SeedScrimActionModels();
-    Task<IEnumerable<Ruleset>> GetRulesetsAsync(CancellationToken cancellationToken);
-    Task<Ruleset?> ActivateDefaultRulesetAsync();
+    Task<IEnumerable<Ruleset.Models.Ruleset>> GetRulesetsAsync(CancellationToken cancellationToken);
+    Task<Ruleset.Models.Ruleset?> ActivateDefaultRulesetAsync();
 }

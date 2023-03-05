@@ -1,9 +1,9 @@
-﻿using squittal.ScrimPlanetmans.Models;
-using squittal.ScrimPlanetmans.Models.Forms;
-using squittal.ScrimPlanetmans.Models.Planetside;
-using System;
+﻿using System;
+using squittal.ScrimPlanetmans.App.Models;
+using squittal.ScrimPlanetmans.App.Models.Forms;
+using squittal.ScrimPlanetmans.App.Models.Planetside;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public class ConstructedTeamMemberChangeMessage
 {

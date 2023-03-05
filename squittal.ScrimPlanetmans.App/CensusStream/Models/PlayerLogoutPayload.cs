@@ -1,4 +1,6 @@
-﻿namespace squittal.ScrimPlanetmans.CensusStream.Models;
+﻿using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+
+namespace squittal.ScrimPlanetmans.App.CensusStream.Models;
 
 public class PlayerLogoutPayload : PayloadBase, IEquitablePayload<PlayerLogoutPayload>
 {

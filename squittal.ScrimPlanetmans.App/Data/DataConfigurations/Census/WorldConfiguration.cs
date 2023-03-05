@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using squittal.ScrimPlanetmans.Models.Planetside;
+using squittal.ScrimPlanetmans.App.Models.Planetside;
 
-namespace squittal.ScrimPlanetmans.Data.DataConfigurations;
+namespace squittal.ScrimPlanetmans.App.Data.DataConfigurations.Census;
 
 public class WorldConfiguration : IEntityTypeConfiguration<World>
 {

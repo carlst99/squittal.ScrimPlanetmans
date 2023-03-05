@@ -1,15 +1,14 @@
-﻿using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using System;
+﻿using System;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public class RulesetRuleChangeMessage
 {
-    public Ruleset Ruleset { get; set; }
+    public Ruleset.Models.Ruleset Ruleset { get; set; }
     public RulesetRuleChangeType RuleChangeType { get; set; }
     public string Info { get; set; }
 
-    public RulesetRuleChangeMessage(Ruleset ruleset, RulesetRuleChangeType changeType)
+    public RulesetRuleChangeMessage(Ruleset.Models.Ruleset ruleset, RulesetRuleChangeType changeType)
     {
         Ruleset = ruleset;
         RuleChangeType = changeType;

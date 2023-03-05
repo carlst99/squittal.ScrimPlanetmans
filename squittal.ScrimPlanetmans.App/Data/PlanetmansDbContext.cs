@@ -1,11 +1,14 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using squittal.ScrimPlanetmans.Data.DataConfigurations;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using squittal.ScrimPlanetmans.Models.Planetside;
-using squittal.ScrimPlanetmans.Data.Models;
-using squittal.ScrimPlanetmans.Models.ScrimMatchReports;
+using squittal.ScrimPlanetmans.App.Data.DataConfigurations.Census;
+using squittal.ScrimPlanetmans.App.Data.DataConfigurations.ScrimMatch;
+using squittal.ScrimPlanetmans.App.Data.DataConfigurations.ScrimMatchReports;
+using squittal.ScrimPlanetmans.App.Data.Models;
+using squittal.ScrimPlanetmans.App.Models.Planetside;
+using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
-namespace squittal.ScrimPlanetmans.Data;
+namespace squittal.ScrimPlanetmans.App.Data;
 
 public class PlanetmansDbContext : DbContext
 {

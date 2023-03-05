@@ -1,12 +1,11 @@
-﻿@using squittal.ScrimPlanetmans.ScrimMatch;
-@using squittal.ScrimPlanetmans.ScrimMatch.Messages;
-@using squittal.ScrimPlanetmans.ScrimMatch.Models;
-@using squittal.ScrimPlanetmans.Services.ScrimMatch;
-
-@inject IStatefulTimer  Timer
+﻿@inject IStatefulTimer  Timer
 @inject IScrimMatchEngine ScrimMatchEngine
 @inject IScrimMessageBroadcastService MessageService
 
+@using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
+@using squittal.ScrimPlanetmans.App.ScrimMatch.Models
+@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
+@using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @implements IDisposable
 
 @if (Debug)

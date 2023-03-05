@@ -1,4 +1,4 @@
-﻿namespace squittal.ScrimPlanetmans.Models;
+﻿namespace squittal.ScrimPlanetmans.App.Models;
 
 public class ConstructedTeamMemberDetails
 {

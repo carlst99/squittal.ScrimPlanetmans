@@ -1,6 +1,6 @@
-﻿using squittal.ScrimPlanetmans.ScrimMatch.Models;
+﻿using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public class PlayerNameDisplayChangeMessage
 {

@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Threading.Tasks;
-using System.IO;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
-namespace squittal.ScrimPlanetmans.Logging;
+namespace squittal.ScrimPlanetmans.App.Logging;
 
 public class SqlScriptFileHandler
 {

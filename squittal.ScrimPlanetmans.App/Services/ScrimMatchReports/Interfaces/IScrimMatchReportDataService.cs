@@ -1,12 +1,12 @@
-﻿using squittal.ScrimPlanetmans.Models;
-using squittal.ScrimPlanetmans.Models.Forms;
-using squittal.ScrimPlanetmans.Models.ScrimMatchReports;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using squittal.ScrimPlanetmans.App.Models;
+using squittal.ScrimPlanetmans.App.Models.Forms;
+using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
-namespace squittal.ScrimPlanetmans.Services.ScrimMatchReports;
+namespace squittal.ScrimPlanetmans.App.Services.ScrimMatchReports.Interfaces;
 
 public interface IScrimMatchReportDataService
 {

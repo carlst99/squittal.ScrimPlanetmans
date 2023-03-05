@@ -1,11 +1,10 @@
-﻿using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using squittal.ScrimPlanetmans.Models.Planetside;
+﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using squittal.ScrimPlanetmans.App.Models.Planetside;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
-using System.Collections.Concurrent;
-
-namespace squittal.ScrimPlanetmans.ScrimMatch;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch;
 
 public class Team
 {

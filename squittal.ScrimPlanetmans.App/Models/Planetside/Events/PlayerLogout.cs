@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace squittal.ScrimPlanetmans.Models.Planetside.Events;
+namespace squittal.ScrimPlanetmans.App.Models.Planetside.Events;
 
 public class PlayerLogout
 {

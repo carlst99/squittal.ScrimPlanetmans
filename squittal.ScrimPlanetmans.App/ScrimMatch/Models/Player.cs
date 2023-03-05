@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Text.RegularExpressions;
-using squittal.ScrimPlanetmans.Models.Planetside;
-using squittal.ScrimPlanetmans.Services.Planetside;
+using squittal.ScrimPlanetmans.App.Models.Planetside;
+using squittal.ScrimPlanetmans.App.Services.Planetside;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Models;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 public class Player : IEquitable<Player>
 {

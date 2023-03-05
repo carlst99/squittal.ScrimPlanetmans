@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using System;
 
-namespace squittal.ScrimPlanetmans.Data;
+namespace squittal.ScrimPlanetmans.App.Data;
 
 public static class DbInitializer
 {

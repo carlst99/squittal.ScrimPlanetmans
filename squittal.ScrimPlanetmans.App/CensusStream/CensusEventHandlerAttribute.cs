@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace squittal.LivePlanetmans.CensusStream;
+namespace squittal.ScrimPlanetmans.App.CensusStream;
 
 [AttributeUsage(AttributeTargets.Method)]
 public class CensusEventHandlerAttribute : Attribute

@@ -1,8 +1,8 @@
-﻿using DaybreakGames.Census;
-using squittal.ScrimPlanetmans.CensusServices.Models;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using DaybreakGames.Census;
+using squittal.ScrimPlanetmans.App.CensusServices.Models;
 
-namespace squittal.ScrimPlanetmans.CensusServices;
+namespace squittal.ScrimPlanetmans.App.CensusServices;
 
 public class CensusCharacter
 {

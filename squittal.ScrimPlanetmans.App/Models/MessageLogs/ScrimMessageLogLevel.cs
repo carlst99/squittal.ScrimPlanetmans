@@ -1,4 +1,4 @@
-﻿namespace squittal.ScrimPlanetmans.Models.MessageLogs;
+﻿namespace squittal.ScrimPlanetmans.App.Models.MessageLogs;
 
 public enum ScrimMessageLogLevel
 {

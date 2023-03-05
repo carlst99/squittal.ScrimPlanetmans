@@ -1,13 +1,13 @@
-﻿using Microsoft.Extensions.Logging;
-using squittal.ScrimPlanetmans.CensusStream;
-using squittal.ScrimPlanetmans.Models.ScrimEngine;
-using squittal.ScrimPlanetmans.ScrimMatch.Messages;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using squittal.ScrimPlanetmans.Services.ScrimMatch;
-using System;
+﻿using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
+using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch;
 
 public class ScrimMatchEngine : IScrimMatchEngine
 {
@@ -21,7 +21,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
     private readonly IStatefulTimer _timer;
 
     public MatchConfiguration MatchConfiguration { get; set; } = new MatchConfiguration();
-    public Ruleset MatchRuleset { get; private set; }
+    public Ruleset.Models.Ruleset MatchRuleset { get; private set; }
 
     public int CurrentSeriesMatch { get; private set; } = 0;
 
@@ -147,7 +147,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
         SendMatchConfigurationUpdateMessage();
     }
 
-    public bool TrySetMatchRuleset(Ruleset matchRuleset)
+    public bool TrySetMatchRuleset(Ruleset.Models.Ruleset matchRuleset)
     {
         if (_currentRound == 0 && _matchState == MatchState.Uninitialized && !_isRunning)
         {

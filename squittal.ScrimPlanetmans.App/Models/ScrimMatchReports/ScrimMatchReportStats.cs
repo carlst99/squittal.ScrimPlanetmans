@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 
-namespace squittal.ScrimPlanetmans.Models.ScrimMatchReports;
+namespace squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
 
 public class ScrimMatchReportStats
 {

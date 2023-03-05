@@ -8,18 +8,20 @@ using DaybreakGames.Census.JsonConverters;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using squittal.LivePlanetmans.CensusStream;
-using squittal.ScrimPlanetmans.CensusStream.Models;
-using squittal.ScrimPlanetmans.Data;
-using squittal.ScrimPlanetmans.Data.Models;
-using squittal.ScrimPlanetmans.Models.Planetside.Events;
-using squittal.ScrimPlanetmans.ScrimMatch;
-using squittal.ScrimPlanetmans.ScrimMatch.Messages;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using squittal.ScrimPlanetmans.Services.Planetside;
-using squittal.ScrimPlanetmans.Services.ScrimMatch;
+using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+using squittal.ScrimPlanetmans.App.CensusStream.Models;
+using squittal.ScrimPlanetmans.App.Data.Interfaces;
+using squittal.ScrimPlanetmans.App.Data.Models;
+using squittal.ScrimPlanetmans.App.Models.Planetside.Events;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
+using squittal.ScrimPlanetmans.App.Services.Planetside;
+using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
+using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
-namespace squittal.ScrimPlanetmans.CensusStream;
+namespace squittal.ScrimPlanetmans.App.CensusStream;
 
 public class WebsocketEventHandler : IWebsocketEventHandler
 {

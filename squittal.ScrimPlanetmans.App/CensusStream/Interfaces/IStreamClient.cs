@@ -1,10 +1,11 @@
 ﻿// Credit to Lampjaw @ Voidwell.DaybreakGames
-using DaybreakGames.Census.Stream;
+
 using System;
 using System.Threading.Tasks;
+using DaybreakGames.Census.Stream;
 using Websocket.Client;
 
-namespace squittal.ScrimPlanetmans.CensusStream;
+namespace squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
 
 public interface IStreamClient : IDisposable
 {

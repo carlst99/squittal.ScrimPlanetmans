@@ -1,25 +1,24 @@
-﻿using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public class RulesetSettingChangeMessage
 {
-    public Ruleset Ruleset { get; set; }
+    public Ruleset.Models.Ruleset Ruleset { get; set; }
     public List<RulesetSettingChange> ChangedSettings { get; set; } = new List<RulesetSettingChange>();
     public string Info => GetInfoString();
 
-    public RulesetSettingChangeMessage(Ruleset ruleset, Ruleset previousRuleset)
+    public RulesetSettingChangeMessage(Ruleset.Models.Ruleset ruleset, Ruleset.Models.Ruleset previousRuleset)
     {
         Ruleset = ruleset;
 
         CalculateSettingChanges(ruleset, previousRuleset);
     }
 
-    private void CalculateSettingChanges(Ruleset ruleset, Ruleset previousRuleset)
+    private void CalculateSettingChanges(Ruleset.Models.Ruleset ruleset, Ruleset.Models.Ruleset previousRuleset)
     {
         if (ruleset.Name != previousRuleset.Name)
         {

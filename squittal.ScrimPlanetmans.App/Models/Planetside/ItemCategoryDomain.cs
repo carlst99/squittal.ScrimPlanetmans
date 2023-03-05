@@ -1,4 +1,4 @@
-﻿namespace squittal.ScrimPlanetmans.Models.Planetside;
+﻿namespace squittal.ScrimPlanetmans.App.Models.Planetside;
 
 public enum ItemCategoryDomain
 {

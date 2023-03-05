@@ -1,13 +1,15 @@
-﻿using Microsoft.Extensions.Logging;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using squittal.ScrimPlanetmans.Models.Planetside.Events;
-using squittal.ScrimPlanetmans.Services.ScrimMatch;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
-using squittal.ScrimPlanetmans.ScrimMatch.Messages;
-using squittal.ScrimPlanetmans.Models;
+using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Models;
+using squittal.ScrimPlanetmans.App.Models.Planetside.Events;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
+using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch;
 
 public class ScrimMatchScorer : IScrimMatchScorer
 {
@@ -16,7 +18,7 @@ public class ScrimMatchScorer : IScrimMatchScorer
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly ILogger<ScrimMatchEngine> _logger;
 
-    private Ruleset _activeRuleset;
+    private Ruleset.Models.Ruleset _activeRuleset;
 
     public ScrimMatchScorer(IScrimRulesetManager rulesets, IScrimTeamsManager teamsManager, IScrimMessageBroadcastService messageService, ILogger<ScrimMatchEngine> logger)
     {

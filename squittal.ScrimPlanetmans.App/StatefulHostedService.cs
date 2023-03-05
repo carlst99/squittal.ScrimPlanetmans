@@ -1,8 +1,8 @@
-﻿using squittal.ScrimPlanetmans.Models;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
+using squittal.ScrimPlanetmans.App.Models;
 
-namespace squittal.ScrimPlanetmans;
+namespace squittal.ScrimPlanetmans.App;
 
 public abstract class StatefulHostedService : IStatefulHostedService
 {

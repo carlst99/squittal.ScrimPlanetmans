@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans.Services;
+namespace squittal.ScrimPlanetmans.App.Services.Interfaces;
 
 public interface IUpdateable
 {

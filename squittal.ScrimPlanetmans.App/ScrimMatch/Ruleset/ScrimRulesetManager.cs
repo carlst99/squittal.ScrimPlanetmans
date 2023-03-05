@@ -7,15 +7,17 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using squittal.ScrimPlanetmans.Data;
-using squittal.ScrimPlanetmans.Models.Planetside;
-using squittal.ScrimPlanetmans.ScrimMatch.Messages;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using squittal.ScrimPlanetmans.Services.Planetside;
-using squittal.ScrimPlanetmans.Services.Rulesets;
-using squittal.ScrimPlanetmans.Services.ScrimMatch;
+using squittal.ScrimPlanetmans.App.Data;
+using squittal.ScrimPlanetmans.App.Data.Interfaces;
+using squittal.ScrimPlanetmans.App.Models.Planetside;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
+using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
+using squittal.ScrimPlanetmans.App.Services.Rulesets.Interfaces;
+using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset;
 
 public class ScrimRulesetManager : IScrimRulesetManager
 {
@@ -28,7 +30,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
     private readonly IRulesetDataService _rulesetDataService;
     private readonly IScrimMessageBroadcastService _messageService;
 
-    public Ruleset? ActiveRuleset { get; private set; }
+    public Models.Ruleset? ActiveRuleset { get; private set; }
     private readonly AutoResetEvent _activateRulesetAutoEvent = new(true);
 
     public ScrimRulesetManager(IDbContextHelper dbContextHelper, IItemCategoryService itemCategoryService, IItemService itemService, IRulesetDataService rulesetDataService, IScrimMessageBroadcastService messageService, ILogger<ScrimRulesetManager> logger)
@@ -45,10 +47,10 @@ public class ScrimRulesetManager : IScrimRulesetManager
         _messageService.RaiseRulesetOverlayConfigurationChangeEvent += HandleRulesetOverlayConfigurationChangeMessage;
     }
 
-    public async Task<IEnumerable<Ruleset>> GetRulesetsAsync(CancellationToken cancellationToken)
+    public async Task<IEnumerable<Models.Ruleset>> GetRulesetsAsync(CancellationToken cancellationToken)
         =>  await _rulesetDataService.GetAllRulesetsAsync(cancellationToken);
 
-    public async Task<Ruleset?> GetActiveRulesetAsync(bool forceRefresh = false)
+    public async Task<Models.Ruleset?> GetActiveRulesetAsync(bool forceRefresh = false)
     {
         if (ActiveRuleset == null)
             return await ActivateDefaultRulesetAsync();
@@ -65,13 +67,13 @@ public class ScrimRulesetManager : IScrimRulesetManager
         return ActiveRuleset;
     }
 
-    public async Task<Ruleset?> ActivateRulesetAsync(int rulesetId)
+    public async Task<Models.Ruleset?> ActivateRulesetAsync(int rulesetId)
     {
         _activateRulesetAutoEvent.WaitOne();
 
         try
         {
-            Ruleset? currentActiveRuleset = null;
+            Models.Ruleset? currentActiveRuleset = null;
 
             if (ActiveRuleset != null)
             {
@@ -118,7 +120,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
         }
     }
 
-    public async Task<Ruleset?> ActivateDefaultRulesetAsync()
+    public async Task<Models.Ruleset?> ActivateDefaultRulesetAsync()
     {
         using var factory = _dbContextHelper.GetFactory();
         var dbContext = factory.GetDbContext();
@@ -255,7 +257,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
         _activateRulesetAutoEvent.Set();
     }
 
-    public async Task<Ruleset?> GetDefaultRulesetAsync()
+    public async Task<Models.Ruleset?> GetDefaultRulesetAsync()
     {
         using var factory = _dbContextHelper.GetFactory();
         var dbContext = factory.GetDbContext();
@@ -330,7 +332,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
         else
         {
             var utcNow = DateTime.UtcNow;
-            var newRuleset = new Ruleset
+            var newRuleset = new Models.Ruleset
             {
                 Name = "Default",
                 DateCreated = utcNow

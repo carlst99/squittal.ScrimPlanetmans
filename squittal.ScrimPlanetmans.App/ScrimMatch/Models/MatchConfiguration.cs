@@ -1,7 +1,7 @@
-﻿using squittal.ScrimPlanetmans.Services.Rulesets;
-using System.Threading;
+﻿using System.Threading;
+using squittal.ScrimPlanetmans.App.Services.Rulesets;
 
-namespace squittal.ScrimPlanetmans.Models.ScrimEngine;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 public class MatchConfiguration
 {

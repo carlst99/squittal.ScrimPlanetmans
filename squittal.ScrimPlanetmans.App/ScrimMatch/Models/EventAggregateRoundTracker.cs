@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Models;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 public class ScrimEventAggregateRoundTracker
 {

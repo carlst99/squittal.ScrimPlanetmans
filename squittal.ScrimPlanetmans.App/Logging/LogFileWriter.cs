@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace squittal.ScrimPlanetmans.Logging;
+namespace squittal.ScrimPlanetmans.App.Logging;
 
 public class LogFileWriter
 {

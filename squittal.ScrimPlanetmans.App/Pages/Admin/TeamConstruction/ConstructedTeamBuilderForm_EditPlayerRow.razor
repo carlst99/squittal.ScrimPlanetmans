@@ -1,10 +1,9 @@
-﻿@using squittal.ScrimPlanetmans.Models;
-@using squittal.ScrimPlanetmans.Models.Planetside;
-@using squittal.ScrimPlanetmans.Models.Forms;
-@using squittal.ScrimPlanetmans.ScrimMatch.Messages;
-@using squittal.ScrimPlanetmans.Services.Planetside;
-@using squittal.ScrimPlanetmans.Services.ScrimMatch;
-
+﻿@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
+@using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
+@using squittal.ScrimPlanetmans.App.Models
+@using squittal.ScrimPlanetmans.App.Models.Forms
+@using squittal.ScrimPlanetmans.App.Models.Planetside
+@using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @inject IConstructedTeamService ConstructedTeamsService
 @inject ICharacterService CharacterService
 @inject IFactionService FactionService

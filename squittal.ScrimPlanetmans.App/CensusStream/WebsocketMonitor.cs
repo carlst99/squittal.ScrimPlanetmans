@@ -1,20 +1,22 @@
 ﻿// Credit to Lampjaw @ Voidwell.DaybreakGames for everything except player, world, & facility filtering
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using DaybreakGames.Census.Stream;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
-using squittal.ScrimPlanetmans.CensusStream.Models;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Linq;
-using squittal.ScrimPlanetmans.Models;
-using squittal.ScrimPlanetmans.Services.ScrimMatch;
-using squittal.ScrimPlanetmans.ScrimMatch.Messages;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
+using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+using squittal.ScrimPlanetmans.App.CensusStream.Models;
+using squittal.ScrimPlanetmans.App.Models;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
+using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 using Websocket.Client;
 
-namespace squittal.ScrimPlanetmans.CensusStream;
+namespace squittal.ScrimPlanetmans.App.CensusStream;
 
 public class WebsocketMonitor : StatefulHostedService, IWebsocketMonitor, IDisposable
 {

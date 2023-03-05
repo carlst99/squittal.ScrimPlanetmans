@@ -1,8 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using System;
+using squittal.ScrimPlanetmans.App.Data.Interfaces;
 
-namespace squittal.ScrimPlanetmans.Data;
+namespace squittal.ScrimPlanetmans.App.Data;
 
 public class DbContextHelper : IDbContextHelper
 {

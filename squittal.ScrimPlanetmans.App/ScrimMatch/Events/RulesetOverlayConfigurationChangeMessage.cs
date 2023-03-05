@@ -1,19 +1,19 @@
-﻿using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public class RulesetOverlayConfigurationChangeMessage
 {
-    public Ruleset Ruleset { get; set; }
+    public Ruleset.Models.Ruleset Ruleset { get; set; }
     public RulesetOverlayConfiguration OverlayConfiguration { get; set; }
     public List<RulesetOverlayConfigurationChange> ChangedSettings { get; set; } = new List<RulesetOverlayConfigurationChange>();
     public string Info => GetInfoString();
 
-    public RulesetOverlayConfigurationChangeMessage(Ruleset ruleset, RulesetOverlayConfiguration newConfiguration, RulesetOverlayConfiguration previousConfiguration)
+    public RulesetOverlayConfigurationChangeMessage(Ruleset.Models.Ruleset ruleset, RulesetOverlayConfiguration newConfiguration, RulesetOverlayConfiguration previousConfiguration)
     {
         Ruleset = ruleset;
         OverlayConfiguration = newConfiguration;

@@ -1,7 +1,8 @@
 ﻿// Credit to Lampjaw @ Voidwell.DaybreakGames
+
 using System;
 
-namespace squittal.ScrimPlanetmans.CensusStream;
+namespace squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
 
 public interface IWebsocketHealthMonitor
 {

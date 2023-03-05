@@ -1,6 +1,7 @@
-﻿using squittal.ScrimPlanetmans.Models;
+﻿using squittal.ScrimPlanetmans.App.Models;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Models;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
 public class PlanetsideClassRuleSettings : IEquitable<PlanetsideClassRuleSettings>
 {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace squittal.ScrimPlanetmans.Services;
+namespace squittal.ScrimPlanetmans.App.Services;
 
 public class StoreRefreshMessageEventArgs : EventArgs
 {

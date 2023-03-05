@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace squittal.ScrimPlanetmans;
+namespace squittal.ScrimPlanetmans.App;
 
 public class KeyedSemaphoreSlim : IDisposable
 {

@@ -1,9 +1,9 @@
-﻿using squittal.ScrimPlanetmans.Models.Planetside;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using System;
+﻿using System;
 using System.ComponentModel.DataAnnotations;
+using squittal.ScrimPlanetmans.App.Models.Planetside;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
-namespace squittal.ScrimPlanetmans.Data.Models;
+namespace squittal.ScrimPlanetmans.App.Data.Models;
 
 public class ScrimSpotAssist
 {

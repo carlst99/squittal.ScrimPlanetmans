@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Components;
-using squittal.ScrimPlanetmans.Models.MessageLogs;
-using squittal.ScrimPlanetmans.ScrimMatch.Models;
-using System;
+﻿using System;
+using Microsoft.AspNetCore.Components;
+using squittal.ScrimPlanetmans.App.Models.MessageLogs;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public class ScrimActionEventMessage
 {

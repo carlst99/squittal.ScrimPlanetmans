@@ -1,6 +1,6 @@
-﻿using static squittal.ScrimPlanetmans.CensusServices.Models.CensusCharacterModel;
+﻿using static squittal.ScrimPlanetmans.App.CensusServices.Models.CensusCharacterModel;
 
-namespace squittal.ScrimPlanetmans.CensusServices.Models;
+namespace squittal.ScrimPlanetmans.App.CensusServices.Models;
 
 public class CensusOutfitMemberCharacterNameModel : CensusOutfitMemberModel
 {

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace squittal.ScrimPlanetmans.CensusServices.Models;
+﻿namespace squittal.ScrimPlanetmans.App.CensusServices.Models;
 
 public class CensusLoadoutModel
 {

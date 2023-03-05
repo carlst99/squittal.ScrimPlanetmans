@@ -1,7 +1,7 @@
-﻿using squittal.ScrimPlanetmans.Models.Planetside;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using squittal.ScrimPlanetmans.App.Models.Planetside;
 
-namespace squittal.ScrimPlanetmans.Data.Models;
+namespace squittal.ScrimPlanetmans.App.Data.Models;
 
 public class ScrimMatchParticipatingPlayer
 {

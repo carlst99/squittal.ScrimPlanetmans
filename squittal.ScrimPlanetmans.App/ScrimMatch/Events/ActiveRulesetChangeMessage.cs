@@ -1,15 +1,13 @@
-﻿using squittal.ScrimPlanetmans.ScrimMatch.Models;
-
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+﻿namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public class ActiveRulesetChangeMessage
 {
-    public Ruleset ActiveRuleset { get; set; }
-    public Ruleset PreviousActiveRuleset { get; set; }
+    public Ruleset.Models.Ruleset ActiveRuleset { get; set; }
+    public Ruleset.Models.Ruleset PreviousActiveRuleset { get; set; }
 
     public string Info { get; set; }
 
-    public ActiveRulesetChangeMessage(Ruleset activeRuleset, Ruleset previousActiveRuleset)
+    public ActiveRulesetChangeMessage(Ruleset.Models.Ruleset activeRuleset, Ruleset.Models.Ruleset previousActiveRuleset)
     {
         ActiveRuleset = activeRuleset;
         PreviousActiveRuleset = previousActiveRuleset;
@@ -20,7 +18,7 @@ public class ActiveRulesetChangeMessage
         Info = $"Active Ruleset Changed: {oldNameDisplay} [{PreviousActiveRuleset?.Id} => {newNameDisplay} [{ActiveRuleset.Id}]";
     }
 
-    public ActiveRulesetChangeMessage(Ruleset activeRuleset)
+    public ActiveRulesetChangeMessage(Ruleset.Models.Ruleset activeRuleset)
     {
         ActiveRuleset = activeRuleset;
 

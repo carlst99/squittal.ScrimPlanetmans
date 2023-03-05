@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using squittal.ScrimPlanetmans.Models.ScrimMatchReports;
+using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
 
-namespace squittal.ScrimPlanetmans.Data.DataConfigurations;
+namespace squittal.ScrimPlanetmans.App.Data.DataConfigurations.ScrimMatchReports;
 
 public class ScrimMatchReportInfantryTeamRoundStatsConfiguration : IEntityTypeConfiguration<ScrimMatchReportInfantryTeamRoundStats>
 {

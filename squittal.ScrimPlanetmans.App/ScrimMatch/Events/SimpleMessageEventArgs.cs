@@ -1,7 +1,7 @@
-﻿using squittal.ScrimPlanetmans.Models.MessageLogs;
-using System;
+﻿using System;
+using squittal.ScrimPlanetmans.App.Models.MessageLogs;
 
-namespace squittal.ScrimPlanetmans.ScrimMatch.Messages;
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public class SimpleMessageEventArgs : EventArgs
 {

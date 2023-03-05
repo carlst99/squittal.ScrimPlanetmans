@@ -1,8 +1,8 @@
-﻿using squittal.ScrimPlanetmans.Models;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using squittal.ScrimPlanetmans.App.Models;
 
-namespace squittal.ScrimPlanetmans.CensusStream;
+namespace squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
 
 public interface IWebsocketMonitor : IStatefulHostedService
 {

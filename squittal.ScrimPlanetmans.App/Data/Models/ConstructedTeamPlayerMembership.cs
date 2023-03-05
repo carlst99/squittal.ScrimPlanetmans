@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace squittal.ScrimPlanetmans.Data.Models;
+namespace squittal.ScrimPlanetmans.App.Data.Models;
 
 public class ConstructedTeamPlayerMembership
 {

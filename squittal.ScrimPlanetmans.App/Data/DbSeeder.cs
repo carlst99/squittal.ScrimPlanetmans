@@ -1,14 +1,15 @@
-﻿using Microsoft.Extensions.Logging;
-using squittal.ScrimPlanetmans.ScrimMatch;
-using squittal.ScrimPlanetmans.Services;
-using squittal.ScrimPlanetmans.Services.Planetside;
-using squittal.ScrimPlanetmans.Services.ScrimMatch;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Data.Interfaces;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
+using squittal.ScrimPlanetmans.App.Services.Interfaces;
+using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
+using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
-namespace squittal.ScrimPlanetmans.Data;
+namespace squittal.ScrimPlanetmans.App.Data;
 
 public class DbSeeder : IDbSeeder
 {

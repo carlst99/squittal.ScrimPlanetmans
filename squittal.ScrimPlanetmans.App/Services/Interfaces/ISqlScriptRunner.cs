@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace squittal.ScrimPlanetmans.Services;
+﻿namespace squittal.ScrimPlanetmans.App.Services.Interfaces;
 
 public interface ISqlScriptRunner
 {

@@ -1,12 +1,13 @@
-﻿using Microsoft.Extensions.Logging;
-using squittal.ScrimPlanetmans.ScrimMatch;
-using squittal.ScrimPlanetmans.Services.Planetside;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Data.Interfaces;
+using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
+using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 
-namespace squittal.ScrimPlanetmans.Data;
+namespace squittal.ScrimPlanetmans.App.Data;
 
 public class ApplicationDataLoader : IApplicationDataLoader
 {

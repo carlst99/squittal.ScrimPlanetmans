@@ -1,7 +1,8 @@
-﻿using squittal.ScrimPlanetmans.Models.Planetside;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using squittal.ScrimPlanetmans.App.Models.Planetside;
+using squittal.ScrimPlanetmans.App.Services.Interfaces;
 
-namespace squittal.ScrimPlanetmans.Services.Planetside;
+namespace squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 
 public interface IVehicleService : ILocallyBackedCensusStore
 {

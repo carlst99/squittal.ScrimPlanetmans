@@ -2,11 +2,12 @@
 @page "/Rulesets"
 
 @using squittal.ScrimPlanetmans.App.Pages.Shared;
-@using squittal.ScrimPlanetmans.ScrimMatch; 
-@using squittal.ScrimPlanetmans.ScrimMatch.Models;
-@using squittal.ScrimPlanetmans.Services.Rulesets;
 @using System.Threading;
-@using Microsoft.AspNetCore.WebUtilities @*for QueryHelpers*@
+@using Microsoft.AspNetCore.WebUtilities 
+@using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
+@using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models
+@using squittal.ScrimPlanetmans.App.Services.Rulesets.Interfaces
+@*for QueryHelpers*@
 
 @inject IRulesetDataService RulesetDataService 
 @inject IScrimRulesetManager RulesetManager
