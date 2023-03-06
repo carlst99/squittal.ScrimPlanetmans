@@ -23,8 +23,8 @@ public class FacilityService : IFacilityService
     private readonly ISqlScriptRunner _sqlScriptRunner;
     private readonly ILogger<FacilityService> _logger;
 
-    private ConcurrentDictionary<int, MapRegion> ScrimmableFacilityMapRegionsMap { get; set; } = new ConcurrentDictionary<int, MapRegion>();
-    private readonly SemaphoreSlim _mapSetUpSemaphore = new SemaphoreSlim(1);
+    private readonly ConcurrentDictionary<int, MapRegion> _scrimmableFacilityMapRegionsMap = new();
+    private readonly SemaphoreSlim _mapSetUpSemaphore = new(1);
 
     public string BackupSqlScriptFileName => Path.Combine("CensusBackups", "dbo.MapRegion.Table.sql");
 
@@ -58,7 +58,7 @@ public class FacilityService : IFacilityService
 
     public async Task<IEnumerable<MapRegion>> GetScrimmableMapRegionsAsync()
     {
-        if (ScrimmableFacilityMapRegionsMap.Count == 0 || !ScrimmableFacilityMapRegionsMap.Any())
+        if (_scrimmableFacilityMapRegionsMap.Count == 0 || !_scrimmableFacilityMapRegionsMap.Any())
         {
             await SetUpScrimmableMapRegionsAsync();
         }
@@ -68,12 +68,12 @@ public class FacilityService : IFacilityService
 
     private IEnumerable<MapRegion> GetScrimmableMapRegions()
     {
-        return ScrimmableFacilityMapRegionsMap.Values.ToList();
+        return _scrimmableFacilityMapRegionsMap.Values.ToList();
     }
 
     public async Task<MapRegion> GetScrimmableMapRegionFromFacilityIdAsync(int facilityId)
     {
-        if (ScrimmableFacilityMapRegionsMap.Count == 0 || !ScrimmableFacilityMapRegionsMap.Any())
+        if (_scrimmableFacilityMapRegionsMap.Count == 0 || !_scrimmableFacilityMapRegionsMap.Any())
         {
             await SetUpScrimmableMapRegionsAsync();
         }
@@ -83,7 +83,7 @@ public class FacilityService : IFacilityService
 
     private MapRegion GetScrimmableMapRegionFromFacilityId(int facilityId)
     {
-        ScrimmableFacilityMapRegionsMap.TryGetValue(facilityId, out var mapRegion);
+        _scrimmableFacilityMapRegionsMap.TryGetValue(facilityId, out var mapRegion);
 
         return mapRegion;
     }
@@ -99,23 +99,23 @@ public class FacilityService : IFacilityService
 
             var storeRegions = await GetAllStoredScrimmableZoneMapRegionsAsync();
 
-            foreach (var facilityId in ScrimmableFacilityMapRegionsMap.Keys)
+            foreach (var facilityId in _scrimmableFacilityMapRegionsMap.Keys)
             {
                 if (!storeRegions.Any(r => r.FacilityId == facilityId))
                 {
-                    ScrimmableFacilityMapRegionsMap.TryRemove(facilityId, out var removedItem);
+                    _scrimmableFacilityMapRegionsMap.TryRemove(facilityId, out var removedItem);
                 }
             }
 
             foreach (var region in storeRegions)
             {
-                if (ScrimmableFacilityMapRegionsMap.ContainsKey(region.FacilityId))
+                if (_scrimmableFacilityMapRegionsMap.ContainsKey(region.FacilityId))
                 {
-                    ScrimmableFacilityMapRegionsMap[region.FacilityId] = region;
+                    _scrimmableFacilityMapRegionsMap[region.FacilityId] = region;
                 }
                 else
                 {
-                    ScrimmableFacilityMapRegionsMap.TryAdd(region.FacilityId, region);
+                    _scrimmableFacilityMapRegionsMap.TryAdd(region.FacilityId, region);
                 }
             }
         }
@@ -149,7 +149,12 @@ public class FacilityService : IFacilityService
         return await dbContext.MapRegions.ToListAsync();
     }
 
-    public async Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false)
+    public async Task RefreshStoreAsync
+    (
+        bool onlyQueryCensusIfEmpty = false,
+        bool canUseBackupScript = false,
+        CancellationToken ct = default
+    )
     {
         if (onlyQueryCensusIfEmpty)
         {
@@ -164,7 +169,7 @@ public class FacilityService : IFacilityService
         // Always use backup script if available to get old bases that aren't in the Census API
         if (canUseBackupScript)
         {
-            RefreshStoreFromBackup();
+            RefreshStoreFromBackup(ct);
         }
 
         await RefreshStoreFromCensus();
@@ -233,7 +238,7 @@ public class FacilityService : IFacilityService
                     {
                         censusEntity.IsDeprecated = false;
                         censusEntity.IsCurrent = true;
-                    
+
                         createdEntities.Add(censusEntity);
                     }
                     // Existing MapRegion overwritten with new FacilityID
@@ -241,7 +246,7 @@ public class FacilityService : IFacilityService
                     {
                         censusEntity.IsDeprecated = false;
                         censusEntity.IsCurrent = true;
-                        
+
                         createdEntities.Add(censusEntity);
 
                         storeEntity = storeMapRegion;
@@ -318,7 +323,7 @@ public class FacilityService : IFacilityService
         return await dbContext.MapRegions.CountAsync(e => e.IsCurrent);
     }
 
-    public void RefreshStoreFromBackup()
+    public void RefreshStoreFromBackup(CancellationToken ct = default)
     {
         _sqlScriptRunner.RunSqlScript(BackupSqlScriptFileName);
     }

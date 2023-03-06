@@ -10,7 +10,7 @@ public class CensusStoreDataComparisonRow
     private readonly ICountableStore _countService;
     private readonly IUpdateable _refreshService;
     private readonly ILocallyBackedStore _localBackupService;
-        
+
     public string Name { get; set; }
     public int StoreCount { get; set; } = 0;
     public int CensusCount { get; set; } = 0;
@@ -120,13 +120,13 @@ public class CensusStoreDataComparisonRow
         }
     }
 
-    public async Task RefreshStoreFromCensus()
+    public async Task RefreshStoreFromCensusAsync(CancellationToken ct)
     {
         _autoEvent.WaitOne();
         if (IsRefreshable && !IsRefreshingStore)
         {
             IsRefreshingStore = true;
-            await _refreshService.RefreshStore();
+            await _refreshService.RefreshStoreAsync(ct: ct);
             IsRefreshingStore = false;
         }
         _autoEvent.Set();
@@ -135,13 +135,13 @@ public class CensusStoreDataComparisonRow
         await SetCensusCount();
     }
 
-    public async Task RefreshStoreFromBackup()
+    public async Task RefreshStoreFromBackupAsync(CancellationToken ct)
     {
         _autoEvent.WaitOne();
         if (!IsRefreshingStore)
         {
             IsRefreshingStore = true;
-            _localBackupService.RefreshStoreFromBackup();
+            _localBackupService.RefreshStoreFromBackup(ct);
             IsRefreshingStore = false;
         }
         _autoEvent.Set();

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -42,7 +43,7 @@ public class FactionService : IFactionService
 
     }
 
-    public async Task<Faction> GetFactionAsync(int factionId)
+    public async Task<Faction?> GetFactionAsync(int factionId)
     {
         var factions = await GetAllFactionsAsync();
         return factions.FirstOrDefault(f => f.Id == factionId);
@@ -60,14 +61,19 @@ public class FactionService : IFactionService
         };
     }
 
-    public async Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false)
+    public async Task RefreshStoreAsync
+    (
+        bool onlyQueryCensusIfEmpty = false,
+        bool canUseBackupScript = false,
+        CancellationToken ct = default
+    )
     {
         if (onlyQueryCensusIfEmpty)
         {
             using var factory = _dbContextHelper.GetFactory();
             var dbContext = factory.GetDbContext();
 
-            var anyFactions = await dbContext.Factions.AnyAsync();
+            var anyFactions = await dbContext.Factions.AnyAsync(cancellationToken: ct);
             if (anyFactions)
             {
                 return;
@@ -78,7 +84,7 @@ public class FactionService : IFactionService
 
         if (!success && canUseBackupScript)
         {
-            RefreshStoreFromBackup();
+            RefreshStoreFromBackup(ct);
         }
     }
 
@@ -129,7 +135,7 @@ public class FactionService : IFactionService
 
                 await dbContext.SaveChangesAsync();
 
-                _logger.LogInformation($"Refreshed Factions store");
+                _logger.LogInformation("Refreshed Factions store");
             }
 
             return true;
@@ -165,7 +171,7 @@ public class FactionService : IFactionService
         return await dbContext.Factions.CountAsync();
     }
 
-    public void RefreshStoreFromBackup()
+    public void RefreshStoreFromBackup(CancellationToken ct = default)
     {
         _sqlScriptRunner.RunSqlScript(BackupSqlScriptFileName);
     }

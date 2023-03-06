@@ -654,7 +654,7 @@
         _showExportConfirmationForm = true;
     }
 
-    private async void HandleExportRulesetToJsonFileSubmit()
+    private async Task HandleExportRulesetToJsonFileSubmit()
     {
         _isExportingRuleset = true;
         InvokeAsyncStateHasChanged();

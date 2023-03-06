@@ -1,8 +1,10 @@
-﻿namespace squittal.ScrimPlanetmans.App.Services.Interfaces;
+﻿using System.Threading;
+
+namespace squittal.ScrimPlanetmans.App.Services.Interfaces;
 
 public interface ILocallyBackedStore
 {
     string BackupSqlScriptFileName { get; }
 
-    void RefreshStoreFromBackup();
+    void RefreshStoreFromBackup(CancellationToken ct);
 }

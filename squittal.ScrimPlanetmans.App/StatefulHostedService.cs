@@ -24,13 +24,13 @@ public abstract class StatefulHostedService : IStatefulHostedService
 
     public virtual async Task StartAsync(CancellationToken cancellationToken)
     {
-        await UpdateStateAsync(true);
+        await UpdateStateAsync(true, cancellationToken);
         await StartInternalAsync(cancellationToken);
     }
 
     public virtual async Task StopAsync(CancellationToken cancellationToken)
     {
-        await UpdateStateAsync(false);
+        await UpdateStateAsync(false, cancellationToken);
         await StopInternalAsync(cancellationToken);
     }
 
@@ -46,10 +46,10 @@ public abstract class StatefulHostedService : IStatefulHostedService
         };
     }
 
-    protected async Task UpdateStateAsync(bool isEnabled)
+    protected async Task UpdateStateAsync(bool isEnabled, CancellationToken ct)
     {
         _isRunning = isEnabled;
-        var state = await GetStateAsync(CancellationToken.None);
+        var state = await GetStateAsync(ct);
     }
 
     protected virtual Task<object> GetStatusAsync(CancellationToken cancellationToken)

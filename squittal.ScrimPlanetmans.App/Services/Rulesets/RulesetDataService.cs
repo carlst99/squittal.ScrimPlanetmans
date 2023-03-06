@@ -65,102 +65,148 @@ public class RulesetDataService : IRulesetDataService
         _messageService = messageService;
         _logger = logger;
 
-        _itemCategoryService.RaiseStoreRefreshEvent += async (s, e) => await HandleItemCategoryStoreRefreshEvent(s, e);
-        _itemService.RaiseStoreRefreshEvent += async (s, e) => await HandleItemStoreRefreshEvent(s, e);
+        _itemCategoryService.RaiseStoreRefreshEvent += HandleItemCategoryStoreRefreshEvent;
+        _itemService.RaiseStoreRefreshEvent += HandleItemStoreRefreshEvent;
     }
 
     #region Collection Refresh Event Handling
-    private async Task HandleItemCategoryStoreRefreshEvent(object sender, StoreRefreshMessageEventArgs e)
+    private void HandleItemCategoryStoreRefreshEvent(object? sender, StoreRefreshMessageEventArgs e)
     {
-        var refreshSource = Enum.GetName(typeof(StoreRefreshSource), e.RefreshSource);
-        _logger.LogInformation($"Updating rulesets post-Item Category Store Refresh. Source: {refreshSource}");
+        string? refreshSource = Enum.GetName(typeof(StoreRefreshSource), e.RefreshSource);
+        _logger.LogInformation("Updating rulesets post-Item Category Store Refresh. Source: {Source}", refreshSource);
 
-        var storeItemCategoryIds = await _itemCategoryService.GetWeaponItemCategoryIdsAsync();
-
-        if (storeItemCategoryIds == null)
+        try
         {
-            return;
-        }
-
-        var storeRulesets = await GetAllRulesetsAsync(CancellationToken.None);
-
-        if (storeRulesets == null || !storeRulesets.Any())
-        {
-            _logger.LogInformation($"Finished updating rulesets post-Item Category Store Refresh. No store rulesets found. Source: {refreshSource}");
-
-            return;
-        }
-
-        foreach (var ruleset in storeRulesets)
-        {
-            var rulesetItemCategoryRules = await GetRulesetItemCategoryRulesAsync(ruleset.Id, CancellationToken.None);
-
-            var missingItemCategoryIds = storeItemCategoryIds.Where(id => !rulesetItemCategoryRules.Any(rule => rule.ItemCategoryId == id)).ToList();
-
-            if (!missingItemCategoryIds.Any())
+            Task.Run(async () =>
             {
-                continue;
-            }
+                int[] storeItemCategoryIds = (await _itemCategoryService.GetWeaponItemCategoryIdsAsync()).ToArray();
+                Ruleset[] storeRulesets = (await GetAllRulesetsAsync(e.CancellationToken)).ToArray();
 
-            var newRules = missingItemCategoryIds.Select(id => BuildRulesetItemCategoryRule(ruleset.Id, id, 0));
+                if (storeRulesets.Length is 0)
+                {
+                    _logger.LogInformation
+                    (
+                        "Finished updating rulesets post-Item Category Store Refresh. No store rulesets found. Source: {Source}",
+                        refreshSource
+                    );
 
-            await SaveRulesetItemCategoryRules(ruleset.Id, newRules);
+                    return;
+                }
 
-            _logger.LogInformation($"Updated Item Category Rules for Ruleset {ruleset.Id} post-Item Category Store Refresh. Source: {refreshSource}. New Rules: {newRules.Count()}");
+                foreach (Ruleset ruleset in storeRulesets)
+                {
+                    IEnumerable<RulesetItemCategoryRule>? rulesetItemCategoryRules
+                        = await GetRulesetItemCategoryRulesAsync(ruleset.Id, e.CancellationToken);
+
+                    int[] missingItemCategoryIds = storeItemCategoryIds
+                        .Where(id => rulesetItemCategoryRules.All(rule => rule.ItemCategoryId != id))
+                        .ToArray();
+
+                    if (missingItemCategoryIds.Length is 0)
+                        continue;
+
+                    RulesetItemCategoryRule[] newRules = missingItemCategoryIds.Select
+                        (
+                            id => BuildRulesetItemCategoryRule(ruleset.Id, id)
+                        )
+                        .ToArray();
+                    await SaveRulesetItemCategoryRules(ruleset.Id, newRules);
+
+                    _logger.LogInformation
+                    (
+                        "Updated Item Category Rules for Ruleset {ID} post-Item Category Store Refresh. " +
+                        "Source: {Source}. New Rules: {Count}",
+                        ruleset.Id,
+                        refreshSource,
+                        newRules.Length
+                    );
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to handle an item category store refresh event");
         }
 
-        _logger.LogInformation($"Finished updating rulesets post-Item Category Store Refresh. Source: {refreshSource}");
+        _logger.LogInformation("Finished updating rulesets post-Item Category Store Refresh. Source: {Source}", refreshSource);
     }
 
-    private async Task HandleItemStoreRefreshEvent(object sender, StoreRefreshMessageEventArgs e)
+    private void HandleItemStoreRefreshEvent(object? sender, StoreRefreshMessageEventArgs e)
     {
-        var refreshSource = Enum.GetName(typeof(StoreRefreshSource), e.RefreshSource);
-        _logger.LogInformation($"Updating rulesets post-Item Store Refresh. Source: {refreshSource}");
+        string? refreshSource = Enum.GetName(typeof(StoreRefreshSource), e.RefreshSource);
+        _logger.LogInformation("Updating rulesets post-Item Store Refresh. Source: {Source}", refreshSource);
 
-        var storeWeapons = await _itemService.GetAllWeaponItemsAsync();
-
-        if (storeWeapons == null)
+        try
         {
-            return;
-        }
-
-        var storeRulesets = await GetAllRulesetsAsync(CancellationToken.None);
-
-        if (storeRulesets == null || !storeRulesets.Any())
-        {
-            _logger.LogInformation($"Finished updating rulesets post-Item Store Refresh. No store rulesets found. Source: {refreshSource}");
-
-            return;
-        }
-
-        foreach (var ruleset in storeRulesets)
-        {
-            var deferredItemCategoryRules = await GetItemCategoriesDeferringToItemRules(ruleset.Id, CancellationToken.None);
-
-            if (!deferredItemCategoryRules.Any())
+            Task.Run(async () =>
             {
-                continue;
-            }
+                Item[] storeWeapons = (await _itemService.GetAllWeaponItemsAsync()).ToArray();
+                Ruleset[] storeRulesets = (await GetAllRulesetsAsync(e.CancellationToken)).ToArray();
 
-            var deferredToWeapons = storeWeapons.Where(w => deferredItemCategoryRules.Any(rule => rule.Id == w.ItemCategoryId)).ToList();
+                if (storeRulesets.Length is 0)
+                {
+                    _logger.LogInformation
+                    (
+                        "Finished updating rulesets post-Item Store Refresh. No store rulesets found. Source: {Source}",
+                        refreshSource
+                    );
+                    return;
+                }
 
-            var rulesetItemRules = await GetRulesetItemRulesAsync(ruleset.Id, CancellationToken.None);
+                foreach (Ruleset ruleset in storeRulesets)
+                {
+                    ItemCategory[] deferredItemCategoryRules
+                        = (await GetItemCategoriesDeferringToItemRules(ruleset.Id, e.CancellationToken))
+                            .ToArray();
 
-            var missingItemIds = deferredToWeapons.Where(w => !rulesetItemRules.Any(rule => rule.ItemId == w.Id)).ToList();
+                    if (!deferredItemCategoryRules.Any())
+                        continue;
 
-            if (!missingItemIds.Any())
-            {
-                continue;
-            }
+                    List<Item> deferredToWeapons = storeWeapons.Where
+                        (
+                            w => deferredItemCategoryRules.Any(rule => rule.Id == w.ItemCategoryId)
+                        )
+                        .ToList();
 
-            var newRules = missingItemIds.Select(w => BuildRulesetItemRule(ruleset.Id, w.Id, (int)w.ItemCategoryId, 0));
+                    IEnumerable<RulesetItemRule>? rulesetItemRules = await GetRulesetItemRulesAsync
+                    (
+                        ruleset.Id,
+                        CancellationToken.None
+                    );
 
-            await SaveRulesetItemRules(ruleset.Id, newRules);
+                    List<Item> missingItemIds = deferredToWeapons.Where
+                        (
+                            w => rulesetItemRules.All(rule => rule.ItemId != w.Id)
+                        )
+                        .ToList();
 
-            _logger.LogInformation($"Updated Item Rules for Ruleset {ruleset.Id} post-Item Category Store Refresh. Source: {refreshSource}. New Rules: {newRules.Count()}");
+                    if (!missingItemIds.Any())
+                        continue;
+
+                    RulesetItemRule[] newRules = missingItemIds.Select
+                        (
+                            w => BuildRulesetItemRule(ruleset.Id, w.Id, w.ItemCategoryId ?? 0)
+                        )
+                        .ToArray();
+                    await SaveRulesetItemRules(ruleset.Id, newRules);
+
+                    _logger.LogInformation
+                    (
+                        "Updated Item Rules for Ruleset {ID} post-Item Category Store Refresh. " +
+                        "Source: {Source}. New Rules: {Count}",
+                        ruleset.Id,
+                        refreshSource,
+                        newRules.Length
+                    );
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to handle an item store refresh event");
         }
 
-        _logger.LogInformation($"Finished updating rulesets post-Item Store Refresh. Source: {refreshSource}");
+        _logger.LogInformation("Finished updating rulesets post-Item Store Refresh. Source: {Source}", refreshSource);
     }
     #endregion Collection Refresh Event Handling
 
@@ -212,10 +258,8 @@ public class RulesetDataService : IRulesetDataService
 
     public async Task<IEnumerable<Ruleset>> GetAllRulesetsAsync(CancellationToken cancellationToken)
     {
-        if (_rulesetsMap.Count == 0 || !_rulesetsMap.Any())
-        {
+        if (_rulesetsMap.IsEmpty)
             await SetUpRulesetsMapAsync(cancellationToken);
-        }
 
         if (!_rulesetsMap.Any())
             return Array.Empty<Ruleset>();

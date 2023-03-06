@@ -1,5 +1,6 @@
 ﻿@using squittal.ScrimPlanetmans.App.Services
 @using squittal.ScrimPlanetmans.App.Models
+@using System.Threading
 @inject DatabaseMaintenanceService DbMaintenance
 
 @if (_renderedComparison != null)
@@ -105,6 +106,7 @@
     [Parameter]
     public CensusStoreDataComparisonRow i_comparison { get; set; }
     private CensusStoreDataComparisonRow _renderedComparison { get; set; }
+    private CancellationTokenSource _cts = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -161,13 +163,19 @@
             return;
         }
 
-        await _renderedComparison.RefreshStoreFromCensus();
+        await _renderedComparison.RefreshStoreFromCensusAsync(_cts.Token);
     }
 
     private async Task UpdateDatabaseFromBackup()
     {
         await Task.Run(() =>
-            _renderedComparison.RefreshStoreFromBackup()
+            _renderedComparison.RefreshStoreFromBackupAsync(_cts.Token)
         );
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
     }
 }

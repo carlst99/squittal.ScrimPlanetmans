@@ -39,9 +39,9 @@ public class ItemService : IItemService
         RaiseStoreRefreshEvent?.Invoke(this, e);
     }
 
-    private void SendStoreRefreshEventMessage(StoreRefreshSource refreshSource)
+    private void SendStoreRefreshEventMessage(StoreRefreshSource refreshSource, CancellationToken ct)
     {
-        OnRaiseStoreRefreshEvent(new StoreRefreshMessageEventArgs(refreshSource));
+        OnRaiseStoreRefreshEvent(new StoreRefreshMessageEventArgs(refreshSource, ct));
     }
 
     public ItemService(IDbContextHelper dbContextHelper, IItemCategoryService itemCategoryService,
@@ -176,7 +176,12 @@ public class ItemService : IItemService
         }
     }
 
-    public async Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false)
+    public async Task RefreshStoreAsync
+    (
+        bool onlyQueryCensusIfEmpty = false,
+        bool canUseBackupScript = false,
+        CancellationToken ct = default
+    )
     {
         if (onlyQueryCensusIfEmpty)
         {
@@ -192,17 +197,17 @@ public class ItemService : IItemService
             }
         }
 
-        var success = await RefreshStoreFromCensus();
+        var success = await RefreshStoreFromCensus(ct);
 
         if (!success && canUseBackupScript)
         {
-            RefreshStoreFromBackup();
+            RefreshStoreFromBackup(ct);
         }
 
         await SetUpWeaponsMapAsync();
     }
 
-    public async Task<bool> RefreshStoreFromCensus()
+    public async Task<bool> RefreshStoreFromCensus(CancellationToken ct)
     {
         List<CensusItemModel> items;
 
@@ -222,7 +227,7 @@ public class ItemService : IItemService
 
         await UpsertRangeAsync(items.Select(ConvertToDbModel));
         _logger.LogInformation("Refreshed Items store: {ItemCount} entries", items.Count);
-        SendStoreRefreshEventMessage(StoreRefreshSource.CensusApi);
+        SendStoreRefreshEventMessage(StoreRefreshSource.CensusApi, ct);
 
         return true;
     }
@@ -289,10 +294,10 @@ public class ItemService : IItemService
         return await dbContext.Items.CountAsync();
     }
 
-    public void RefreshStoreFromBackup()
+    public void RefreshStoreFromBackup(CancellationToken ct)
     {
         _sqlScriptRunner.RunSqlScript(BackupSqlScriptFileName);
 
-        SendStoreRefreshEventMessage(StoreRefreshSource.BackupSqlScript);
+        SendStoreRefreshEventMessage(StoreRefreshSource.BackupSqlScript, ct);
     }
 }

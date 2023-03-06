@@ -37,9 +37,9 @@ public class ItemCategoryService : IItemCategoryService
         RaiseStoreRefreshEvent?.Invoke(this, e);
     }
 
-    private void SendStoreRefreshEventMessage(StoreRefreshSource refreshSource)
+    private void SendStoreRefreshEventMessage(StoreRefreshSource refreshSource, CancellationToken ct)
     {
-        OnRaiseStoreRefreshEvent(new StoreRefreshMessageEventArgs(refreshSource));
+        OnRaiseStoreRefreshEvent(new StoreRefreshMessageEventArgs(refreshSource, ct));
     }
 
     private static readonly int[] _nonWeaponItemCategoryIds =
@@ -296,20 +296,25 @@ public class ItemCategoryService : IItemCategoryService
     }
 
     #region Store Management methods
-    public async Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false)
+    public async Task RefreshStoreAsync
+    (
+        bool onlyQueryCensusIfEmpty = false,
+        bool canUseBackupScript = false,
+        CancellationToken ct = default
+    )
     {
         if (onlyQueryCensusIfEmpty)
         {
             using var factory = _dbContextHelper.GetFactory();
             var dbContext = factory.GetDbContext();
 
-            bool anyCategories = await dbContext.ItemCategories.AnyAsync();
+            bool anyCategories = await dbContext.ItemCategories.AnyAsync(cancellationToken: ct);
 
             if (anyCategories)
             {
                 var categoriesToBackfill = await dbContext.ItemCategories
                     .Where(ic => ic.Domain == ItemCategoryDomain.Default)
-                    .ToListAsync();
+                    .ToListAsync(cancellationToken: ct);
 
                 if (!categoriesToBackfill.Any())
                 {
@@ -332,17 +337,17 @@ public class ItemCategoryService : IItemCategoryService
             }
         }
 
-        var success = await RefreshStoreFromCensus();
+        var success = await RefreshStoreFromCensusAsync(ct);
 
         if (!success && canUseBackupScript)
         {
-            RefreshStoreFromBackup();
+            RefreshStoreFromBackup(ct);
         }
 
         await SetUpWeaponCategoriesListAsync();
     }
 
-    public async Task<bool> RefreshStoreFromCensus()
+    public async Task<bool> RefreshStoreFromCensusAsync(CancellationToken ct = default)
     {
         List<CensusItemCategoryModel> itemCategories;
 
@@ -363,7 +368,7 @@ public class ItemCategoryService : IItemCategoryService
 
         _logger.LogInformation("Refreshed Item Categories store: {Amount} entries", itemCategories.Count);
 
-        SendStoreRefreshEventMessage(StoreRefreshSource.CensusApi);
+        SendStoreRefreshEventMessage(StoreRefreshSource.CensusApi, ct);
 
         return true;
     }
@@ -461,11 +466,11 @@ public class ItemCategoryService : IItemCategoryService
         return await dbContext.ItemCategories.CountAsync();
     }
 
-    public void RefreshStoreFromBackup()
+    public void RefreshStoreFromBackup(CancellationToken ct = default)
     {
         _sqlScriptRunner.RunSqlScript(BackupSqlScriptFileName);
 
-        SendStoreRefreshEventMessage(StoreRefreshSource.BackupSqlScript);
+        SendStoreRefreshEventMessage(StoreRefreshSource.BackupSqlScript, ct);
     }
 
     #endregion Store Management methods

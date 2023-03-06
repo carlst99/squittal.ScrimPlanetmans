@@ -98,14 +98,19 @@ public class ZoneService : IZoneService
         }
     }
 
-    public async Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false)
+    public async Task RefreshStoreAsync
+    (
+        bool onlyQueryCensusIfEmpty = false,
+        bool canUseBackupScript = false,
+        CancellationToken ct = default
+    )
     {
         if (onlyQueryCensusIfEmpty)
         {
             using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
             PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            bool anyZones = await dbContext.Zones.AnyAsync();
+            bool anyZones = await dbContext.Zones.AnyAsync(cancellationToken: ct);
             if (anyZones)
             {
                 await SetupZonesMapAsync();
@@ -117,7 +122,7 @@ public class ZoneService : IZoneService
         bool success = await RefreshStoreFromCensus();
 
         if (!success && canUseBackupScript)
-            RefreshStoreFromBackup();
+            RefreshStoreFromBackup(ct);
 
         await SetupZonesMapAsync();
     }
@@ -195,7 +200,7 @@ public class ZoneService : IZoneService
         return await dbContext.Zones.CountAsync();
     }
 
-    public void RefreshStoreFromBackup()
+    public void RefreshStoreFromBackup(CancellationToken ct = default)
     {
         _sqlScriptRunner.RunSqlScript(BackupSqlScriptFileName);
     }

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -44,35 +45,38 @@ public class LoadoutService : ILoadoutService
         return await dbContext.Loadouts.CountAsync();
     }
 
-    public async Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false)
+    public async Task RefreshStoreAsync
+    (
+        bool onlyQueryCensusIfEmpty = false,
+        bool canUseBackupScript = false,
+        CancellationToken ct = default
+    )
     {
         if (onlyQueryCensusIfEmpty)
         {
             using var factory = _dbContextHelper.GetFactory();
             var dbContext = factory.GetDbContext();
 
-            var anyLoadouts = await dbContext.Loadouts.AnyAsync();
+            var anyLoadouts = await dbContext.Loadouts.AnyAsync(cancellationToken: ct);
             if (anyLoadouts)
             {
                 return;
             }
         }
 
-        var success = await RefreshStoreFromCensus();
+        bool success = await RefreshStoreFromCensus(ct);
 
         if (!success && canUseBackupScript)
-        {
-            RefreshStoreFromBackup();
-        }
+            RefreshStoreFromBackup(ct);
     }
 
-    public async Task<bool> RefreshStoreFromCensus()
+    public async Task<bool> RefreshStoreFromCensus(CancellationToken ct = default)
     {
-        IEnumerable<CensusLoadoutModel> censusLoadouts = new List<CensusLoadoutModel>();
+        CensusLoadoutModel[] censusLoadouts;
 
         try
         {
-            censusLoadouts = await _censusLoadout.GetAllLoadoutsAsync();
+            censusLoadouts = (await _censusLoadout.GetAllLoadoutsAsync()).ToArray();
         }
         catch
         {
@@ -80,16 +84,16 @@ public class LoadoutService : ILoadoutService
             return false;
         }
 
-        if (censusLoadouts != null && censusLoadouts.Any())
+        if (censusLoadouts.Any())
         {
-            var allLoadouts = new List<CensusLoadoutModel>();
+            List<CensusLoadoutModel> allLoadouts = new List<CensusLoadoutModel>();
 
             allLoadouts.AddRange(censusLoadouts.ToList());
             allLoadouts.AddRange(GetFakeNsCensusLoadoutModels());
 
             await UpsertRangeAsync(allLoadouts.AsEnumerable().Select(ConvertToDbModel));
 
-            _logger.LogInformation($"Refreshed Loadouts store");
+            _logger.LogInformation("Refreshed Loadouts store");
 
             return true;
         }
@@ -141,7 +145,7 @@ public class LoadoutService : ILoadoutService
         };
     }
 
-    private IEnumerable<CensusLoadoutModel> GetFakeNsCensusLoadoutModels()
+    private static IEnumerable<CensusLoadoutModel> GetFakeNsCensusLoadoutModels()
     {
         var nsLoadouts = new List<CensusLoadoutModel>
         {
@@ -156,7 +160,13 @@ public class LoadoutService : ILoadoutService
         return nsLoadouts;
     }
 
-    private CensusLoadoutModel GetNewCensusLoadoutModel(int loadoutId, int profileId, int factionId, string codeName)
+    private static CensusLoadoutModel GetNewCensusLoadoutModel
+    (
+        int loadoutId,
+        int profileId,
+        int factionId,
+        string codeName
+    )
     {
         return new CensusLoadoutModel()
         {
@@ -167,7 +177,7 @@ public class LoadoutService : ILoadoutService
         };
     }
 
-    public void RefreshStoreFromBackup()
+    public void RefreshStoreFromBackup(CancellationToken ct = default)
     {
         _sqlScriptRunner.RunSqlScript(BackupSqlScriptFileName);
     }

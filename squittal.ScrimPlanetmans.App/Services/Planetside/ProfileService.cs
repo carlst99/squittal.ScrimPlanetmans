@@ -22,9 +22,9 @@ public class ProfileService : IProfileService, IDisposable
     private readonly CensusProfile _censusProfile;
     private readonly ISqlScriptRunner _sqlScriptRunner;
     private readonly ILogger<ProfileService> _logger;
-        
-    private ConcurrentDictionary<int, Profile> LoadoutProfilesMap { get; set; } = new ConcurrentDictionary<int, Profile>();
-    private readonly SemaphoreSlim _mapSetUpSemaphore = new SemaphoreSlim(1);
+
+    private readonly ConcurrentDictionary<int, Profile> _loadoutProfilesMap = new();
+    private readonly SemaphoreSlim _mapSetUpSemaphore = new(1);
 
     public string BackupSqlScriptFileName => Path.Combine("CensusBackups", "dbo.Profile.Table.sql");
 
@@ -39,32 +39,28 @@ public class ProfileService : IProfileService, IDisposable
 
     public async Task<IEnumerable<Profile>> GetAllProfilesAsync()
     {
-        if (LoadoutProfilesMap.Count == 0 || !LoadoutProfilesMap.Any())
-        {
+        if (_loadoutProfilesMap.IsEmpty)
             await SetUpLoadoutProfilesMapAsync();
-        }
 
         return GetAllProfiles();
     }
 
     private IEnumerable<Profile> GetAllProfiles()
     {
-        return LoadoutProfilesMap.Values.ToList();
+        return _loadoutProfilesMap.Values.ToList();
     }
 
-    public async Task<Profile> GetProfileFromLoadoutIdAsync(int loadoutId)
+    public async Task<Profile?> GetProfileFromLoadoutIdAsync(int loadoutId)
     {
-        if (LoadoutProfilesMap.Count == 0 || !LoadoutProfilesMap.Any())
-        {
+        if (_loadoutProfilesMap.IsEmpty)
             await SetUpLoadoutProfilesMapAsync();
-        }
 
         return GetProfileFromLoadoutId(loadoutId);
     }
 
-    private Profile GetProfileFromLoadoutId(int loadoutId)
+    private Profile? GetProfileFromLoadoutId(int loadoutId)
     {
-        LoadoutProfilesMap.TryGetValue(loadoutId, out var profile);
+        _loadoutProfilesMap.TryGetValue(loadoutId, out Profile? profile);
 
         return profile;
     }
@@ -82,19 +78,19 @@ public class ProfileService : IProfileService, IDisposable
 
             var storeLoadouts = await dbContext.Loadouts.ToListAsync();
 
-            foreach (var loadoutId in LoadoutProfilesMap.Keys)
+            foreach (var loadoutId in _loadoutProfilesMap.Keys)
             {
-                if (!storeLoadouts.Any(l => l.Id == loadoutId))
+                if (storeLoadouts.All(l => l.Id != loadoutId))
                 {
-                    LoadoutProfilesMap.TryRemove(loadoutId, out var removedProfile);
+                    _loadoutProfilesMap.TryRemove(loadoutId, out _);
                     continue;
                 }
-                    
+
                 var profileId = storeLoadouts.Where(l => l.Id == loadoutId).Select(l => l.ProfileId).FirstOrDefault();
 
                 if (profileId <= 0)
                 {
-                    LoadoutProfilesMap.TryRemove(loadoutId, out var removedProfile);
+                    _loadoutProfilesMap.TryRemove(loadoutId, out _);
                 }
             }
 
@@ -106,19 +102,19 @@ public class ProfileService : IProfileService, IDisposable
                     continue;
                 }
 
-                if (LoadoutProfilesMap.ContainsKey(loadoutId))
+                if (_loadoutProfilesMap.ContainsKey(loadoutId))
                 {
-                    LoadoutProfilesMap[loadoutId] = profile;
+                    _loadoutProfilesMap[loadoutId] = profile;
                 }
                 else
                 {
-                    LoadoutProfilesMap.TryAdd(loadoutId, profile);
+                    _loadoutProfilesMap.TryAdd(loadoutId, profile);
                 }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error setting up Loadout Profiles Map: {ex}");
+            _logger.LogError(ex, "Error setting up Loadout Profiles Map");
         }
         finally
         {
@@ -151,14 +147,19 @@ public class ProfileService : IProfileService, IDisposable
         };
     }
 
-    public async Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false)
+    public async Task RefreshStoreAsync
+    (
+        bool onlyQueryCensusIfEmpty = false,
+        bool canUseBackupScript = false,
+        CancellationToken ct = default
+    )
     {
         if (onlyQueryCensusIfEmpty)
         {
             using var factory = _dbContextHelper.GetFactory();
             var dbContext = factory.GetDbContext();
 
-            var anyProfiles = await dbContext.Profiles.AnyAsync();
+            var anyProfiles = await dbContext.Profiles.AnyAsync(cancellationToken: ct);
             if (anyProfiles)
             {
                 await SetUpLoadoutProfilesMapAsync();
@@ -167,23 +168,23 @@ public class ProfileService : IProfileService, IDisposable
             }
         }
 
-        var success = await RefreshStoreFromCensus();
+        var success = await RefreshStoreFromCensusAsync(ct);
 
         if (!success && canUseBackupScript)
         {
-            RefreshStoreFromBackup();
+            RefreshStoreFromBackup(ct);
         }
 
         await SetUpLoadoutProfilesMapAsync();
     }
 
-    public async Task<bool> RefreshStoreFromCensus()
+    public async Task<bool> RefreshStoreFromCensusAsync(CancellationToken ct)
     {
-        IEnumerable<CensusProfileModel> censusProfiles = new List<CensusProfileModel>();
+        CensusProfileModel[] censusProfiles;
 
         try
         {
-            censusProfiles = await _censusProfile.GetAllProfilesAsync();
+            censusProfiles = (await _censusProfile.GetAllProfilesAsync()).ToArray();
         }
         catch
         {
@@ -191,18 +192,13 @@ public class ProfileService : IProfileService, IDisposable
             return false;
         }
 
-        if (censusProfiles != null && censusProfiles.Any())
-        {
-            await UpsertRangeAsync(censusProfiles.Select(ConvertToDbModel));
-
-            _logger.LogInformation($"Refreshed Profiles store");
-
-            return true;
-        }
-        else
-        {
+        if (!censusProfiles.Any())
             return false;
-        }
+
+        await UpsertRangeAsync(censusProfiles.Select(ConvertToDbModel));
+        _logger.LogInformation("Refreshed Profiles store");
+
+        return true;
     }
 
     private async Task UpsertRangeAsync(IEnumerable<Profile> censusEntities)
@@ -238,7 +234,7 @@ public class ProfileService : IProfileService, IDisposable
         }
     }
 
-    private Profile ConvertToDbModel(CensusProfileModel censusModel)
+    private static Profile ConvertToDbModel(CensusProfileModel censusModel)
     {
         return new Profile
         {
@@ -268,7 +264,7 @@ public class ProfileService : IProfileService, IDisposable
         return await dbContext.Profiles.CountAsync();
     }
 
-    public void RefreshStoreFromBackup()
+    public void RefreshStoreFromBackup(CancellationToken ct = default)
     {
         _sqlScriptRunner.RunSqlScript(BackupSqlScriptFileName);
     }

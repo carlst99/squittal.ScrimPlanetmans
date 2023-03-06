@@ -29,7 +29,8 @@ public class DbSeeder : IDbSeeder
     private readonly ISqlScriptRunner _sqlScriptRunner;
     private readonly ILogger<DbSeeder> _logger;
 
-    public DbSeeder(
+    public DbSeeder
+    (
         IWorldService worldService,
         IFactionService factionService,
         IItemService itemService,
@@ -68,39 +69,39 @@ public class DbSeeder : IDbSeeder
     {
         try
         {
-            List<Task> TaskList = new List<Task>();
+            List<Task> TaskList = new();
 
-            Task worldsTask = _worldService.RefreshStore(true, true);
+            Task worldsTask = _worldService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(worldsTask);
 
-            Task factionsTask = _factionService.RefreshStore(true, true);
+            Task factionsTask = _factionService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(factionsTask);
 
-            Task itemsTask = _itemService.RefreshStore(true, true);
+            Task itemsTask = _itemService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(itemsTask);
 
-            Task itemCategoriesTask = _itemCategoryService.RefreshStore(true, true);
+            Task itemCategoriesTask = _itemCategoryService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(itemCategoriesTask);
 
-            Task zoneTask = _zoneService.RefreshStore(true, true);
+            Task zoneTask = _zoneService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(zoneTask);
 
-            Task profileTask = _profileService.RefreshStore(true, true);
+            Task profileTask = _profileService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(profileTask);
 
-            Task loadoutsTask = _loadoutService.RefreshStore(true, true);
+            Task loadoutsTask = _loadoutService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(loadoutsTask);
 
             Task scrimActionTask = _rulesetManager.SeedScrimActionModels();
             TaskList.Add(scrimActionTask);
 
-            Task facilitiesTask = _facilityService.RefreshStore(true, true);
+            Task facilitiesTask = _facilityService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(facilitiesTask);
 
-            Task facilityTypesTask = _facilityTypeService.RefreshStore(true, true);
+            Task facilityTypesTask = _facilityTypeService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(facilityTypesTask);
 
-            Task vehicleTask = _vehicleService.RefreshStore(true, false);
+            Task vehicleTask = _vehicleService.RefreshStoreAsync(true, false, cancellationToken);
             TaskList.Add(vehicleTask);
 
             Task vehicleTypeTask = _vehicleTypeService.SeedVehicleClasses();
@@ -119,7 +120,7 @@ public class DbSeeder : IDbSeeder
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed to seed database: {ex}");
+            _logger.LogError(ex, "Failed to seed database");
         }
     }
 }

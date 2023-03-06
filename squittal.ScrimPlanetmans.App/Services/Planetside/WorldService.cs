@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.CensusServices;
 using squittal.ScrimPlanetmans.App.CensusServices.Models;
+using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.Services.Interfaces;
@@ -21,15 +22,15 @@ public class WorldService : IWorldService
     private readonly IDbContextHelper _dbContextHelper;
     private readonly CensusWorld _censusWorld;
     private readonly ISqlScriptRunner _sqlScriptRunner;
-    private readonly ILogger<ProfileService> _logger;
+    private readonly ILogger<WorldService> _logger;
 
-    private ConcurrentDictionary<int, World> WorldsMap { get; set; } = new ConcurrentDictionary<int, World>();
-    private readonly SemaphoreSlim _mapSetUpSemaphore = new SemaphoreSlim(1);
+    private readonly ConcurrentDictionary<int, World> _worldsMap = new();
+    private readonly SemaphoreSlim _mapSetUpSemaphore = new(1);
 
     public string BackupSqlScriptFileName => Path.Combine("CensusBackups", "dbo.World.Table.sql");
 
 
-    public WorldService(IDbContextHelper dbContextHelper, CensusWorld censusWorld, ISqlScriptRunner sqlScriptRunner, ILogger<ProfileService> logger)
+    public WorldService(IDbContextHelper dbContextHelper, CensusWorld censusWorld, ISqlScriptRunner sqlScriptRunner, ILogger<WorldService> logger)
     {
         _dbContextHelper = dbContextHelper;
         _censusWorld = censusWorld;
@@ -40,7 +41,7 @@ public class WorldService : IWorldService
 
     public async Task<IEnumerable<World>> GetAllWorldsAsync()
     {
-        if (WorldsMap.Count == 0 || !WorldsMap.Any())
+        if (_worldsMap.Count == 0 || !_worldsMap.Any())
         {
             await SetUpWorldsMap();
         }
@@ -50,12 +51,12 @@ public class WorldService : IWorldService
 
     private IEnumerable<World> GetAllWorlds()
     {
-        return WorldsMap.Values.ToList();
+        return _worldsMap.Values.ToList();
     }
 
-    public async Task<World> GetWorldAsync(int worldId)
+    public async Task<World?> GetWorldAsync(int worldId)
     {
-        if (WorldsMap.Count == 0 || !WorldsMap.Any())
+        if (_worldsMap.Count == 0 || !_worldsMap.Any())
         {
             await SetUpWorldsMap();
         }
@@ -63,9 +64,9 @@ public class WorldService : IWorldService
         return GetWorld(worldId);
     }
 
-    private World GetWorld(int worldId)
+    private World? GetWorld(int worldId)
     {
-        WorldsMap.TryGetValue(worldId, out var world);
+        _worldsMap.TryGetValue(worldId, out World? world);
 
         return world;
     }
@@ -76,34 +77,34 @@ public class WorldService : IWorldService
 
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var storeWorlds = await dbContext.Worlds.Where(z => z.Id != 25).ToListAsync(); // RIP Briggs
+            List<World> storeWorlds = await dbContext.Worlds.Where(z => z.Id != 25).ToListAsync(); // RIP Briggs
 
-            foreach (var worldId in WorldsMap.Keys)
+            foreach (int worldId in _worldsMap.Keys)
             {
-                if (!storeWorlds.Any(r => r.Id == worldId))
+                if (storeWorlds.All(r => r.Id != worldId))
                 {
-                    WorldsMap.TryRemove(worldId, out var removedWorld);
+                    _worldsMap.TryRemove(worldId, out _);
                 }
             }
 
-            foreach (var world in storeWorlds)
+            foreach (World world in storeWorlds)
             {
-                if (WorldsMap.ContainsKey(world.Id))
+                if (_worldsMap.ContainsKey(world.Id))
                 {
-                    WorldsMap[world.Id] = world;
+                    _worldsMap[world.Id] = world;
                 }
                 else
                 {
-                    WorldsMap.TryAdd(world.Id, world);
+                    _worldsMap.TryAdd(world.Id, world);
                 }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error setting up Worlds Map: {ex}");
+            _logger.LogError(ex, "Error setting up Worlds Map");
         }
         finally
         {
@@ -111,14 +112,19 @@ public class WorldService : IWorldService
         }
     }
 
-    public async Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false)
+    public async Task RefreshStoreAsync
+    (
+        bool onlyQueryCensusIfEmpty = false,
+        bool canUseBackupScript = false,
+        CancellationToken ct = default
+    )
     {
         if (onlyQueryCensusIfEmpty)
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var anyWorlds = await dbContext.Worlds.AnyAsync();
+            bool anyWorlds = await dbContext.Worlds.AnyAsync(cancellationToken: ct);
             if (anyWorlds)
             {
                 await SetUpWorldsMap();
@@ -127,73 +133,61 @@ public class WorldService : IWorldService
             }
         }
 
-        var success = await RefreshStoreFromCensus();
-
+        bool success = await RefreshStoreFromCensus();
         if (!success && canUseBackupScript)
-        {
-            RefreshStoreFromBackup();
-        }
+            RefreshStoreFromBackup(ct);
 
         await SetUpWorldsMap();
     }
 
     public async Task<bool> RefreshStoreFromCensus()
     {
-        var result = new List<World>();
-        var createdEntities = new List<World>();
-
-        IEnumerable<CensusWorldModel> worlds = new List<CensusWorldModel>();
+        List<World> createdEntities = new();
+        CensusWorldModel[] worlds;
 
         try
         {
-            worlds = await _censusWorld.GetAllWorlds();
+            worlds = (await _censusWorld.GetAllWorlds()).ToArray();
         }
         catch
         {
             _logger.LogError("Census API query failed: get all Worlds. Refreshing store from backup...");
             return false;
         }
-            
-        if (worlds != null && worlds.Any())
-        {
-            var censusEntities = worlds.Select(ConvertToDbModel);
 
-            using (var factory = _dbContextHelper.GetFactory())
-            {
-                var dbContext = factory.GetDbContext();
-
-                var storedEntities = await dbContext.Worlds.ToListAsync();
-
-                foreach (var censusEntity in censusEntities)
-                {
-                    var storeEntity = storedEntities.FirstOrDefault(storedEntity => storedEntity.Id == censusEntity.Id);
-                    if (storeEntity == null)
-                    {
-                        createdEntities.Add(censusEntity);
-                    }
-                    else
-                    {
-                        storeEntity = censusEntity;
-                        dbContext.Worlds.Update(storeEntity);
-                    }
-                }
-
-                if (createdEntities.Any())
-                {
-                    await dbContext.Worlds.AddRangeAsync(createdEntities);
-                }
-
-                await dbContext.SaveChangesAsync();
-
-                _logger.LogInformation($"Refreshed Worlds store");
-            }
-
-            return true;
-        }
-        else
-        {
+        if (!worlds.Any())
             return false;
+
+
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
+
+        IEnumerable<World> censusEntities = worlds.Select(ConvertToDbModel);
+        List<World> storedEntities = await dbContext.Worlds.ToListAsync();
+
+        foreach (World censusEntity in censusEntities)
+        {
+            World? storeEntity = storedEntities.FirstOrDefault(storedEntity => storedEntity.Id == censusEntity.Id);
+            if (storeEntity == null)
+            {
+                createdEntities.Add(censusEntity);
+            }
+            else
+            {
+                storeEntity = censusEntity;
+                dbContext.Worlds.Update(storeEntity);
+            }
         }
+
+        if (createdEntities.Any())
+        {
+            await dbContext.Worlds.AddRangeAsync(createdEntities);
+        }
+
+        await dbContext.SaveChangesAsync();
+        _logger.LogInformation("Refreshed Worlds store");
+
+        return true;
     }
 
     public static World ConvertToDbModel(CensusWorldModel censusModel)
@@ -212,13 +206,13 @@ public class WorldService : IWorldService
 
     public async Task<int> GetStoreCountAsync()
     {
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
         return await dbContext.Worlds.CountAsync();
     }
 
-    public void RefreshStoreFromBackup()
+    public void RefreshStoreFromBackup(CancellationToken ct = default)
     {
         _sqlScriptRunner.RunSqlScript(BackupSqlScriptFileName);
     }

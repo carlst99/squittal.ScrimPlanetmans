@@ -6,7 +6,7 @@ namespace squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 
 public interface IVehicleService : ILocallyBackedCensusStore
 {
-    Task<Vehicle> GetVehicleInfoAsync(int vehicleId);
+    Task<Vehicle?> GetVehicleInfoAsync(int vehicleId);
 
     Vehicle GetScrimVehicleInfo(int vehicleId);
 

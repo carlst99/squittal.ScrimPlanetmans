@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using squittal.ScrimPlanetmans.App.Logging;
 using squittal.ScrimPlanetmans.App.Models;
@@ -111,25 +112,25 @@ public class DatabaseMaintenanceService
         await Task.WhenAll(TaskList);
     }
 
-    public async Task RefreshAllFromCensus()
+    public async Task RefreshAllFromCensusAsync(CancellationToken ct)
     {
         var TaskList = new List<Task>();
 
         foreach (var comparisonRow in Comparisons)
         {
-            TaskList.Add(comparisonRow.RefreshStoreFromCensus());
+            TaskList.Add(comparisonRow.RefreshStoreFromCensusAsync(ct));
         }
 
         await Task.WhenAll(TaskList);
     }
 
-    public async Task RefreshAllFromBackup()
+    public async Task RefreshAllFromBackupAsync(CancellationToken ct)
     {
         var TaskList = new List<Task>();
 
         foreach (var comparisonRow in Comparisons)
         {
-            TaskList.Add(comparisonRow.RefreshStoreFromBackup());
+            TaskList.Add(comparisonRow.RefreshStoreFromBackupAsync(ct));
         }
 
         await Task.WhenAll(TaskList);

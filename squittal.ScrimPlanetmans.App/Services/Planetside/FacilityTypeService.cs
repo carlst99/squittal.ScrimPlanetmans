@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -43,29 +44,34 @@ public class FacilityTypeService : IFacilityTypeService
         return await dbContext.FacilityTypes.CountAsync();
     }
 
-    public async Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false)
+    public async Task RefreshStoreAsync
+    (
+        bool onlyQueryCensusIfEmpty = false,
+        bool canUseBackupScript = false,
+        CancellationToken ct = default
+    )
     {
         if (onlyQueryCensusIfEmpty)
         {
             using var factory = _dbContextHelper.GetFactory();
             var dbContext = factory.GetDbContext();
 
-            var anyFacilityTypes = await dbContext.FacilityTypes.AnyAsync();
+            var anyFacilityTypes = await dbContext.FacilityTypes.AnyAsync(cancellationToken: ct);
             if (anyFacilityTypes)
             {
                 return;
             }
         }
 
-        var success = await RefreshStoreFromCensus();
+        var success = await RefreshStoreFromCensusAsync();
 
         if (!success && canUseBackupScript)
         {
-            RefreshStoreFromBackup();
+            RefreshStoreFromBackup(ct);
         }
     }
 
-    public async Task<bool> RefreshStoreFromCensus()
+    public async Task<bool> RefreshStoreFromCensusAsync()
     {
         IEnumerable<CensusFacilityTypeModel> facilityTypes = new List<CensusFacilityTypeModel>();
 
@@ -133,7 +139,7 @@ public class FacilityTypeService : IFacilityTypeService
         };
     }
 
-    public void RefreshStoreFromBackup()
+    public void RefreshStoreFromBackup(CancellationToken ct = default)
     {
         _sqlScriptRunner.RunSqlScript(BackupSqlScriptFileName);
     }

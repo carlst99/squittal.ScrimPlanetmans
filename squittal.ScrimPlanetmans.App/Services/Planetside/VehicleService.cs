@@ -2,11 +2,13 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.CensusServices;
 using squittal.ScrimPlanetmans.App.CensusServices.Models;
+using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.Services.Interfaces;
@@ -31,19 +33,12 @@ public class VehicleService : IVehicleService
         _logger = logger;
     }
 
-    public async Task<Vehicle> GetVehicleInfoAsync(int vehicleId)
+    public async Task<Vehicle?> GetVehicleInfoAsync(int vehicleId)
     {
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        var vehicle = await dbContext.Vehicles.FirstOrDefaultAsync(v => v.Id == vehicleId);
-
-        if (vehicle == null)
-        {
-            return null;
-        }
-
-        return vehicle;
+        return await dbContext.Vehicles.FirstOrDefaultAsync(v => v.Id == vehicleId);
     }
 
     public Vehicle GetScrimVehicleInfo(int vehicleId)
@@ -63,41 +58,41 @@ public class VehicleService : IVehicleService
 
     public async Task<int> GetStoreCountAsync()
     {
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
         return await dbContext.Vehicles.CountAsync();
     }
 
-    public async Task RefreshStore(bool onlyQueryCensusIfEmpty = false, bool canUseBackupScript = false)
+    public async Task RefreshStoreAsync
+    (
+        bool onlyQueryCensusIfEmpty = false,
+        bool canUseBackupScript = false,
+        CancellationToken ct = default
+    )
     {
         if (onlyQueryCensusIfEmpty)
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var anyVehicles = await dbContext.Vehicles.AnyAsync();
+            bool anyVehicles = await dbContext.Vehicles.AnyAsync(cancellationToken: ct);
             if (anyVehicles)
-            {
                 return;
-            }
         }
 
-        var success = await RefreshStoreFromCensus();
-
+        bool success = await RefreshStoreFromCensus();
         if (!success && canUseBackupScript)
-        {
-            RefreshStoreFromBackup();
-        }
+            RefreshStoreFromBackup(ct);
     }
 
     public async Task<bool> RefreshStoreFromCensus()
     {
-        IEnumerable<CensusVehicleModel> vehicles = new List<CensusVehicleModel>();
+        CensusVehicleModel[] vehicles;
 
         try
         {
-            vehicles = await _censusVehicle.GetAllVehicles();
+            vehicles = (await _censusVehicle.GetAllVehicles()).ToArray();
         }
         catch
         {
@@ -105,34 +100,27 @@ public class VehicleService : IVehicleService
             return false;
         }
 
-        if (vehicles != null && vehicles.Any())
-        {
-            var testList = vehicles.Select(ConvertToDbModel);
-                
-            await UpsertRangeAsync(vehicles.Select(ConvertToDbModel));
-
-            _logger.LogInformation($"Refreshed Vehicles store: {vehicles.Count()} entries");
-
-            return true;
-        }
-        else
-        {
+        if (!vehicles.Any())
             return false;
-        }
+
+        await UpsertRangeAsync(vehicles.Select(ConvertToDbModel));
+        _logger.LogInformation("Refreshed Vehicles store: {Count} entries", vehicles.Length);
+
+        return true;
     }
 
     private async Task UpsertRangeAsync(IEnumerable<Vehicle> censusEntities)
     {
-        var createdEntities = new List<Vehicle>();
+        List<Vehicle> createdEntities = new();
 
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        var storedEntities = await dbContext.Vehicles.ToListAsync();
+        List<Vehicle> storedEntities = await dbContext.Vehicles.ToListAsync();
 
-        foreach (var censusEntity in censusEntities)
+        foreach (Vehicle censusEntity in censusEntities)
         {
-            var storeEntity = storedEntities.FirstOrDefault(e => e.Id == censusEntity.Id);
+            Vehicle? storeEntity = storedEntities.FirstOrDefault(e => e.Id == censusEntity.Id);
             if (storeEntity == null)
             {
                 createdEntities.Add(censusEntity);
@@ -152,7 +140,7 @@ public class VehicleService : IVehicleService
         await dbContext.SaveChangesAsync();
     }
 
-    public void RefreshStoreFromBackup()
+    public void RefreshStoreFromBackup(CancellationToken ct = default)
     {
         _sqlScriptRunner.RunSqlScript(BackupSqlScriptFileName);
     }
