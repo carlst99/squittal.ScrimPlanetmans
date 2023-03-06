@@ -153,7 +153,7 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     {
         RaiseTeamStatUpdateEvent?.Invoke(this, e);
     }
-        
+
     public void BroadcastScrimKillfeedEventMessage(ScrimKillfeedEventMessage message)
     {
         OnRaiseScrimKillfeedEventEvent(new ScrimMessageEventArgs<ScrimKillfeedEventMessage>(message));
@@ -174,7 +174,7 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     {
         RaiseScrimDeathActionEvent?.Invoke(this, e);
     }
-        
+
     public void BroadcastScrimVehicleDestructionActionEventMessage(ScrimVehicleDestructionActionEventMessage message)
     {
         OnRaiseScrimVehicleDestructionActionEvent(new ScrimMessageEventArgs<ScrimVehicleDestructionActionEventMessage>(message));
@@ -185,7 +185,7 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     {
         RaiseScrimVehicleDestructionActionEvent?.Invoke(this, e);
     }
-        
+
     public void BroadcastScrimReviveActionEventMessage(ScrimReviveActionEventMessage message)
     {
         OnRaiseScrimReviveActionEvent(new ScrimMessageEventArgs<ScrimReviveActionEventMessage>(message));
@@ -218,7 +218,7 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     {
         RaiseScrimObjectiveTickActionEvent?.Invoke(this, e);
     }
-        
+
     public void BroadcastScrimFacilityControlActionEventMessage(ScrimFacilityControlActionEventMessage message)
     {
         OnRaiseScrimFacilityControlActionEvent(new ScrimMessageEventArgs<ScrimFacilityControlActionEventMessage>(message));
@@ -267,7 +267,7 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     {
         RaiseTeamOutfitChangeEvent?.Invoke(this, e);
     }
-        
+
     public void BroadcastTeamConstructedTeamChangeMessage(TeamConstructedTeamChangeMessage message)
     {
         OnRaiseTeamConstructedTeamChangeEvent(new ScrimMessageEventArgs<TeamConstructedTeamChangeMessage>(message));
@@ -301,7 +301,7 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     {
         RaiseTeamFactionChangeEvent?.Invoke(this, e);
     }
-        
+
     public void BroadcastTeamLockStatusChangeMessage(TeamLockStatusChangeMessage message)
     {
         OnRaiseTeamLockStatusChangeEvent(new ScrimMessageEventArgs<TeamLockStatusChangeMessage>(message));
@@ -312,7 +312,7 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     {
         RaiseTeamLockStatusChangeEvent?.Invoke(this, e);
     }
-        
+
     public void BroadcastPlayerNameDisplayChangeMessage(PlayerNameDisplayChangeMessage message)
     {
         OnRaisePlayerNameDisplayChangeEvent(new ScrimMessageEventArgs<PlayerNameDisplayChangeMessage>(message));
@@ -336,7 +336,7 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     {
         RaiseConstructedTeamMemberChangeEvent?.Invoke(this, e);
     }
-        
+
     public void BroadcastConstructedTeamInfoChangeMessage(ConstructedTeamInfoChangeMessage message)
     {
         OnRaiseConstructedTeamInfoChangeEvent(new ScrimMessageEventArgs<ConstructedTeamInfoChangeMessage>(message));
@@ -368,7 +368,7 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     {
         RaiseRulesetSettingChangeEvent?.Invoke(this, e);
     }
-        
+
     public void BroadcastRulesetOverlayConfigurationChangeMessage(RulesetOverlayConfigurationChangeMessage message)
     {
         OnRaiseRulesetOverlayConfigurationChangeEvent(new ScrimMessageEventArgs<RulesetOverlayConfigurationChangeMessage>(message));

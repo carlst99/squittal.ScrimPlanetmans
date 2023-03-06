@@ -25,7 +25,7 @@ public interface IScrimMessageBroadcastService
     event EventHandler<ScrimMessageEventArgs<TeamStatUpdateMessage>> RaiseTeamStatUpdateEvent;
 
     event EventHandler<ScrimMessageEventArgs<ScrimKillfeedEventMessage>> RaiseScrimKillfeedEvent;
-        
+
     event EventHandler<ScrimMessageEventArgs<ScrimDeathActionEventMessage>> RaiseScrimDeathActionEvent;
     event EventHandler<ScrimMessageEventArgs<ScrimVehicleDestructionActionEventMessage>> RaiseScrimVehicleDestructionActionEvent;
     event EventHandler<ScrimMessageEventArgs<ScrimReviveActionEventMessage>> RaiseScrimReviveActionEvent;
@@ -40,7 +40,7 @@ public interface IScrimMessageBroadcastService
     event EventHandler<ScrimMessageEventArgs<MatchConfigurationUpdateMessage>> RaiseMatchConfigurationUpdateEvent;
 
     event EventHandler<ScrimMessageEventArgs<MatchTimerTickMessage>> RaiseMatchTimerTickEvent;
-        
+
     event EventHandler<ScrimMessageEventArgs<ConstructedTeamMemberChangeMessage>> RaiseConstructedTeamMemberChangeEvent;
     event EventHandler<ScrimMessageEventArgs<ConstructedTeamInfoChangeMessage>> RaiseConstructedTeamInfoChangeEvent;
 
@@ -87,5 +87,5 @@ public interface IScrimMessageBroadcastService
     void BroadcastRulesetSettingChangeMessage(RulesetSettingChangeMessage message);
     void BroadcastRulesetOverlayConfigurationChangeMessage(RulesetOverlayConfigurationChangeMessage message);
     void BroadcastRulesetRuleChangeMessage(RulesetRuleChangeMessage message);
-        
+
 }

@@ -162,7 +162,7 @@ public class WebsocketMonitor : StatefulHostedService, IWebsocketMonitor, IDispo
         if (oldWorldIdString != subscribedWorldIdString)
         {
             _logger.LogInformation($"SubscribedWorldId changed: {oldWorldIdString} => {subscribedWorldIdString}");
-        }    
+        }
 
     }
     #endregion Subscription Setup

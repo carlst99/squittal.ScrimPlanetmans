@@ -176,7 +176,7 @@
                 }
 
                 _logCount = _adminLogMessages.Count();
-                
+
                 _adminLogMessages = _adminLogMessages.OrderByDescending(m => m.Timestamp).Take(_maxLogCount).ToList();
 
                 StateHasChanged();

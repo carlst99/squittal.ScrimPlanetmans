@@ -9,7 +9,7 @@ public static class ExperienceEventsBuilder
     public static int[] ReviveIds =
     {
         7,      // Revive (75xp)
-        53      // Squad Revive (100xp) 
+        53      // Squad Revive (100xp)
     };
 
     public static int[] SpawnIds =

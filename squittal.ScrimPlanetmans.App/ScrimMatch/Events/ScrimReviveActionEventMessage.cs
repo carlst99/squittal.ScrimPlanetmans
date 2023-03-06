@@ -17,7 +17,7 @@ public class ScrimReviveActionEventMessage : ScrimActionEventMessage
         if (reviveEvent.ActionType == ScrimActionType.OutsideInterference)
         {
             LogLevel = ScrimMessageLogLevel.MatchEventWarning;
-                
+
             Info = GetOutsideInterferenceInfo(reviveEvent);
         }
         else

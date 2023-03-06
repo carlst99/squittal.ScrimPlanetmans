@@ -6,7 +6,7 @@ public class VehicleFaction
 {
     [Required]
     public int VehicleId { get; set; }
-        
+
     [Required]
     public int FactionId { get; set; }
 

@@ -30,12 +30,12 @@ public class ScrimMatchReportInfantryHeadToHeadStats
     public int SpotAssistedOnlyKills { get; set; }
     public int SpotAssistedDeaths { get; set; }
     public int SpotAssistedOnlyDeaths { get; set; }
-        
+
     public int AssistedKills { get; set; }
     public int UnassistedKills { get; set; }
     public int AssistedDeaths { get; set; }
     public int UnassistedDeaths { get; set; }
-        
+
     public int UnassistedHeadshotKills { get; set; }
     public int UnassistedHeadshotDeaths { get; set; }
 

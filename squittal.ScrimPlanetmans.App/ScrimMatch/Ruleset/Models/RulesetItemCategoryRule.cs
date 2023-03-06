@@ -10,7 +10,7 @@ public class RulesetItemCategoryRule
 
     [Required]
     public int ItemCategoryId { get; set; }
-        
+
     public int Points { get; set; }
 
     public bool IsBanned { get; set; }
@@ -18,19 +18,19 @@ public class RulesetItemCategoryRule
     public bool DeferToItemRules { get; set; }
 
     public bool DeferToPlanetsideClassSettings { get; set; }
-        
+
     public bool InfiltratorIsBanned { get; set; }
     public int InfiltratorPoints { get; set; }
-        
+
     public bool LightAssaultIsBanned { get; set; }
     public int LightAssaultPoints { get; set; }
-        
+
     public bool MedicIsBanned { get; set; }
     public int MedicPoints { get; set; }
-        
+
     public bool EngineerIsBanned { get; set; }
     public int EngineerPoints { get; set; }
-        
+
     public bool HeavyAssaultIsBanned { get; set; }
     public int HeavyAssaultPoints { get; set; }
 

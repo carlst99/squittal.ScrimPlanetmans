@@ -14,7 +14,7 @@ public class ScrimMatchParticipatingPlayer
     [Required]
     public int TeamOrdinal { get; set; }
 
-        
+
     public string NameFull { get; set; }
     public string NameDisplay { get; set; }
 

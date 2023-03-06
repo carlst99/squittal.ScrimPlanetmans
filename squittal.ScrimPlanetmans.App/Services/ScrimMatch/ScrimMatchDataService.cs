@@ -51,7 +51,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
             catch (Exception ex)
             {
                 _logger.LogError(ex.ToString());
-                
+
                 return null;
             }
         }

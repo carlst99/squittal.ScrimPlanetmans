@@ -9,7 +9,7 @@ namespace squittal.ScrimPlanetmans.App.CensusServices;
 public class CensusZone
 {
     public readonly ICensusQueryFactory _queryFactory;
-        
+
     public CensusZone(ICensusQueryFactory queryFactory)
     {
         _queryFactory = queryFactory;

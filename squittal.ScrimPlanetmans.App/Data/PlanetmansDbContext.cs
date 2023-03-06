@@ -47,7 +47,7 @@ public class PlanetmansDbContext : DbContext
     public DbSet<RulesetItemCategoryRule> RulesetItemCategoryRules { get; set; }
     public DbSet<RulesetItemRule> RulesetItemRules { get; set; }
     public DbSet<RulesetFacilityRule> RulesetFacilityRules { get; set; }
-        
+
     public DbSet<DeathType> DeathTypes { get; set; }
     public DbSet<VehicleClass> VehicleClasses { get; set; }
 
@@ -118,10 +118,10 @@ public class PlanetmansDbContext : DbContext
         builder.ApplyConfiguration(new RulesetItemCategoryRuleConfiguration());
         builder.ApplyConfiguration(new RulesetItemRuleConfiguration());
         builder.ApplyConfiguration(new RulesetFacilityRuleConfiguration());
-            
+
         builder.ApplyConfiguration(new DeathTypeConfiguration());
         builder.ApplyConfiguration(new VehicleClassConfiguration());
-            
+
         builder.ApplyConfiguration(new ScrimMatchConfiguration());
         builder.ApplyConfiguration(new ScrimMatchRoundConfigurationConfiguration());
         builder.ApplyConfiguration(new ScrimMatchParticipatingPlayerConfiguration());
@@ -131,7 +131,7 @@ public class PlanetmansDbContext : DbContext
 
         builder.ApplyConfiguration(new ScrimDeathConfiguration());
         builder.ApplyConfiguration(new ScrimVehicleDestructionConfiguration());
-            
+
         builder.ApplyConfiguration(new ScrimDamageAssistConfiguration());
         builder.ApplyConfiguration(new ScrimGrenadeAssistConfiguration());
         builder.ApplyConfiguration(new ScrimSpotAssistConfiguration());

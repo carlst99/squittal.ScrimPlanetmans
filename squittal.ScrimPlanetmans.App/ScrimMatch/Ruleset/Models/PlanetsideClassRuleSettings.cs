@@ -196,7 +196,7 @@ public class PlanetsideClassRuleSettings : IEquitable<PlanetsideClassRuleSetting
     {
         return this.Equals(obj as PlanetsideClassRuleSettings);
     }
-        
+
     public bool Equals(PlanetsideClassRuleSettings s)
     {
         if (s is null)

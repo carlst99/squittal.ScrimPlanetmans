@@ -9,7 +9,7 @@ public class ScrimAction
 
     [Required]
     public string Name { get; set; }
-        
+
     public string Description { get; set; }
     public ScrimActionTypeDomain Domain { get; set; }
 
@@ -48,7 +48,7 @@ public class ScrimAction
             return ScrimActionTypeDomain.Other;
         }
     }
-        
+
     public ScrimActionTypeDomain SetDomain()
     {
         if ((int)Action >= 10 && (int)Action < 100)
@@ -141,8 +141,8 @@ public enum ScrimActionType
     InfantryDestroyMbt              = 128,
     InfantryTeamDestroyMbt          = 129,
 
-    InfantryDestroyColossus         = 130, 
-    InfantryTeamDestroyColossus     = 131, 
+    InfantryDestroyColossus         = 130,
+    InfantryTeamDestroyColossus     = 131,
     #endregion Infantry: 100 - 199
 
 
@@ -206,7 +206,7 @@ public enum ScrimActionType
     GrenadeSelfAssist           = 313,
     #endregion Support: 300 - 399
 
-    #region Vehicles: 400 - 499        
+    #region Vehicles: 400 - 499
     VehicleKillInfantry                = 400,
     VehicleKillMax                     = 401,
     VehicleKillVehicle                 = 402,
@@ -246,7 +246,7 @@ public enum ScrimActionType
 
     VehicleDestroyColossus              = 431,
     VehicleTeamDestroyColossus          = 432,
-    #endregion Vehicles: 400 - 499        
+    #endregion Vehicles: 400 - 499
 
     #region Interceptor: 500 - 599
     /*

@@ -207,7 +207,7 @@ public class ConstructedTeamService : IConstructedTeamService
 
         return processedCharacters;
     }
-        
+
     public async Task<IEnumerable<ConstructedTeamMemberDetails>> GetConstructedTeamFactionMemberDetails(int teamId, int factionId)
     {
         var members = await GetConstructedTeamFactionMembers(teamId, factionId);
@@ -238,7 +238,7 @@ public class ConstructedTeamService : IConstructedTeamService
             if (character != null)
             {
                 var member = members.Where(m => m.CharacterId == character.Id).FirstOrDefault();
-                    
+
                 processedCharacters.Add(ConvertToMemberDetailsModel(character, member));
                 unprocessedMembers.RemoveAll(m => m.CharacterId == character.Id);
             }
@@ -731,12 +731,12 @@ public class ConstructedTeamService : IConstructedTeamService
             var storeEntity = await dbContext.ConstructedTeamPlayerMemberships
                 .Where(m => m.CharacterId == characterId && m.ConstructedTeamId == teamId)
                 .FirstOrDefaultAsync();
-                
+
             if (storeEntity != null)
             {
                 return false;
             }
-                
+
             dbContext.ConstructedTeamPlayerMemberships.Add(newEntity);
 
             await dbContext.SaveChangesAsync();
@@ -881,7 +881,7 @@ public class ConstructedTeamService : IConstructedTeamService
         catch (Exception ex)
         {
             var newAliasDisplay = string.IsNullOrWhiteSpace(newAlias) ? "null" : newAlias;
-                
+
             _logger.LogError($"Error updating alias to {newAliasDisplay} for character ID {characterId} on team ID {teamId} in database: {ex}");
 
             return false;

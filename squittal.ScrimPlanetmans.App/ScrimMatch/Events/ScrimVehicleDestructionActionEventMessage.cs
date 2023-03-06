@@ -17,7 +17,7 @@ public class ScrimVehicleDestructionActionEventMessage : ScrimActionEventMessage
         if (DestructionEvent.ActionType == ScrimActionType.OutsideInterference)
         {
             LogLevel = ScrimMessageLogLevel.MatchEventWarning;
-                
+
             Info = GetOutsideInterferenceInfo(DestructionEvent);
         }
         else

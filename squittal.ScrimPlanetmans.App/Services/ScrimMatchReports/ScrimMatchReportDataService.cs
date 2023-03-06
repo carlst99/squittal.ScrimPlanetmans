@@ -68,7 +68,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         catch (Exception ex)
         {
             _logger.LogError($"{ex}");
-                
+
             return null;
         }
     }
@@ -267,7 +267,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
             cancellationToken.ThrowIfCancellationRequested();
 
             return distinctRulesets;
-                
+
         }
         catch (TaskCanceledException)
         {
@@ -391,7 +391,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
             return null;
         }
     }
-        
+
     public async Task<IEnumerable<ScrimMatchReportInfantryTeamRoundStats>> GetHistoricalScrimMatchInfantryTeamRoundStatsAsync(string scrimMatchId, CancellationToken cancellationToken)
     {
         try

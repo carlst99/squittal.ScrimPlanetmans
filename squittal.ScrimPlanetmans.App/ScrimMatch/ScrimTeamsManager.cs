@@ -112,7 +112,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
             return null;
         }
     }
-        
+
     public Team GetTeamFromConstructedTeamFaction(int constructedTeamId, int factionId)
     {
         if (!IsConstructedTeamFactionAvailable(constructedTeamId, factionId, out Team owningTeam))
@@ -161,12 +161,12 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
     {
         return GetTeam(teamOrdinal).GetOutfitPlayers(outfitAliasLower);
     }
-        
+
     public IEnumerable<Player> GetTeamNonOutfitPlayers(int teamOrdinal)
     {
         return GetTeam(teamOrdinal).GetNonOutfitPlayers();
     }
-        
+
     public IEnumerable<Player> GetTeamConstructedTeamFactionPlayers(int teamOrdinal, int constructedTeamId, int factionId)
     {
         return GetTeam(teamOrdinal).GetConstructedTeamFactionPlayers(constructedTeamId, factionId);
@@ -247,7 +247,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
                 }).ConfigureAwait(false);
 #pragma warning restore CS4014
             }
-                
+
             return true;
         }
         else
@@ -283,7 +283,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
                 _matchDataService.SaveMatchParticipatingPlayer(player);
             }).ConfigureAwait(false);
 #pragma warning restore CS4014
-        }    
+        }
     }
 #pragma warning restore CS1998
 
@@ -595,7 +595,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
             {
                 continue;
             }
-                
+
             player.TeamOrdinal = teamOrdinal;
             player.ConstructedTeamId = constructedTeamId;
 
@@ -2146,7 +2146,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         if (team.Players.Any())
         {
             var allPlayers = team.Players.ToList();
-            
+
             foreach (var player in allPlayers)
             {
                 RemovePlayerFromTeam(player);
@@ -2174,7 +2174,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
 
         return seriesResults;
     }
-        
+
     public void UpdateAllTeamsMatchSeriesResults(int seriesMatchNumber)
     {
         int highestScoreTeamOrdinal = 0;
@@ -2803,7 +2803,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
             return -1;
         }
     }
-        
+
     private int TeamConstructedTeamCount(int teamOrdinal)
     {
         var team = GetTeam(teamOrdinal);
@@ -2990,7 +2990,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
             using var factory = _dbContextHelper.GetFactory();
             var dbContext = factory.GetDbContext();
 
-            var storeResultEntity = await dbContext.ScrimMatchTeamResults.FirstOrDefaultAsync(result => result.ScrimMatchId == currentScrimMatchId 
+            var storeResultEntity = await dbContext.ScrimMatchTeamResults.FirstOrDefaultAsync(result => result.ScrimMatchId == currentScrimMatchId
                 && result.TeamOrdinal == teamOrdinal);
 
             if (storeResultEntity == null)
@@ -3182,7 +3182,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
 
         SendPlayerStatUpdateMessage(player);
     }
-        
+
     public async Task SetPlayerParticipatingStatus(string characterId, bool isParticipating)
     {
         var player = GetPlayerFromId(characterId);

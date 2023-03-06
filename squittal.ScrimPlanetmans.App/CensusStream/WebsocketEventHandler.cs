@@ -223,7 +223,7 @@ public class WebsocketEventHandler : IWebsocketEventHandler
             {
                 deathEvent.AttackerCharacterId = attackerId;
                 deathEvent.AttackerLoadoutId = payload.AttackerLoadoutId;
-                    
+
                 attackerPlayer = _teamsManager.GetPlayerFromId(attackerId);
                 deathEvent.AttackerPlayer = attackerPlayer;
 
@@ -624,7 +624,7 @@ public class WebsocketEventHandler : IWebsocketEventHandler
             return DeathEventType.Kill;
         }
     }
-        
+
     private ScrimActionType GetVehicleDestructionScrimActionType(ScrimVehicleDestructionActionEvent destruction)
     {
             
@@ -1309,7 +1309,7 @@ public class WebsocketEventHandler : IWebsocketEventHandler
         if (type == FacilityControlType.Unknown)
         {
             _logger.LogInformation($"FacilityControl payload had Unknow FacilityControlType: worldId={payload.WorldId} facilityId={payload.FacilityId}");
-                
+
             return;
         }
 

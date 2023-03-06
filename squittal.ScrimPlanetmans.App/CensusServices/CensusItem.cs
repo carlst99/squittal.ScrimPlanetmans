@@ -55,7 +55,7 @@ public class CensusItem
 
         return await query.GetBatchAsync<CensusItemModel>();
     }
-        
+
     public async Task<int> GetItemsCount()
     {
         var results = await GetAllItems();

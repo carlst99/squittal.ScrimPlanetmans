@@ -24,7 +24,7 @@ public class StreamClient : IStreamClient
     {
         return new ClientWebSocket { Options = { KeepAliveInterval = TimeSpan.FromSeconds(5) } };
     });
-        
+
     private static readonly JsonSerializerSettings sendMessageSettings = new JsonSerializerSettings
     {
         NullValueHandling = NullValueHandling.Ignore,

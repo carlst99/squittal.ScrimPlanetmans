@@ -9,14 +9,14 @@ public static class PlanetsideClassLoadoutTranslator
     {
         return loadoutId switch
         {
-            // NC                
+            // NC
             1 => PlanetsideClass.Infiltrator,
             3 => PlanetsideClass.LightAssault,
             4 => PlanetsideClass.Medic,
             5 => PlanetsideClass.Engineer,
             6 => PlanetsideClass.HeavyAssault,
             7 => PlanetsideClass.MAX,
-                
+
             // TR
             8 => PlanetsideClass.Infiltrator,
             10 => PlanetsideClass.LightAssault,
@@ -24,7 +24,7 @@ public static class PlanetsideClassLoadoutTranslator
             12 => PlanetsideClass.Engineer,
             13 => PlanetsideClass.HeavyAssault,
             14 => PlanetsideClass.MAX,
-                
+
             // VS
             15 => PlanetsideClass.Infiltrator,
             17 => PlanetsideClass.LightAssault,
@@ -32,7 +32,7 @@ public static class PlanetsideClassLoadoutTranslator
             19 => PlanetsideClass.Engineer,
             20 => PlanetsideClass.HeavyAssault,
             21 => PlanetsideClass.MAX,
-                
+
             // NS
             28 => PlanetsideClass.Infiltrator,
             29 => PlanetsideClass.LightAssault,
@@ -44,7 +44,7 @@ public static class PlanetsideClassLoadoutTranslator
             _ => PlanetsideClass.HeavyAssault
         };
     }
-        
+
     public static string GetPlanetsideClassDisplayName(PlanetsideClass planetsideClass)
     {
         var enumName = Enum.GetName(typeof(PlanetsideClass), planetsideClass);
@@ -52,7 +52,7 @@ public static class PlanetsideClassLoadoutTranslator
         return Regex.Replace(enumName, @"(\p{Ll})(\p{Lu})", "$1 $2");
     }
 }
-    
+
 public enum PlanetsideClass
 {
     Infiltrator,

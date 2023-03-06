@@ -22,14 +22,14 @@ public class CharacterService : ICharacterService
         try
         {
             var character = await _censusCharacter.GetCharacter(characterId);
-            
+
             if (character == null)
             {
                 return null;
             }
-            
+
             var censusEntity = ConvertToDbModel(character);
-            
+
             return censusEntity;
         }
         catch
@@ -67,7 +67,7 @@ public class CharacterService : ICharacterService
     public static Character ConvertToDbModel(CensusCharacterModel censusModel)
     {
         bool isOnline;
-            
+
         if (int.TryParse(censusModel.OnlineStatus, out int onlineStatus))
         {
             isOnline = onlineStatus > 0 ? true : false;

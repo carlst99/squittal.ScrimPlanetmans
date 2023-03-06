@@ -1264,7 +1264,7 @@ public class RulesetDataService : IRulesetDataService
                 var dbContext = factory.GetDbContext();
 
                 var defaultRulesetId = await dbContext.Rulesets.Where(r => r.IsDefault).Select(r => r.Id).FirstOrDefaultAsync();
-                    
+
                 var defaultConfiguration = await dbContext.RulesetOverlayConfigurations.Where(c => c.RulesetId == defaultRulesetId).FirstOrDefaultAsync();
 
                 if (defaultConfiguration == null)
@@ -1277,7 +1277,7 @@ public class RulesetDataService : IRulesetDataService
                 var newConfiguration = BuildRulesetOverlayConfiguration(rulesetId, defaultConfiguration.UseCompactLayout, defaultConfiguration.StatsDisplayType, defaultConfiguration.ShowStatusPanelScores);
 
                 dbContext.RulesetOverlayConfigurations.Add(newConfiguration);
-                    
+
                 await dbContext.SaveChangesAsync();
             }
             catch (Exception ex)

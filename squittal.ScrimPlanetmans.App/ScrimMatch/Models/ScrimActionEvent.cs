@@ -105,7 +105,7 @@ public class ScrimObjectiveTickActionEvent : ScrimExperienceGainActionEvent
 
     // TODO: Experience IDs of 15 & 16 (Control Point - Attack / Defend seem to populate other_id with
     // an opposing player, but not sure what it means at the moment
-    // public Player OtherPlayer { get; set; } 
+    // public Player OtherPlayer { get; set; }
 
     //public ScrimActionExperienceGainInfo ExperienceGain { get; set; }
 
@@ -150,7 +150,7 @@ public class ScrimFacilityControlActionEvent : ScrimActionEvent
 
     public FacilityControlType ControlType { get; set; }
     public int ControllingTeamOrdinal { get; set; }
-        
+
     public int Points { get; set; }
 
 

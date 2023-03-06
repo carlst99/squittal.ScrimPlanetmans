@@ -11,7 +11,7 @@ public class ScrimMatch
 
     [Required]
     public DateTime StartTime { get; set; }
-        
+
     [Required]
     public int RulesetId { get; set; }
 

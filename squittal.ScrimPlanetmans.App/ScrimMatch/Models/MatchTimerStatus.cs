@@ -38,7 +38,7 @@ public class MatchTimerStatus
         Interlocked.Increment(ref _secondsElapsed);
         return _secondsElapsed;
     }
-        
+
     public int ForceZeroRemaining()
     {
         Interlocked.Add(ref _secondsRemaining, -_secondsRemaining);

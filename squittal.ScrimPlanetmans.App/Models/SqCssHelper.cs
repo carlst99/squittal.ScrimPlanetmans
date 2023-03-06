@@ -23,7 +23,7 @@ public static class SqCssHelper
         }
         else
         {
-            return "💤"; // 🌙 
+            return "💤"; // 🌙
         }
     }
 

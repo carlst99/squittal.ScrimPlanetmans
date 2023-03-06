@@ -101,7 +101,7 @@ public class OutfitService : IOutfitService
 
         return outfitMember;
     }
-        
+
     private async Task<Outfit> GetOutfitInternalAsync(string outfitId, Character member = null)
     {
         Outfit outfit;

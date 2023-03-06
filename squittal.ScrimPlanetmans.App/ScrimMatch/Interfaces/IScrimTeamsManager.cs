@@ -39,9 +39,9 @@ public interface IScrimTeamsManager
 
     int? GetTeamOrdinalFromPlayerId(string characterId);
     bool DoPlayersShareTeam(string firstId, string secondId, out int? firstOrdinal, out int? secondOrdinal);
-        
+
     Team GetTeamFromOutfitAlias(string aliasLower);
-        
+
     bool DoPlayersShareTeam(Player firstPlayer, Player secondPlayer);
     bool IsOutfitAvailable(string alias);
     Task<bool> TryAddFreeTextInputCharacterToTeam(int teamOrdinal, string inputString);
@@ -54,7 +54,7 @@ public interface IScrimTeamsManager
 
     Task SaveRoundEndScores(int round);
     Task RollBackAllTeamStats(int currentRound);
-        
+
     int? GetNextWorldId(int previousWorldId);
     int? GetFirstTeamWithFactionId(int factionId);
     void UpdateTeamStats(int teamOrdinal, ScrimEventAggregate updates);
@@ -65,7 +65,7 @@ public interface IScrimTeamsManager
     Task<bool> RemoveOutfitFromTeamAndDb(string aliasLower);
     Task<bool> RemoveCharacterFromTeamAndDb(string characterId);
     int? GetTeamScoreDisplay(int teamOrdinal);
-        
+
     Task<bool> UdatePlayerTemporaryAlias(string playerId, string newAlias);
     Task ClearPlayerDisplayName(string playerId);
 

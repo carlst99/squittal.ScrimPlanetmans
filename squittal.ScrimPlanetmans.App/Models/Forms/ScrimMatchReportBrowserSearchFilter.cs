@@ -19,7 +19,7 @@ public class ScrimMatchReportBrowserSearchFilter
 
     public int FacilityId { get => GetFacilityIdFromString(); }
     public string FacilityIdString { get; set; } = _defaultSearchFacilityIdString; //"0";
-        
+
     public int MinimumRoundCount { get; set; } = _defaultSearchMinimumRoundCount; //2;
 
     public string InputSearchTerms { get; set; } = _defaultSearchInputTerms; // string.Empty;
@@ -39,7 +39,7 @@ public class ScrimMatchReportBrowserSearchFilter
     private static readonly int _defaultSearchMinimumRoundCount = 2;
     private static readonly string _defaultSearchInputTerms = string.Empty;
     private static readonly string _defaultRulesetIdString = "0"; // Any Ruleset
-        
+
 
     public bool IsDefaultFilter => GetIsDefaultFilter();
 

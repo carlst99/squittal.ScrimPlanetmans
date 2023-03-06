@@ -111,7 +111,7 @@ public class FactionService : IFactionService
                 var dbContext = factory.GetDbContext();
 
                 var storedEntities = await dbContext.Factions.ToListAsync();
-                    
+
                 var createdEntities = new List<Faction>();
 
                 foreach (var censusEntity in censusEntities)

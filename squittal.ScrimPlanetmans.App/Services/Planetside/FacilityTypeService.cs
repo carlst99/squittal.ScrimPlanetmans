@@ -90,7 +90,7 @@ public class FacilityTypeService : IFacilityTypeService
             await UpsertRangeAsync(facilityTypes.Select(ConvertToDbModel));
 
             _logger.LogInformation($"Refreshed Facility Types store: {facilityTypes.Count()} entries");
-                
+
             return true;
         }
         else

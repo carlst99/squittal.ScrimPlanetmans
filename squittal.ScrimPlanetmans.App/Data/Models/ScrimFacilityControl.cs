@@ -13,10 +13,10 @@ public class ScrimFacilityControl
 
     [Required]
     public DateTime Timestamp { get; set; }
-        
+
     [Required]
     public int FacilityId { get; set; }
-        
+
     [Required]
     public int ControllingTeamOrdinal { get; set; }
 

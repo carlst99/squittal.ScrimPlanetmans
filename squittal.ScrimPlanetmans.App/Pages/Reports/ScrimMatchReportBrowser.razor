@@ -54,7 +54,7 @@
                         <div style="margin-bottom: 8px; display: block;">
                             
                             @if (_rulesets != null)
-                            { 
+                            {
                             <div style="margin-left: 0; margin-right: 16px; margin-bottom: 0.5rem; display: inline-block;">Ruleset: 
                                 <InputSelect TValue="string" style="width: 175px; padding: 0.1rem; display: inline-block;" Value="@_searchFilter.RulesetIdString" ValueChanged="@((string s) => _searchFilter.SetRulesetId(s))" ValueExpression="@(() => _searchFilter.RulesetIdString)">
                                 <option value=@_anyRulesetIdValue>Any Ruleset</option>
@@ -68,7 +68,7 @@
                             }
                             
                             @if (_worlds != null)
-                            { 
+                            {
                                 <InputSelect TValue="string" style="margin-left: 0; margin-right: 4px; width: 125px; padding: 0.1rem; display: inline-block;" Value="@_searchFilter.WorldIdString" ValueChanged="@((string s) => _searchFilter.SetWorldId(s))" ValueExpression="@(() => _searchFilter.WorldIdString)">
                                     <option value=@_anyWorldIdValue>All Servers</option>
 
@@ -84,7 +84,7 @@
                                 <option value=@_noFacilitIdFilterValue>No Filter</option>
 
                                 @if (_mapZones != null && _mapRegions != null)
-                                { 
+                                {
                                     @foreach (var zone in _mapZones)
                                     {
                                         <optgroup label="@(_zones.Where(z => zone == z.Id).Select(z => z.Name).FirstOrDefault())" style="background-color: var(--sq-bg-white-unlit); color: var(--sq-pink); font-size: 1rem;">@(_zones.Where(z => zone == z.Id).Select(z => z.Name).FirstOrDefault())</optgroup>

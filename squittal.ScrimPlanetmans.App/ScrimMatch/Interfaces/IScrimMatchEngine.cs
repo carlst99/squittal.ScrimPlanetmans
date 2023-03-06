@@ -8,7 +8,7 @@ public interface IScrimMatchEngine
 {
     MatchConfiguration MatchConfiguration { get; set; }
     Ruleset.Models.Ruleset MatchRuleset { get; }
-        
+
     Task Start();
     Task InitializeNewMatch();
     void ConfigureMatch(MatchConfiguration configuration);

@@ -20,7 +20,7 @@ public interface IConstructedTeamService
 
     //Task<Character> TryAddCharacterToConstructedTeam(int teamId, string characterInput);
     Task<Character> TryAddCharacterToConstructedTeam(int teamId, string characterInput, string customAlias);
-        
+
     Task<bool> IsCharacterIdOnTeam(int teamId, string characterId);
     Task<bool> TryRemoveCharacterFromConstructedTeam(int teamId, string characterId);
     Task<bool> UpdateConstructedTeamInfo(ConstructedTeam teamUpdate);
