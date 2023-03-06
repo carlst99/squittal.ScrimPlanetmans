@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,7 @@ public class LoadoutService : ILoadoutService
     private readonly ISqlScriptRunner _sqlScriptRunner;
     private readonly ILogger<LoadoutService> _logger;
 
-    public string BackupSqlScriptFileName => "CensusBackups\\dbo.Loadout.Table.sql";
+    public string BackupSqlScriptFileName => Path.Combine("CensusBackups", "dbo.Loadout.Table.sql");
 
 
     public LoadoutService(IDbContextHelper dbContextHelper, CensusLoadout censusLoadout, ISqlScriptRunner sqlScriptRunner, ILogger<LoadoutService> logger)

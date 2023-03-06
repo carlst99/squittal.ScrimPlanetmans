@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,7 +27,7 @@ public class ZoneService : IZoneService
     private readonly ConcurrentDictionary<int, Zone> _zoneMaps = new();
     private readonly SemaphoreSlim _mapSetUpSemaphore = new(1);
 
-    public string BackupSqlScriptFileName => "CensusBackups\\dbo.Zone.Table.sql";
+    public string BackupSqlScriptFileName => Path.Combine("CensusBackups", "dbo.Zone.Table.sql");
 
     public ZoneService(IDbContextHelper dbContextHelper, CensusZone censusZone, ISqlScriptRunner sqlScriptRunner, ILogger<ZoneService> logger)
     {

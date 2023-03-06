@@ -8,11 +8,12 @@ namespace squittal.ScrimPlanetmans.App.Services;
 
 public class SqlScriptRunner : ISqlScriptRunner
 {
-    private readonly string _sqlDirectory = "Data\\SQL";
+    private readonly string _sqlDirectory = Path.Combine("Data", "SQL");
     private readonly string _basePath;
     private readonly string _scriptDirectory;
     private readonly string _adhocScriptDirectory;
 
+    // TODO: This ain't gonna work for non-localdb installations
     private readonly Server _server = new Server("(LocalDB)\\MSSQLLocalDB");
 
     private readonly ILogger<SqlScriptRunner> _logger;
@@ -24,7 +25,7 @@ public class SqlScriptRunner : ISqlScriptRunner
         _basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
         _scriptDirectory = Path.Combine(_basePath, _sqlDirectory);
 
-        _adhocScriptDirectory = Path.GetFullPath(Path.Combine(_basePath, "..", "..", "..", "..\\sql_adhoc"));
+        _adhocScriptDirectory = Path.Combine(_basePath, "..", "..", "..", "..", "sql_adhoc");
     }
 
     public void RunSqlScript(string fileName, bool minimalLogging = false)

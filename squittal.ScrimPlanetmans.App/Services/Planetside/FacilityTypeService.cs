@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,7 @@ public class FacilityTypeService : IFacilityTypeService
     private readonly ISqlScriptRunner _sqlScriptRunner;
     private readonly ILogger<FacilityTypeService> _logger;
 
-    public string BackupSqlScriptFileName => "CensusBackups\\dbo.FacilityType.Table.sql";
+    public string BackupSqlScriptFileName => Path.Combine("CensusBackups", "dbo.FacilityType.Table.sql");
 
     public FacilityTypeService(IDbContextHelper dbContextHelper, CensusFacility censusFacility, ISqlScriptRunner sqlScriptRunner, ILogger<FacilityTypeService> logger)
     {

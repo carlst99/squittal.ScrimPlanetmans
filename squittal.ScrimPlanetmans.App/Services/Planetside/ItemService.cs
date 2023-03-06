@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +30,7 @@ public class ItemService : IItemService
     private readonly ConcurrentDictionary<int, Item> _weaponsMap = new();
     private readonly SemaphoreSlim _weaponMapSetUpSemaphore = new(1);
 
-    public string BackupSqlScriptFileName => "CensusBackups\\dbo.Item.Table.sql";
+    public string BackupSqlScriptFileName => Path.Combine("CensusBackups", "dbo.Item.Table.sql");
 
     public event EventHandler<StoreRefreshMessageEventArgs>? RaiseStoreRefreshEvent;
 

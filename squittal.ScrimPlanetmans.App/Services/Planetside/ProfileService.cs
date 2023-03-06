@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,7 +26,7 @@ public class ProfileService : IProfileService, IDisposable
     private ConcurrentDictionary<int, Profile> LoadoutProfilesMap { get; set; } = new ConcurrentDictionary<int, Profile>();
     private readonly SemaphoreSlim _mapSetUpSemaphore = new SemaphoreSlim(1);
 
-    public string BackupSqlScriptFileName => "CensusBackups\\dbo.Profile.Table.sql";
+    public string BackupSqlScriptFileName => Path.Combine("CensusBackups", "dbo.Profile.Table.sql");
 
 
     public ProfileService(IDbContextHelper dbContextHelper, CensusProfile censusProfile, ISqlScriptRunner sqlScriptRunner, ILogger<ProfileService> logger)

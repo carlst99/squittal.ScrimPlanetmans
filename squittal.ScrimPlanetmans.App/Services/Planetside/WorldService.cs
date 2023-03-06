@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,7 +26,7 @@ public class WorldService : IWorldService
     private ConcurrentDictionary<int, World> WorldsMap { get; set; } = new ConcurrentDictionary<int, World>();
     private readonly SemaphoreSlim _mapSetUpSemaphore = new SemaphoreSlim(1);
 
-    public string BackupSqlScriptFileName => "CensusBackups\\dbo.World.Table.sql";
+    public string BackupSqlScriptFileName => Path.Combine("CensusBackups", "dbo.World.Table.sql");
 
 
     public WorldService(IDbContextHelper dbContextHelper, CensusWorld censusWorld, ISqlScriptRunner sqlScriptRunner, ILogger<ProfileService> logger)
