@@ -10,29 +10,35 @@ namespace squittal.ScrimPlanetmans.App.Services;
 public class SqlScriptRunner : ISqlScriptRunner
 {
     private readonly ILogger<SqlScriptRunner> _logger;
-    private readonly string? _dbConnectionString;
     private readonly string _sqlDirectory = Path.Combine("Data", "SQL");
     private readonly string _scriptDirectory;
     private readonly string _adhocScriptDirectory;
-    private readonly Server _server = new("(LocalDB)\\MSSQLLocalDB");
-
+    private readonly Server _server;
 
     public SqlScriptRunner(ILogger<SqlScriptRunner> logger, IConfiguration configuration)
     {
         _logger = logger;
-        _dbConnectionString = configuration.GetConnectionString("PlanetmansDbContext");
 
         string basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
         _scriptDirectory = Path.Combine(basePath, _sqlDirectory);
 
         _adhocScriptDirectory = Path.Combine(basePath, "..", "..", "..", "..", "sql_adhoc");
+
+        string? dbConnectionString = configuration.GetConnectionString("PlanetmansDbContext");
+        if (dbConnectionString is null)
+            throw new InvalidOperationException("Must set a database connection string by configuration");
+
+        _server = new Server
+        {
+            ConnectionContext =
+            {
+                ConnectionString = dbConnectionString
+            }
+        };
     }
 
     public void RunSqlScript(string fileName, bool minimalLogging = false)
     {
-        if (_dbConnectionString is not null)
-            _server.ConnectionContext.ConnectionString = _dbConnectionString;
-
         string scriptPath = Path.Combine(_scriptDirectory, fileName);
         string scriptText = File.ReadAllText(scriptPath);
 
@@ -51,9 +57,6 @@ public class SqlScriptRunner : ISqlScriptRunner
 
     public bool TryRunAdHocSqlScript(string fileName, out string info, bool minimalLogging = false)
     {
-        if (_dbConnectionString is not null)
-            _server.ConnectionContext.ConnectionString = _dbConnectionString;
-
         string scriptPath = Path.Combine(_adhocScriptDirectory, fileName);
         string scriptText = File.ReadAllText(scriptPath);
 
