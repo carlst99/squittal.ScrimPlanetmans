@@ -3,29 +3,26 @@ using System.IO;
 
 namespace squittal.ScrimPlanetmans.App.Logging;
 
-public class LogFileWriter
+public sealed class LogFileWriter : IDisposable
 {
-    public static bool WriteToLogFile(string fileName, string logMessage)
+    private readonly StreamWriter _logStream;
+
+    public LogFileWriter(string fileName)
     {
-        var basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
-        var matchLogsDirectory = Path.GetFullPath(Path.Combine(basePath, "..", "..", "..", "..\\match_logs"));
+        string basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+        string logPath = Path.Combine(basePath, "..", "..", "..", "..", "match_logs", fileName);
+        FileStream fileStream = new(logPath, FileMode.Append, FileAccess.Write, FileShare.Read);
+        _logStream = new StreamWriter(fileStream);
+    }
 
-        try
-        {
-            FileStream fileStream = new FileStream($"{matchLogsDirectory}\\{fileName}", FileMode.Append, FileAccess.Write);
-            
-            StreamWriter streamWriter = new StreamWriter(fileStream);
-            
-            streamWriter.WriteLine(logMessage);
-            
-            streamWriter.Close();
-            fileStream.Close();
+    public void Write(string message)
+    {
+        _logStream.WriteLine(message);
+    }
 
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _logStream.Dispose();
     }
 }

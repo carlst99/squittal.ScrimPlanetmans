@@ -1,114 +1,48 @@
 ﻿using System;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Logging;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 
-public class ScrimMessageBroadcastService : IScrimMessageBroadcastService
+public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisposable
 {
-    private readonly ILogger<ScrimMessageBroadcastService> _logger;
+    private bool _isDisposed;
+    private LogFileWriter? _logFileWriter;
 
-    public string LogFileName { get; set; }
-    public bool IsLoggingEnabled { get; set; } = false;
+    public bool IsLoggingEnabled { get; private set; }
 
-    #region Handler Events & Delegates
-    public event EventHandler<SimpleMessageEventArgs> RaiseSimpleMessageEvent;
-    public delegate void SimpleMessageEventHandler(object sender, SimpleMessageEventArgs e);
-
-    public event EventHandler<ScrimMessageEventArgs<TeamPlayerChangeMessage>> RaiseTeamPlayerChangeEvent;
-    public delegate void TeamPlayerChangeEventHandler(object sender, ScrimMessageEventArgs<TeamPlayerChangeMessage> e);
-        
-    public event EventHandler<ScrimMessageEventArgs<TeamOutfitChangeMessage>> RaiseTeamOutfitChangeEvent;
-    public delegate void TeamOutfitChangeEventHandler(object sender, ScrimMessageEventArgs<TeamOutfitChangeMessage> e);
-        
-    public event EventHandler<ScrimMessageEventArgs<TeamConstructedTeamChangeMessage>> RaiseTeamConstructedTeamChangeEvent;
-    public delegate void TeamConstructedTeamChangeEventHandler(object sender, ScrimMessageEventArgs<TeamConstructedTeamChangeMessage> e);
-
-    public event EventHandler<ScrimMessageEventArgs<TeamAliasChangeMessage>> RaiseTeamAliasChangeEvent;
-    public delegate void TeamAliasChangeEventHandler(object sender, ScrimMessageEventArgs<TeamAliasChangeMessage> e);
-        
-    public event EventHandler<ScrimMessageEventArgs<TeamFactionChangeMessage>> RaiseTeamFactionChangeEvent;
-    public delegate void TeamFactionChangeEventHandler(object sender, ScrimMessageEventArgs<TeamFactionChangeMessage> e);
-
-    public event EventHandler<ScrimMessageEventArgs<TeamLockStatusChangeMessage>> RaiseTeamLockStatusChangeEvent;
-    public delegate void TeamLockStatusChangeEventHandler(object sender, ScrimMessageEventArgs<TeamLockStatusChangeMessage> e);
-        
-    public event EventHandler<ScrimMessageEventArgs<PlayerNameDisplayChangeMessage>> RaisePlayerNameDisplayChangeEvent;
-    public delegate void PlayerNameDisplayChangeEventHandler(object sender, ScrimMessageEventArgs<PlayerNameDisplayChangeMessage> e);
-
-
-    public event EventHandler<ScrimMessageEventArgs<PlayerStatUpdateMessage>> RaisePlayerStatUpdateEvent;
-    public delegate void PlayerStatUpdateMessageEventHandler(object sender, ScrimMessageEventArgs<PlayerStatUpdateMessage> e);
-
-    public event EventHandler<ScrimMessageEventArgs<TeamStatUpdateMessage>> RaiseTeamStatUpdateEvent;
-    public delegate void TeamStatUpdateMessageEventHandler(object sender, ScrimMessageEventArgs<TeamStatUpdateMessage> e);
-        
-    public event EventHandler<ScrimMessageEventArgs<ScrimKillfeedEventMessage>> RaiseScrimKillfeedEvent;
-    public delegate void ScrimKillfeedEventMessageEventHandler(object sender, ScrimMessageEventArgs<ScrimKillfeedEventMessage> e);
-
-
-    public event EventHandler<ScrimMessageEventArgs<ScrimDeathActionEventMessage>> RaiseScrimDeathActionEvent;
-    public delegate void ScrimDeathActionEventMessageEventHandler(object sender, ScrimMessageEventArgs<ScrimDeathActionEventMessage> e);
-
-    public event EventHandler<ScrimMessageEventArgs<ScrimVehicleDestructionActionEventMessage>> RaiseScrimVehicleDestructionActionEvent;
-    public delegate void ScrimVehicleDestructionActionEventMessageEventHandler(object sender, ScrimMessageEventArgs<ScrimVehicleDestructionActionEventMessage> e);
-
-    public event EventHandler<ScrimMessageEventArgs<ScrimReviveActionEventMessage>> RaiseScrimReviveActionEvent;
-    public delegate void ScrimReviveActionEventMessageEventHandler(object sender, ScrimMessageEventArgs<ScrimReviveActionEventMessage> e);
-
-    public event EventHandler<ScrimMessageEventArgs<ScrimAssistActionEventMessage>> RaiseScrimAssistActionEvent;
-    public delegate void ScrimAssistActionEventMessageEventHandler(object sender, ScrimMessageEventArgs<ScrimAssistActionEventMessage> e);
-
-    public event EventHandler<ScrimMessageEventArgs<ScrimObjectiveTickActionEventMessage>> RaiseScrimObjectiveTickActionEvent;
-    public delegate void ScrimObjectiveTickActionEventMessageEventHandler(object sender, ScrimMessageEventArgs<ScrimObjectiveTickActionEventMessage> e);
-
-    public event EventHandler<ScrimMessageEventArgs<ScrimFacilityControlActionEventMessage>> RaiseScrimFacilityControlActionEvent;
-    public delegate void ScrimFacilityControlActionEventMessageEventHandler(object sender, ScrimMessageEventArgs<ScrimFacilityControlActionEventMessage> e);
-
-    public event EventHandler<ScrimMessageEventArgs<PlayerLoginMessage>> RaisePlayerLoginEvent;
-    public delegate void PlayerLoginEventHandler(object sender, ScrimMessageEventArgs<PlayerLoginMessage> e);
-
-    public event EventHandler<ScrimMessageEventArgs<PlayerLogoutMessage>> RaisePlayerLogoutEvent;
-    public delegate void PlayerLogoutEventHandler(object sender, ScrimMessageEventArgs<PlayerLogoutMessage> e);
-
-
-    public event EventHandler<ScrimMessageEventArgs<MatchStateUpdateMessage>> RaiseMatchStateUpdateEvent;
-    public delegate void MatchStateUpdateEventHandler(object sender, ScrimMessageEventArgs<MatchStateUpdateMessage> e);
-
-    public event EventHandler<ScrimMessageEventArgs<MatchConfigurationUpdateMessage>> RaiseMatchConfigurationUpdateEvent;
-    public delegate void MatchConfigurationUpdateEventHandler(object sender, ScrimMessageEventArgs<MatchConfigurationUpdateMessage> e);
-
-    public event EventHandler<ScrimMessageEventArgs<MatchTimerTickMessage>> RaiseMatchTimerTickEvent;
-    public delegate void MatchTimerTickEventHandler(object sender, ScrimMessageEventArgs<MatchTimerTickMessage> e);
-        
-    public event EventHandler<ScrimMessageEventArgs<ConstructedTeamMemberChangeMessage>> RaiseConstructedTeamMemberChangeEvent;
-    public delegate void ConstructedTeamMemberChangeEventHandler(object sender, ScrimMessageEventArgs<ConstructedTeamMemberChangeMessage> e);
-        
-    public event EventHandler<ScrimMessageEventArgs<ConstructedTeamInfoChangeMessage>> RaiseConstructedTeamInfoChangeEvent;
-    public delegate void ConstructedTeamInfoChangeEventHandler(object sender, ScrimMessageEventArgs<ConstructedTeamInfoChangeMessage> e);
-
-        
-    public event EventHandler<ScrimMessageEventArgs<ActiveRulesetChangeMessage>> RaiseActiveRulesetChangeEvent;
-    public delegate void ActiveRulesetChangeMessageEventHandler(object sender, ScrimMessageEventArgs<ActiveRulesetChangeMessage> e);
-        
-    public event EventHandler<ScrimMessageEventArgs<RulesetSettingChangeMessage>> RaiseRulesetSettingChangeEvent;
-    public delegate void RulesetSettingChangeMessageEventHandler(object sender, ScrimMessageEventArgs<RulesetSettingChangeMessage> e);
-        
-    public event EventHandler<ScrimMessageEventArgs<RulesetRuleChangeMessage>> RaiseRulesetRuleChangeEvent;
-    public delegate void ActiveRulesetRuleChangeEventHandler(object sender, ScrimMessageEventArgs<RulesetRuleChangeMessage> e);
-        
-    public event EventHandler<ScrimMessageEventArgs<RulesetOverlayConfigurationChangeMessage>> RaiseRulesetOverlayConfigurationChangeEvent;
-    public delegate void RulesetOverlayConfigurationChangeEventHandler(object sender, ScrimMessageEventArgs<RulesetOverlayConfigurationChangeMessage> e);
+    #region Handler Events
+    public event EventHandler<SimpleMessageEventArgs>? RaiseSimpleMessageEvent;
+    public event EventHandler<ScrimMessageEventArgs<TeamPlayerChangeMessage>>? RaiseTeamPlayerChangeEvent;
+    public event EventHandler<ScrimMessageEventArgs<TeamOutfitChangeMessage>>? RaiseTeamOutfitChangeEvent;
+    public event EventHandler<ScrimMessageEventArgs<TeamConstructedTeamChangeMessage>>? RaiseTeamConstructedTeamChangeEvent;
+    public event EventHandler<ScrimMessageEventArgs<TeamAliasChangeMessage>>? RaiseTeamAliasChangeEvent;
+    public event EventHandler<ScrimMessageEventArgs<TeamFactionChangeMessage>>? RaiseTeamFactionChangeEvent;
+    public event EventHandler<ScrimMessageEventArgs<TeamLockStatusChangeMessage>>? RaiseTeamLockStatusChangeEvent;
+    public event EventHandler<ScrimMessageEventArgs<PlayerNameDisplayChangeMessage>>? RaisePlayerNameDisplayChangeEvent;
+    public event EventHandler<ScrimMessageEventArgs<PlayerStatUpdateMessage>>? RaisePlayerStatUpdateEvent;
+    public event EventHandler<ScrimMessageEventArgs<TeamStatUpdateMessage>>? RaiseTeamStatUpdateEvent;
+    public event EventHandler<ScrimMessageEventArgs<ScrimKillfeedEventMessage>>? RaiseScrimKillfeedEvent;
+    public event EventHandler<ScrimMessageEventArgs<ScrimDeathActionEventMessage>>? RaiseScrimDeathActionEvent;
+    public event EventHandler<ScrimMessageEventArgs<ScrimVehicleDestructionActionEventMessage>>? RaiseScrimVehicleDestructionActionEvent;
+    public event EventHandler<ScrimMessageEventArgs<ScrimReviveActionEventMessage>>? RaiseScrimReviveActionEvent;
+    public event EventHandler<ScrimMessageEventArgs<ScrimAssistActionEventMessage>>? RaiseScrimAssistActionEvent;
+    public event EventHandler<ScrimMessageEventArgs<ScrimObjectiveTickActionEventMessage>>? RaiseScrimObjectiveTickActionEvent;
+    public event EventHandler<ScrimMessageEventArgs<ScrimFacilityControlActionEventMessage>>? RaiseScrimFacilityControlActionEvent;
+    public event EventHandler<ScrimMessageEventArgs<PlayerLoginMessage>>? RaisePlayerLoginEvent;
+    public event EventHandler<ScrimMessageEventArgs<PlayerLogoutMessage>>? RaisePlayerLogoutEvent;
+    public event EventHandler<ScrimMessageEventArgs<MatchStateUpdateMessage>>? RaiseMatchStateUpdateEvent;
+    public event EventHandler<ScrimMessageEventArgs<MatchConfigurationUpdateMessage>>? RaiseMatchConfigurationUpdateEvent;
+    public event EventHandler<ScrimMessageEventArgs<MatchTimerTickMessage>>? RaiseMatchTimerTickEvent;
+    public event EventHandler<ScrimMessageEventArgs<ConstructedTeamMemberChangeMessage>>? RaiseConstructedTeamMemberChangeEvent;
+    public event EventHandler<ScrimMessageEventArgs<ConstructedTeamInfoChangeMessage>>? RaiseConstructedTeamInfoChangeEvent;
+    public event EventHandler<ScrimMessageEventArgs<ActiveRulesetChangeMessage>>? RaiseActiveRulesetChangeEvent;
+    public event EventHandler<ScrimMessageEventArgs<RulesetSettingChangeMessage>>? RaiseRulesetSettingChangeEvent;
+    public event EventHandler<ScrimMessageEventArgs<RulesetRuleChangeMessage>>? RaiseRulesetRuleChangeEvent;
+    public event EventHandler<ScrimMessageEventArgs<RulesetOverlayConfigurationChangeMessage>>? RaiseRulesetOverlayConfigurationChangeEvent;
 
     #endregion Handler Events & Delegates
-
-    public ScrimMessageBroadcastService(ILogger<ScrimMessageBroadcastService> logger)
-    {
-        _logger = logger;
-    }
 
     #region Logging
     public void DisableLogging()
@@ -127,21 +61,18 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService
             return;
         }
 
-        LogFileName = fileName;
+        _logFileWriter?.Dispose();
+        _logFileWriter = new LogFileWriter(fileName);
     }
 
 
     private void TrySaveToLogFile(string message)
     {
-        var timestamp = DateTime.Now.ToLongTimeString();
+        if (!IsLoggingEnabled || _logFileWriter is null)
+            return;
 
-        if (IsLoggingEnabled && !string.IsNullOrWhiteSpace(LogFileName))
-        {
-            Task.Run( () =>
-            {
-                LogFileWriter.WriteToLogFile(LogFileName, $"{timestamp}: {message}");
-            });
-        }
+        string timestamp = DateTime.Now.ToLongTimeString();
+        _logFileWriter.Write($"{timestamp}: {message}");
     }
     #endregion Loggin
 
@@ -456,4 +387,22 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService
         RaiseRulesetRuleChangeEvent?.Invoke(this, e);
     }
     #endregion Ruleset Messages
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposeManaged)
+    {
+        if (_isDisposed)
+            return;
+
+        if (disposeManaged)
+            _logFileWriter?.Dispose();
+
+        _isDisposed = true;
+    }
 }

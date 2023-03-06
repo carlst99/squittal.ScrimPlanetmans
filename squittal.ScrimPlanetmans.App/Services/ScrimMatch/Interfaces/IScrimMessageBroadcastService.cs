@@ -5,8 +5,7 @@ namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 public interface IScrimMessageBroadcastService
 {
-    string LogFileName { get; set; }
-    bool IsLoggingEnabled { get; set; }
+    bool IsLoggingEnabled { get; }
     void DisableLogging();
     void EnableLogging();
     void SetLogFileName(string fileName);
