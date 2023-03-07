@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Serilog;
+using Serilog.Events;
 using squittal.ScrimPlanetmans.App.CensusServices;
 using squittal.ScrimPlanetmans.App.CensusStream;
 using squittal.ScrimPlanetmans.App.CensusStream.EventHandlers;
@@ -34,7 +36,37 @@ public class Program
 {
     public static void Main(string[] args)
     {
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+            .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+            .MinimumLevel.Override("Serilog.AspNetCore.RequestLoggingMiddleware", LogEventLevel.Warning)
+            .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
+            .Enrich.FromLogContext()
+            .WriteTo.Console
+            (
+                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}"
+            )
+            .CreateLogger();
+
+        try
+        {
+            BuildAndRun(args);
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Application terminated unexpectedly");
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+        }
+    }
+
+    private static void BuildAndRun(string[] args)
+    {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+        builder.Host.UseSerilog();
         builder.Host.UseSystemd();
 
         IServiceCollection services = builder.Services;
@@ -132,6 +164,8 @@ public class Program
         services.AddHostedService<ApplicationDataLoaderHostedService>();
 
         WebApplication app = builder.Build();
+
+        app.UseSerilogRequestLogging();
 
         if (app.Environment.IsDevelopment())
         {
