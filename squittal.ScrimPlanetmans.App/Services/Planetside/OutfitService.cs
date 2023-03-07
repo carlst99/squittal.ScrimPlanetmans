@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DaybreakGames.Census.Exceptions;
@@ -23,51 +24,35 @@ public class OutfitService : IOutfitService
         _logger = logger;
     }
 
-    public async Task<Outfit> GetOutfitAsync(string outfitId)
-    {
-        return await GetOutfitInternalAsync(outfitId);
-    }
+    public async Task<Outfit?> GetOutfitAsync(string outfitId)
+        => await GetOutfitInternalAsync(outfitId);
 
-    public async Task<Outfit> GetOutfitByAlias(string alias)
+    public async Task<Outfit?> GetOutfitByAliasAsync(string alias)
     {
-        var outfit = await _censusOutfit.GetOutfitByAliasAsync(alias);
-        if (outfit == null)
-        {
+        CensusOutfitModel? outfit = await _censusOutfit.GetOutfitByAliasAsync(alias);
+        if (outfit is null)
             return null;
-        }
 
-        var censusEntity = ConvertToDbModel(outfit);
+        Outfit censusEntity = ConvertToDbModel(outfit);
 
         if (censusEntity.MemberCount == 0)
-        {
             return censusEntity;
-        }
 
-        var resolvedOutfit = await ResolveOutfitDetailsAsync(censusEntity, null);
-
-        return resolvedOutfit;
+        return await ResolveOutfitDetailsAsync(censusEntity, null);
     }
 
-    public async Task<IEnumerable<Character>> GetOutfitMembersByAlias(string alias)
+    public async Task<IEnumerable<Character>?> GetOutfitMembersByAliasAsync(string alias)
     {
-        var members = await _censusOutfit.GetOutfitMembersByAliasAsync(alias);
-        if (members == null)
-        {
-            return null;
-        }
+        IEnumerable<CensusOutfitMemberCharacterModel>? members = await _censusOutfit.GetOutfitMembersByAliasAsync(alias);
 
-        var validMembers = members.Where(m => m.CharacterId != null && m.Name != null);
-
-        var censusEntities = validMembers.Select(ConvertToDbModel);
-
-        return censusEntities.ToList();
+        return members?.Where(m => m is { CharacterId: { }, Name: { } })
+            .Select(ConvertToDbModel);
     }
 
-    public async Task<OutfitMember> UpdateCharacterOutfitMembership(Character character)
+    public async Task<OutfitMember?> UpdateCharacterOutfitMembershipAsync(Character character)
     {
-        OutfitMember outfitMember;
-        CensusOutfitMemberModel membership;
-            
+        CensusOutfitMemberModel? membership;
+
         try
         {
             membership = await _censusCharacter.GetCharacterOutfitMembership(character.Id);
@@ -78,18 +63,22 @@ public class OutfitService : IOutfitService
         }
 
         if (membership == null)
-        {
             return null;
-        }
 
-        var outfit = await GetOutfitInternalAsync(membership.OutfitId, character);
+        Outfit? outfit = await GetOutfitInternalAsync(membership.OutfitId, character);
         if (outfit == null)
         {
-            _logger.LogError(84624, $"Unable to resolve outfit {membership.OutfitId} for character {character.Id}");
+            _logger.LogError
+            (
+                84624,
+                "Unable to resolve outfit {OutfitId} for character {CharacterId}",
+                membership.OutfitId,
+                character.Id
+            );
             return null;
         }
 
-        outfitMember = new OutfitMember
+        OutfitMember outfitMember = new()
         {
             OutfitId = membership.OutfitId,
             CharacterId = membership.CharacterId,
@@ -102,51 +91,47 @@ public class OutfitService : IOutfitService
         return outfitMember;
     }
 
-    private async Task<Outfit> GetOutfitInternalAsync(string outfitId, Character member = null)
+    private async Task<Outfit?> GetOutfitInternalAsync(string outfitId, Character? member = null)
     {
-        Outfit outfit;
-            
-        outfit = await GetKnownOutfitAsync(outfitId);
-
-        if (outfit == null)
-        {
+        Outfit? outfit = await GetKnownOutfitAsync(outfitId);
+        if (outfit is null)
             return null;
-        }
 
         // These are null if outfit was retrieved from the census API
         if (outfit.WorldId == null || outfit.FactionId == null)
-        {
             outfit = await ResolveOutfitDetailsAsync(outfit, member);
-        }
 
         return outfit;
     }
 
     // Returns the specified outfit from the database, if it exists. Otherwise,
     // queries for it in the DBG census.
-    private async Task<Outfit> GetKnownOutfitAsync(string outfitId)
+    private async Task<Outfit?> GetKnownOutfitAsync(string outfitId)
     {
-        Outfit outfit;
-
         try
         {
-            outfit = await GetCensusOutfit(outfitId);
+            return await GetCensusOutfitAsync(outfitId);
         }
         catch (CensusConnectionException)
         {
             return null;
         }
-
-        return outfit;
     }
 
-    private async Task<Outfit> GetCensusOutfit(string outfitId)
+    private async Task<Outfit?> GetCensusOutfitAsync(string outfitId)
     {
-        var censusOutfit = await _censusOutfit.GetOutfitAsync(outfitId);
-
-        return censusOutfit == null
-            ? null
-            : ConvertToDbModel(censusOutfit);
+        try
+        {
+            CensusOutfitModel? censusOutfit = await _censusOutfit.GetOutfitAsync(outfitId);
+            return censusOutfit is null
+                ? null
+                : ConvertToDbModel(censusOutfit);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get outfit by ID from Census");
+            return null;
+        }
     }
 
     public static Outfit ConvertToDbModel(CensusOutfitModel censusOutfit)
@@ -163,7 +148,7 @@ public class OutfitService : IOutfitService
         };
     }
 
-    private async Task<Outfit> ResolveOutfitDetailsAsync(Outfit outfit, Character member)
+    private async Task<Outfit> ResolveOutfitDetailsAsync(Outfit outfit, Character? member)
     {
         if (member != null)
         {
@@ -172,9 +157,9 @@ public class OutfitService : IOutfitService
         }
         else
         {
-            var leader = await _censusCharacter.GetCharacter(outfit.LeaderCharacterId);
-            outfit.WorldId = leader.WorldId;
-            outfit.FactionId = leader.FactionId;
+            CensusCharacterModel? leader = await _censusCharacter.GetCharacter(outfit.LeaderCharacterId);
+            outfit.WorldId = leader?.WorldId;
+            outfit.FactionId = leader?.FactionId;
         }
 
         return outfit;
@@ -182,16 +167,8 @@ public class OutfitService : IOutfitService
 
     public static Character ConvertToDbModel(CensusOutfitMemberCharacterModel member)
     {
-        bool isOnline;
-
-        if (int.TryParse(member.OnlineStatus, out int onlineStatus))
-        {
-            isOnline = onlineStatus > 0 ? true : false;
-        }
-        else // "service_unavailable"
-        {
-            isOnline = false;
-        }
+        bool isOnline = int.TryParse(member.OnlineStatus, out int onlineStatus)
+            && onlineStatus > 0;
 
         return new Character
         {

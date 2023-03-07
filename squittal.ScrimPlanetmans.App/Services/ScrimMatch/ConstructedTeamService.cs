@@ -294,7 +294,7 @@ public class ConstructedTeamService : IConstructedTeamService
         List<Player> processedPlayers = new List<Player>();
 
         IEnumerable<Task<Player>> getPlayerTasksQuery =
-            from member in members select _playerService.GetPlayerFromCharacterId(member.CharacterId);
+            from member in members select _playerService.GetPlayerFromCharacterIdAsync(member.CharacterId);
 
         List<Task<Player>> getPlayersTasks = getPlayerTasksQuery.ToList();
 

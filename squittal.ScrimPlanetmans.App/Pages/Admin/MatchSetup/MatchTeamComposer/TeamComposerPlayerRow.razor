@@ -254,7 +254,7 @@
             return;
         }
 
-        if (await ScrimTeamsManager.UdatePlayerTemporaryAlias(Player.Id, newAlias))
+        if (await ScrimTeamsManager.UpdatePlayerTemporaryAliasAsync(Player.Id, newAlias))
         {
             _inputTemporaryAlias = Player.NameDisplay;
             _showTemporaryAliasEditForm = false;
@@ -270,7 +270,7 @@
 
     private async void HandleClearDisplayName()
     {
-        await ScrimTeamsManager.ClearPlayerDisplayName(Player.Id);
+        await ScrimTeamsManager.ClearPlayerDisplayNameAsync(Player.Id);
         _inputTemporaryAlias = Player.NameDisplay;
         _showTemporaryAliasEditForm = false;
     }

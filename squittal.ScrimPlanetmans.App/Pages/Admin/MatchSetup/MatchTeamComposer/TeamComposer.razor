@@ -444,7 +444,7 @@
 
             try
             {
-                newOutfit = await OutfitService.GetOutfitByAlias(newAliasLower);
+                newOutfit = await OutfitService.GetOutfitByAliasAsync(newAliasLower);
 
                 if (newOutfit != null && newOutfit.MemberCount > 0)
                 {

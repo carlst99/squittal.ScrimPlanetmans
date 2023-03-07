@@ -6,7 +6,7 @@ namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 public interface IScrimPlayersService
 {
-    Task<Player> GetPlayerFromCharacterId(string characterId);
-    Task<Player> GetPlayerFromCharacterName(string characterName);
-    Task<IEnumerable<Player>> GetPlayersFromOutfitAlias(string alias);
+    Task<Player?> GetPlayerFromCharacterIdAsync(string characterId);
+    Task<Player?> GetPlayerFromCharacterNameAsync(string characterName);
+    Task<IEnumerable<Player>?> GetPlayersFromOutfitAliasAsync(string alias);
 }

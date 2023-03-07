@@ -385,7 +385,7 @@ public class WebsocketMonitor : StatefulHostedService, IWebsocketMonitor, IDispo
     #endregion Message Payload Handling
 
     #region Send/Receive Broadcast Events
-    private void ReceiveTeamPlayerChangeEvent(object sender, ScrimMessageEventArgs<TeamPlayerChangeMessage> e)
+    private void ReceiveTeamPlayerChangeEvent(object? sender, ScrimMessageEventArgs<TeamPlayerChangeMessage> e)
     {
         var message = e.Message;
         var player = message.Player;
@@ -402,7 +402,7 @@ public class WebsocketMonitor : StatefulHostedService, IWebsocketMonitor, IDispo
         }
     }
 
-    private void ReceiveMatchConfigurationUpdateEvent(object sender, ScrimMessageEventArgs<MatchConfigurationUpdateMessage> e)
+    private void ReceiveMatchConfigurationUpdateEvent(object? sender, ScrimMessageEventArgs<MatchConfigurationUpdateMessage> e)
     {
         var message = e.Message;
         var matchConfiguration = message.MatchConfiguration;

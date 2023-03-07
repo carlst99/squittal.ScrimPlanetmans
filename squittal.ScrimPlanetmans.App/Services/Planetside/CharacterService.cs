@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.CensusServices;
 using squittal.ScrimPlanetmans.App.CensusServices.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
@@ -8,74 +10,75 @@ namespace squittal.ScrimPlanetmans.App.Services.Planetside;
 
 public class CharacterService : ICharacterService
 {
+    private readonly ILogger<CharacterService> _logger;
     private readonly IOutfitService _outfitService;
     private readonly CensusCharacter _censusCharacter;
 
-    public CharacterService(IOutfitService outfitService, CensusCharacter censusCharacter)
+    public CharacterService
+    (
+        ILogger<CharacterService> logger,
+        IOutfitService outfitService,
+        CensusCharacter censusCharacter
+    )
     {
+        _logger = logger;
         _outfitService = outfitService;
         _censusCharacter = censusCharacter;
     }
 
-    public async Task<Character> GetCharacterAsync(string characterId)
+    public async Task<Character?> GetCharacterAsync(string characterId)
     {
         try
         {
-            var character = await _censusCharacter.GetCharacter(characterId);
+            CensusCharacterModel? character = await _censusCharacter.GetCharacter(characterId);
+            return character is null
+                ? null
+                : ConvertToDbModel(character);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve character by ID from Census");
+            return null;
+        }
+    }
 
-            if (character == null)
-            {
+    public async Task<Character?> GetCharacterByNameAsync(string characterName)
+    {
+        try
+        {
+            CensusCharacterModel? character = await _censusCharacter.GetCharacterByName(characterName);
+            return character is null
+                ? null
+                : ConvertToDbModel(character);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve character by name from Census");
+            return null;
+        }
+    }
+
+    public async Task<OutfitMember?> GetCharacterOutfitAsync(string characterId)
+    {
+        try
+        {
+            Character? character = await GetCharacterAsync(characterId);
+            if (character is null)
                 return null;
-            }
 
-            var censusEntity = ConvertToDbModel(character);
-
-            return censusEntity;
+            return await _outfitService.UpdateCharacterOutfitMembershipAsync(character);
         }
-        catch
+        catch (Exception ex)
         {
-            // TODO: add logging to this service
+            _logger.LogError(ex, "Failed to retrieve a character's outfit from Census");
             return null;
         }
-    }
-
-    public async Task<Character> GetCharacterByNameAsync(string characterName)
-    {
-        var character = await _censusCharacter.GetCharacterByName(characterName);
-
-        if (character == null)
-        {
-            return null;
-        }
-
-        var censusEntity = ConvertToDbModel(character);
-
-        return censusEntity;
-    }
-
-    public async Task<OutfitMember> GetCharacterOutfitAsync(string characterId)
-    {
-        var character = await GetCharacterAsync(characterId);
-        if (character == null)
-        {
-            return null;
-        }
-
-        return await _outfitService.UpdateCharacterOutfitMembership(character);
     }
 
     public static Character ConvertToDbModel(CensusCharacterModel censusModel)
     {
-        bool isOnline;
-
-        if (int.TryParse(censusModel.OnlineStatus, out int onlineStatus))
-        {
-            isOnline = onlineStatus > 0 ? true : false;
-        }
-        else // "service_unavailable"
-        {
-            isOnline = false;
-        }
+        bool isOnline = int.TryParse(censusModel.OnlineStatus, out int onlineStatus)
+            && onlineStatus > 0;
 
         return new Character
         {

@@ -8,7 +8,7 @@ public interface IScrimTeamsManager
 {
     MaxPlayerPointsTracker MaxPlayerPointsTracker { get; }
 
-    Team GetTeam(int teamOrdinal);
+    Team? GetTeam(int teamOrdinal);
     string GetTeamAliasDisplay(int teamOrdinal);
 
     Team GetTeamOne();
@@ -35,12 +35,12 @@ public interface IScrimTeamsManager
     bool IsCharacterAvailable(string characterId, out Team owningTeam);
     bool IsCharacterAvailable(string characterId);
 
-    bool IsOutfitAvailable(string alias, out Team owningTeam);
+    bool IsOutfitAvailable(string alias, out Team? owningTeam);
 
     int? GetTeamOrdinalFromPlayerId(string characterId);
     bool DoPlayersShareTeam(string firstId, string secondId, out int? firstOrdinal, out int? secondOrdinal);
 
-    Team GetTeamFromOutfitAlias(string aliasLower);
+    Team? GetTeamFromOutfitAlias(string aliasLower);
 
     bool DoPlayersShareTeam(Player firstPlayer, Player secondPlayer);
     bool IsOutfitAvailable(string alias);
@@ -66,8 +66,8 @@ public interface IScrimTeamsManager
     Task<bool> RemoveCharacterFromTeamAndDb(string characterId);
     int? GetTeamScoreDisplay(int teamOrdinal);
 
-    Task<bool> UdatePlayerTemporaryAlias(string playerId, string newAlias);
-    Task ClearPlayerDisplayName(string playerId);
+    Task<bool> UpdatePlayerTemporaryAliasAsync(string playerId, string newAlias);
+    Task ClearPlayerDisplayNameAsync(string playerId);
 
     Task<bool> AddConstructedTeamFactionMembersToTeam(int teamOrdinal, int constructedTeamId, int factionId);
     IEnumerable<Player> GetTeamOutfitPlayers(int teamOrdinal, string outfitAliasLower);
@@ -75,9 +75,9 @@ public interface IScrimTeamsManager
     IEnumerable<Player> GetTeamConstructedTeamFactionPlayers(int teamOrdinal, int constructedTeamId, int factionId);
     Task<bool> RemoveConstructedTeamFactionFromTeamAndDb(int constructedTeamId, int factionId);
     bool RemoveConstructedTeamFactionFromTeam(int constructedTeamId, int factionId);
-    bool IsConstructedTeamFactionAvailable(int constructedTeamId, int factionId, out Team owningTeam);
+    bool IsConstructedTeamFactionAvailable(int constructedTeamId, int factionId, out Team? owningTeam);
     bool IsConstructedTeamFactionAvailable(int constructedTeamId, int factionId);
-    Team GetTeamFromConstructedTeamFaction(int constructedTeamId, int factionId);
+    Team? GetTeamFromConstructedTeamFaction(int constructedTeamId, int factionId);
     bool IsConstructedTeamAnyFactionAvailable(int constructedTeamId);
     void ResetAllTeamsMatchData();
     Task LockTeamPlayers(int teamOrdinal);

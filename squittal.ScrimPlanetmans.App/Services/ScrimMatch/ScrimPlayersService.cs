@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
@@ -17,43 +18,29 @@ public class ScrimPlayersService : IScrimPlayersService
         _outfits = outfits;
         _characters = characters;
     }
-    public async Task<Player> GetPlayerFromCharacterId(string characterId)
+    public async Task<Player?> GetPlayerFromCharacterIdAsync(string characterId)
     {
-        var character = await _characters.GetCharacterAsync(characterId);
-
-        if (character == null)
-        {
-            return null;
-        }
-
-        return new Player(character);
+        Character? character = await _characters.GetCharacterAsync(characterId);
+        return character is null
+            ? null
+            : new Player(character);
     }
 
-    public async Task<Player> GetPlayerFromCharacterName(string characterName)
+    public async Task<Player?> GetPlayerFromCharacterNameAsync(string characterName)
     {
-        var character = await _characters.GetCharacterByNameAsync(characterName);
-
-        if (character == null)
-        {
-            return null;
-        }
-
-        return new Player(character);
+        Character? character = await _characters.GetCharacterByNameAsync(characterName);
+        return character is null
+            ? null
+            : new Player(character);
     }
 
-    public async Task<IEnumerable<Player>> GetPlayersFromOutfitAlias(string alias)
+    public async Task<IEnumerable<Player>?> GetPlayersFromOutfitAliasAsync(string alias)
     {
-        var censusMembers = await _outfits.GetOutfitMembersByAlias(alias);
+        IEnumerable<Character>? censusMembers = await _outfits.GetOutfitMembersByAliasAsync(alias);
 
-        if (censusMembers == null || !censusMembers.Any())
-        {
-            return null;
-        }
-
-        return censusMembers
-            .Where(m => !string.IsNullOrWhiteSpace(m.Id) && m.Name != null)
+        return censusMembers?
+            .Where(m => m is { Id: {}, Name:{} })
             .Select(m => new Player(m))
-            .Distinct()
-            .ToList();
+            .Distinct();
     }
 }

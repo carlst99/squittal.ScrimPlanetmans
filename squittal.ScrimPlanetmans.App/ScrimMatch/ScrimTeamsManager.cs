@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -20,6 +21,9 @@ namespace squittal.ScrimPlanetmans.App.ScrimMatch;
 
 public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
 {
+    private const string DEFAULT_ALIAS_PRE_TEXT = "tm";
+
+    private readonly ILogger<ScrimTeamsManager> _logger;
     private readonly IScrimPlayersService _scrimPlayers;
     private readonly IOutfitService _outfitService;
     private readonly IFactionService _factionService;
@@ -27,27 +31,29 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly IDbContextHelper _dbContextHelper;
     private readonly IScrimMatchDataService _matchDataService;
-    private readonly ILogger<ScrimTeamsManager> _logger;
 
     private readonly Team Team1;
     private readonly Team Team2;
+    private readonly Dictionary<int, Team> _ordinalTeamMap = new();
+    private readonly List<Player> _allPlayers = new();
+    private readonly ConcurrentDictionary<string, int> _playerTeamOrdinalsMap = new();
+    private readonly KeyedSemaphoreSlim _characterMatchDataLock = new();
 
-    private readonly Dictionary<int, Team> _ordinalTeamMap = new Dictionary<int, Team>();
+    public MaxPlayerPointsTracker MaxPlayerPointsTracker { get; private set; } = new();
 
-    private readonly List<Player> _allPlayers = new List<Player>();
-
-    private ConcurrentDictionary<string, int> PlayerTeamOrdinalsMap { get; set; } = new ConcurrentDictionary<string, int>();
-
-    private readonly string _defaultAliasPreText = "tm";
-
-    public MaxPlayerPointsTracker MaxPlayerPointsTracker { get; private set; } = new MaxPlayerPointsTracker();
-
-    private readonly KeyedSemaphoreSlim _characterMatchDataLock = new KeyedSemaphoreSlim();
-
-    public ScrimTeamsManager(IScrimPlayersService scrimPlayers, IOutfitService outfitService, IFactionService factionService,
-        IScrimMessageBroadcastService messageService, IScrimMatchDataService matchDataService,
-        IConstructedTeamService constructedTeamService, IDbContextHelper dbContextHelper, ILogger<ScrimTeamsManager> logger)
+    public ScrimTeamsManager
+    (
+        ILogger<ScrimTeamsManager> logger,
+        IScrimPlayersService scrimPlayers,
+        IOutfitService outfitService,
+        IFactionService factionService,
+        IScrimMessageBroadcastService messageService,
+        IScrimMatchDataService matchDataService,
+        IConstructedTeamService constructedTeamService,
+        IDbContextHelper dbContextHelper
+    )
     {
+        _logger = logger;
         _scrimPlayers = scrimPlayers;
         _outfitService = outfitService;
         _factionService = factionService;
@@ -55,85 +61,55 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         _matchDataService = matchDataService;
         _constructedTeamService = constructedTeamService;
         _dbContextHelper = dbContextHelper;
-        _logger = logger;
 
-        Team1 = new Team($"{_defaultAliasPreText}1", "Team 1", 1);
+        Team1 = new Team($"{DEFAULT_ALIAS_PRE_TEXT}1", "Team 1", 1);
         _ordinalTeamMap.Add(1, Team1);
 
-        Team2 = new Team($"{_defaultAliasPreText}2", "Team 2", 2);
+        Team2 = new Team($"{DEFAULT_ALIAS_PRE_TEXT}2", "Team 2", 2);
         _ordinalTeamMap.Add(2, Team2);
     }
 
-    public Team GetTeam(int teamOrdinal)
-    {
-        return _ordinalTeamMap.GetValueOrDefault(teamOrdinal);
-    }
+    public Team? GetTeam(int teamOrdinal)
+        => _ordinalTeamMap.GetValueOrDefault(teamOrdinal);
 
     public string GetTeamAliasDisplay(int teamOrdinal)
     {
-        var team = GetTeam(teamOrdinal);
-        if (team == null)
-        {
-            return string.Empty;
-        }
+        Team? team = GetTeam(teamOrdinal);
 
-        return team.Alias;
+        return team is null
+            ? string.Empty
+            : team.Alias;
     }
 
     public int? GetTeamScoreDisplay(int teamOrdinal)
-    {
-        var team = GetTeam(teamOrdinal);
-        if (team == null)
-        {
-            return null;
-        }
-
-        return team.EventAggregate.Points;
-    }
+        => GetTeam(teamOrdinal)?.EventAggregate.Points;
 
     public Team GetTeamOne()
-    {
-        return Team1;
-    }
+        => Team1;
 
     public Team GetTeamTwo()
-    {
-        return Team2;
-    }
+        => Team2;
 
-    public Team GetTeamFromOutfitAlias(string aliasLower)
-    {
-        if (!IsOutfitAvailable(aliasLower, out Team owningTeam))
-        {
-            return owningTeam;
-        }
-        else
-        {
-            return null;
-        }
-    }
+    public Team? GetTeamFromOutfitAlias(string aliasLower)
+        => !IsOutfitAvailable(aliasLower, out Team? owningTeam)
+            ? owningTeam
+            : null;
 
-    public Team GetTeamFromConstructedTeamFaction(int constructedTeamId, int factionId)
-    {
-        if (!IsConstructedTeamFactionAvailable(constructedTeamId, factionId, out Team owningTeam))
-        {
-            return owningTeam;
-        }
-        else
-        {
-            return null;
-        }
-    }
+    public Team? GetTeamFromConstructedTeamFaction(int constructedTeamId, int factionId)
+        => !IsConstructedTeamFactionAvailable(constructedTeamId, factionId, out Team? owningTeam)
+            ? owningTeam
+            : null;
 
     public int? GetFirstTeamWithFactionId(int factionId)
     {
-        foreach (var teamOrdinal in _ordinalTeamMap.Keys.ToList())
+        foreach (int teamOrdinal in _ordinalTeamMap.Keys.ToList())
         {
-            var teamFactionId = GetTeam(teamOrdinal).FactionId;
-            if (factionId == teamFactionId)
-            {
+            Team? team = GetTeam(teamOrdinal);
+            if (team is null)
+                continue;
+
+            if (factionId == team.FactionId)
                 return teamOrdinal;
-            }
         }
 
         return null;
@@ -141,12 +117,10 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
 
     public IEnumerable<string> GetAllPlayerIds()
     {
-        var characterIds = new List<string>();
-            
-        foreach (var team in _ordinalTeamMap.Values)
-        {
+        List<string> characterIds = new();
+
+        foreach (Team team in _ordinalTeamMap.Values)
             characterIds.AddRange(team.GetAllPlayerIds());
-        }
 
         return characterIds;
     }
@@ -213,7 +187,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
     {
         var team = _ordinalTeamMap[teamOrdinal];
         var oldAlias = team.Alias;
-            
+
         if (team.TrySetAlias(alias, isCustom))
         {
             _logger.LogInformation($"Alias for Team {teamOrdinal} changed from {oldAlias} to {alias}");
@@ -227,48 +201,37 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         }
     }
 
-#pragma warning disable CS1998
-    public async Task<bool> UdatePlayerTemporaryAlias(string playerId, string newAlias)
+    public async Task<bool> UpdatePlayerTemporaryAliasAsync(string playerId, string newAlias)
     {
-        var player = GetPlayerFromId(playerId);
-        var oldAlias = (player.NameDisplay != player.NameFull) ? player.NameDisplay : string.Empty;
+        Player player = GetPlayerFromId(playerId);
+        string oldAlias = player.NameDisplay != player.NameFull
+            ? player.NameDisplay
+            : string.Empty;
 
-        if (player.TrySetNameAlias(newAlias))
-        {
-            // Send message before updating database so UI/Overlay get updates faster
-            _messageService.BroadcastPlayerNameDisplayChangeMessage(new PlayerNameDisplayChangeMessage(player, newAlias, oldAlias));
-
-            if (player.IsParticipating)
-            {
-#pragma warning disable CS4014
-                Task.Run(() =>
-                {
-                    _matchDataService.SaveMatchParticipatingPlayer(player);
-                }).ConfigureAwait(false);
-#pragma warning restore CS4014
-            }
-
-            return true;
-        }
-        else
+        if (!player.TrySetNameAlias(newAlias))
         {
             _messageService.BroadcastSimpleMessage($"<span style=\"color: red; font-weight: 700;\">Couldn't change {player.NameFull} match alias: new alias is invalid</span>");
             return false;
         }
+
+        // Send message before updating database so UI/Overlay get updates faster
+        _messageService.BroadcastPlayerNameDisplayChangeMessage(new PlayerNameDisplayChangeMessage(player, newAlias, oldAlias));
+
+        if (player.IsParticipating)
+            await _matchDataService.SaveMatchParticipatingPlayer(player);
+
+        return true;
     }
-#pragma warning restore CS1998
 
-#pragma warning disable CS1998
-    public async Task ClearPlayerDisplayName(string playerId)
+    public async Task ClearPlayerDisplayNameAsync(string playerId)
     {
-        var player = GetPlayerFromId(playerId);
-
+        Player player = GetPlayerFromId(playerId);
         if (string.IsNullOrWhiteSpace(player.NameTrimmed) && string.IsNullOrWhiteSpace(player.NameAlias))
-        {
             return;
-        }
 
-        var oldAlias = (player.NameDisplay != player.NameFull) ? player.NameDisplay : string.Empty;
+        string oldAlias = player.NameDisplay != player.NameFull
+            ? player.NameDisplay
+            : string.Empty;
 
         player.ClearAllDisplayNameSources();
 
@@ -276,49 +239,29 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         _messageService.BroadcastPlayerNameDisplayChangeMessage(new PlayerNameDisplayChangeMessage(player, string.Empty, oldAlias));
 
         if (player.IsParticipating)
-        {
-#pragma warning disable CS4014
-            Task.Run(() =>
-            {
-                _matchDataService.SaveMatchParticipatingPlayer(player);
-            }).ConfigureAwait(false);
-#pragma warning restore CS4014
-        }
+            await _matchDataService.SaveMatchParticipatingPlayer(player);
     }
-#pragma warning restore CS1998
 
     public async Task<bool> TryAddFreeTextInputCharacterToTeam(int teamOrdinal, string inputString)
     {
-        Regex idRegex = new Regex("[0-9]{19}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        Regex idRegex = new("[0-9]{19}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         bool isId = idRegex.Match(inputString).Success;
 
-        if (isId)
-        {
-            if (await TryAddCharacterIdToTeam(teamOrdinal, inputString))
-            {
-                return true;
-            }
-        }
+        if (isId && await TryAddCharacterIdToTeam(teamOrdinal, inputString))
+            return true;
 
-        Regex nameRegex = new Regex("[A-Za-z0-9]{1,32}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        Regex nameRegex = new("[A-Za-z0-9]{1,32}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         bool isName = nameRegex.Match(inputString).Success;
 
-        if (isName)
-        {
-            return await TryAddCharacterNameToTeam(teamOrdinal, inputString);
-        }
-
-        return false;
+        return isName && await TryAddCharacterNameToTeam(teamOrdinal, inputString);
     }
 
     public async Task<bool> TryAddCharacterIdToTeam(int teamOrdinal, string characterId)
     {
         if (!IsCharacterAvailable(characterId))
-        {
             return false;
-        }
 
-        var player = await _scrimPlayers.GetPlayerFromCharacterId(characterId);
+        var player = await _scrimPlayers.GetPlayerFromCharacterIdAsync(characterId);
 
         if (player == null)
         {
@@ -330,7 +273,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
 
     public async Task<bool> TryAddCharacterNameToTeam(int teamOrdinal, string characterName)
     {
-        var player = await _scrimPlayers.GetPlayerFromCharacterName(characterName);
+        var player = await _scrimPlayers.GetPlayerFromCharacterNameAsync(characterName);
 
         if (player == null)
         {
@@ -357,7 +300,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         {
             _allPlayers.Add(player);
 
-            PlayerTeamOrdinalsMap.TryAdd(player.Id, teamOrdinal);
+            _playerTeamOrdinalsMap.TryAdd(player.Id, teamOrdinal);
 
             if (team.FactionId == null)
             {
@@ -398,7 +341,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
             return false;
         }
 
-        var player = await _scrimPlayers.GetPlayerFromCharacterId(characterId);
+        var player = await _scrimPlayers.GetPlayerFromCharacterIdAsync(characterId);
 
         if (player == null)
         {
@@ -413,7 +356,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         {
             _allPlayers.Add(player);
 
-            PlayerTeamOrdinalsMap.TryAdd(player.Id, teamOrdinal);
+            _playerTeamOrdinalsMap.TryAdd(player.Id, teamOrdinal);
 
             if (team.FactionId == null)
             {
@@ -438,7 +381,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         }
 
         /* Add Outfit to Team */
-        var outfit = await _outfitService.GetOutfitByAlias(aliasLower);
+        var outfit = await _outfitService.GetOutfitByAliasAsync(aliasLower);
 
         if (outfit == null)
         {
@@ -455,7 +398,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         }
 
         // If not yet set, set team alias to alias of the first outfit added to it
-        if (TeamOutfitCount(teamOrdinal) == 1 && TeamConstructedTeamCount(teamOrdinal) == 0 && team.Alias == $"{ _defaultAliasPreText}{teamOrdinal}")
+        if (TeamOutfitCount(teamOrdinal) == 1 && TeamConstructedTeamCount(teamOrdinal) == 0 && team.Alias == $"{ DEFAULT_ALIAS_PRE_TEXT}{teamOrdinal}")
         {
             UpdateTeamAlias(teamOrdinal, outfit.Alias);
         }
@@ -474,7 +417,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
 
         var loadCompleteMessage = new TeamOutfitChangeMessage(outfit, TeamChangeType.OutfitMembersLoadCompleted);
 
-        var players = await _scrimPlayers.GetPlayersFromOutfitAlias(aliasLower);
+        var players = await _scrimPlayers.GetPlayersFromOutfitAliasAsync(aliasLower);
 
         if (players == null || !players.Any())
         {
@@ -500,7 +443,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
             {
                 _allPlayers.Add(player);
 
-                PlayerTeamOrdinalsMap.TryAdd(player.Id, teamOrdinal);
+                _playerTeamOrdinalsMap.TryAdd(player.Id, teamOrdinal);
 
                 var isLastPlayer = (player == lastPlayer);
 
@@ -555,7 +498,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         }
 
         // If not yet set, set team alias to alias of the first constructed team added to it
-        if (TeamOutfitCount(teamOrdinal) == 0 && TeamConstructedTeamCount(teamOrdinal) == 1 && owningTeam.Alias == $"{ _defaultAliasPreText}{teamOrdinal}")
+        if (TeamOutfitCount(teamOrdinal) == 0 && TeamConstructedTeamCount(teamOrdinal) == 1 && owningTeam.Alias == $"{ DEFAULT_ALIAS_PRE_TEXT}{teamOrdinal}")
         {
             UpdateTeamAlias(teamOrdinal, constructedTeam.Alias);
         }
@@ -605,7 +548,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
             {
                 _allPlayers.Add(player);
 
-                PlayerTeamOrdinalsMap.TryAdd(player.Id, teamOrdinal);
+                _playerTeamOrdinalsMap.TryAdd(player.Id, teamOrdinal);
 
                 var isLastPlayer = (player == lastPlayer);
 
@@ -633,7 +576,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
 
         var teamOrdinal = outfitTeam.TeamOrdinal;
 
-        var players = await _scrimPlayers.GetPlayersFromOutfitAlias(aliasLower);
+        var players = await _scrimPlayers.GetPlayersFromOutfitAliasAsync(aliasLower);
 
         if (players == null || !players.Any())
         {
@@ -686,7 +629,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
             {
                 _allPlayers.Add(player);
 
-                PlayerTeamOrdinalsMap.TryAdd(player.Id, teamOrdinal);
+                _playerTeamOrdinalsMap.TryAdd(player.Id, teamOrdinal);
 
                 SendTeamPlayerAddedMessage(player, isLastPlayer);
 
@@ -781,12 +724,12 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         else if (team.Players.Any())
         {
             var nextPlayer = team.Players.FirstOrDefault();
-            UpdateTeamAlias(team.TeamOrdinal, $"{_defaultAliasPreText}{team.TeamOrdinal}");
+            UpdateTeamAlias(team.TeamOrdinal, $"{DEFAULT_ALIAS_PRE_TEXT}{team.TeamOrdinal}");
             UpdateTeamFaction(team.TeamOrdinal, nextPlayer.FactionId);
         }
         else
         {
-            UpdateTeamAlias(team.TeamOrdinal, $"{_defaultAliasPreText}{team.TeamOrdinal}");
+            UpdateTeamAlias(team.TeamOrdinal, $"{DEFAULT_ALIAS_PRE_TEXT}{team.TeamOrdinal}");
             UpdateTeamFaction(team.TeamOrdinal, null);
         }
 
@@ -872,7 +815,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         var players = team.GetConstructedTeamFactionPlayers(constructedTeamId, factionId).ToList();
 
         var anyPlayersRemoved = false;
-            
+
         if (players != null && players.Any())
         {
             foreach (var player in players)
@@ -900,12 +843,12 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         else if (team.Players.Any())
         {
             var nextPlayer = team.Players.FirstOrDefault();
-            UpdateTeamAlias(team.TeamOrdinal, $"{_defaultAliasPreText}{team.TeamOrdinal}");
+            UpdateTeamAlias(team.TeamOrdinal, $"{DEFAULT_ALIAS_PRE_TEXT}{team.TeamOrdinal}");
             UpdateTeamFaction(team.TeamOrdinal, nextPlayer.FactionId);
         }
         else
         {
-            UpdateTeamAlias(team.TeamOrdinal, $"{_defaultAliasPreText}{team.TeamOrdinal}");
+            UpdateTeamAlias(team.TeamOrdinal, $"{DEFAULT_ALIAS_PRE_TEXT}{team.TeamOrdinal}");
             UpdateTeamFaction(team.TeamOrdinal, null);
         }
 
@@ -959,7 +902,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
     public async Task<bool> RemoveCharacterFromTeamAndDb(string characterId)
     {
         var teamOrdinal = (int)GetTeamOrdinalFromPlayerId(characterId);
-            
+
         var success = RemoveCharacterFromTeam(characterId);
 
         if (!success)
@@ -984,7 +927,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
     private async Task RemoveCharacterMatchDataFromDb(string characterId, int teamOrdinal)
     {
         var TaskList = new List<Task>();
-            
+
         var deathsTask = RemoveCharacterMatchDeathsFromDb(characterId, teamOrdinal);
         TaskList.Add(deathsTask);
 
@@ -993,13 +936,13 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
 
         var revivesTask = RemoveCharacterMatchRevivesFromDb(characterId, teamOrdinal);
         TaskList.Add(revivesTask);
-            
+
         var damageAssistsTask = RemoveCharacterMatchDamageAssistsFromDb(characterId, teamOrdinal);
         TaskList.Add(damageAssistsTask);
-            
+
         var grenadeAssistsTask = RemoveCharacterMatchGrenadeAssistsFromDb(characterId, teamOrdinal);
         TaskList.Add(grenadeAssistsTask);
-            
+
         var spotAssistsTask = RemoveCharacterMatchSpotAssistsFromDb(characterId, teamOrdinal);
         TaskList.Add(spotAssistsTask);
 
@@ -2044,7 +1987,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         {
             _allPlayers.RemoveAll(p => p.Id == player.Id);
 
-            PlayerTeamOrdinalsMap.TryRemove(player.Id, out var ordinalOut);
+            _playerTeamOrdinalsMap.TryRemove(player.Id, out var ordinalOut);
 
             if (!team.Players.Any())
             {
@@ -2157,7 +2100,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         team.ClearScrimSeriesMatchResults();
 
         var oldAlias = team.Alias;
-        team.ResetAlias($"{_defaultAliasPreText}{teamOrdinal}");
+        team.ResetAlias($"{DEFAULT_ALIAS_PRE_TEXT}{teamOrdinal}");
 
         _messageService.BroadcastTeamAliasChangeMessage(new TeamAliasChangeMessage(teamOrdinal, team.Alias, oldAlias));
 
@@ -2256,7 +2199,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
     public void ResetAllTeamsMatchData()
     {
         MaxPlayerPointsTracker = new MaxPlayerPointsTracker();
-            
+
         foreach (var teamOrdinal in _ordinalTeamMap.Keys)
         {
             ResetTeamMatchData(teamOrdinal);
@@ -2367,7 +2310,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
     public async Task RollBackAllTeamStats(int currentRound)
     {
         var TaskList = new List<Task>();
-            
+
         foreach (var teamOrdinal in _ordinalTeamMap.Keys.ToList())
         {
             RollBackTeamStats(teamOrdinal, currentRound);
@@ -2395,7 +2338,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         }
 
         team.EventAggregateTracker.RollBackRound(currentRound);
-            
+
         var players = team.GetParticipatingPlayers();
 
         foreach (var player in players)
@@ -2426,19 +2369,19 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
 
         var destructionsTask = RemoveAllMatchRoundVehicleDestructionsFromDb(roundToRemove);
         TaskList.Add(destructionsTask);
-            
+
         var revivesTask = RemoveAllMatchRoundRevivesFromDb(roundToRemove);
         TaskList.Add(revivesTask);
-            
+
         var damageAssistsTask = RemoveAllMatchRoundDamageAssistsFromDb(roundToRemove);
         TaskList.Add(damageAssistsTask);
-            
+
         var grenadeAssistsTask = RemoveAllMatchRoundGrenadeAssistsFromDb(roundToRemove);
         TaskList.Add(grenadeAssistsTask);
-            
+
         var spotAssistsTask = RemoveAllMatchRoundSpotAssistsFromDb(roundToRemove);
         TaskList.Add(spotAssistsTask);
-            
+
         var controlsTask = RemoveAllMatchRoundFacilityControlsFromDb(roundToRemove);
         TaskList.Add(controlsTask);
 
@@ -2680,15 +2623,15 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         return true;
     }
 
-    public bool IsOutfitAvailable(string alias, out Team owningTeam)
+    public bool IsOutfitAvailable(string alias, [NotNullWhen(false)] out Team? owningTeam)
     {
-        foreach (var team in _ordinalTeamMap.Values)
+        foreach (Team team in _ordinalTeamMap.Values)
         {
-            if (team.ContainsOutfit(alias))
-            {
-                owningTeam = team;
-                return false;
-            }
+            if (!team.ContainsOutfit(alias))
+                continue;
+
+            owningTeam = team;
+            return false;
         }
 
         owningTeam = null;
@@ -2708,15 +2651,20 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         return true;
     }
 
-    public bool IsConstructedTeamFactionAvailable(int constructedTeamId, int factionId, out Team owningTeam)
+    public bool IsConstructedTeamFactionAvailable
+    (
+        int constructedTeamId,
+        int factionId,
+        [NotNullWhen(false)] out Team? owningTeam
+    )
     {
-        foreach (var team in _ordinalTeamMap.Values)
+        foreach (Team team in _ordinalTeamMap.Values)
         {
-            if (team.ContainsConstructedTeamFaction(constructedTeamId, factionId))
-            {
-                owningTeam = team;
-                return false;
-            }
+            if (!team.ContainsConstructedTeamFaction(constructedTeamId, factionId))
+                continue;
+
+            owningTeam = team;
+            return false;
         }
 
         owningTeam = null;
@@ -2759,7 +2707,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
 
     public int? GetTeamOrdinalFromPlayerId(string characterId)
     {
-        if (PlayerTeamOrdinalsMap.TryGetValue(characterId, out var teamOrdinal))
+        if (_playerTeamOrdinalsMap.TryGetValue(characterId, out var teamOrdinal))
         {
             return teamOrdinal;
         }
@@ -3015,7 +2963,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
     public async Task SaveTeamMatchResultsToDb(int teamOrdinal)
     {
         var currentScrimMatchId = _matchDataService.CurrentMatchId;
-            
+
         var resultsAggregate = new ScrimEventAggregate().Add(GetTeam(teamOrdinal).EventAggregate);
 
         var resultsEntity = new ScrimMatchTeamResult
@@ -3142,7 +3090,7 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         var statUpdate = new ScrimEventAggregate();
 
         statUpdate.AddPointAdjustment(adjustment);
-            
+
         var team = GetTeam(teamOrdinal);
 
         team.AddStatsUpdate(statUpdate);
@@ -3188,12 +3136,12 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         var player = GetPlayerFromId(characterId);
 
         var wasAlreadyParticipating = player.IsParticipating;
-            
+
         player.IsParticipating = isParticipating;
         player.IsActive = (!player.IsBenched && isParticipating);
 
         GetTeam(player.TeamOrdinal).UpdateParticipatingPlayer(player);
-            
+
         if (wasAlreadyParticipating == isParticipating)
         {
             return;
@@ -3237,13 +3185,13 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
     #region Messaging
     private void SendTeamPlayerAddedMessage(Player player, bool isLastOfOutfit = false)
     {
-        var payload = new TeamPlayerChangeMessage(player, TeamPlayerChangeType.Add, isLastOfOutfit);
+        TeamPlayerChangeMessage payload = new(player, TeamPlayerChangeType.Add, isLastOfOutfit);
         _messageService.BroadcastTeamPlayerChangeMessage(payload);
     }
 
     private void SendTeamPlayerRemovedMessage(Player player)
     {
-        var payload = new TeamPlayerChangeMessage(player, TeamPlayerChangeType.Remove);
+        TeamPlayerChangeMessage payload = new(player, TeamPlayerChangeType.Remove);
         _messageService.BroadcastTeamPlayerChangeMessage(payload);
     }
 

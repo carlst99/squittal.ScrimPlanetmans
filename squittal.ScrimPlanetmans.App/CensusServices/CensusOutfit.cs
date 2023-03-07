@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using DaybreakGames.Census;
+using DaybreakGames.Census.Operators;
 using squittal.ScrimPlanetmans.App.CensusServices.Models;
 
 namespace squittal.ScrimPlanetmans.App.CensusServices;
@@ -15,9 +16,9 @@ public class CensusOutfit
         _queryFactory = queryFactory;
     }
 
-    public async Task<CensusOutfitModel> GetOutfitAsync(string outfitId)
+    public async Task<CensusOutfitModel?> GetOutfitAsync(string outfitId)
     {
-        var query = _queryFactory.Create("outfit");
+        CensusQuery? query = _queryFactory.Create("outfit");
 
         query.ShowFields("outfit_id", "name", "alias", "alias_lower", "time_created", "leader_character_id", "member_count");
 
@@ -26,9 +27,9 @@ public class CensusOutfit
         return await query.GetAsync<CensusOutfitModel>();
     }
 
-    public async Task<CensusOutfitModel> GetOutfitByAliasAsync(string alias)
+    public async Task<CensusOutfitModel?> GetOutfitByAliasAsync(string alias)
     {
-        var query = _queryFactory.Create("outfit");
+        CensusQuery? query = _queryFactory.Create("outfit");
 
         query.ShowFields("outfit_id", "name", "alias", "alias_lower", "time_created", "leader_character_id", "member_count");
 
@@ -37,9 +38,9 @@ public class CensusOutfit
         return await query.GetAsync<CensusOutfitModel>();
     }
 
-    public async Task<IEnumerable<CensusOutfitMemberCharacterModel>> GetOutfitMembersAsync(string outfitId)
-    { 
-        var query = _queryFactory.Create("outfit");
+    public async Task<IEnumerable<CensusOutfitMemberCharacterModel>?> GetOutfitMembersAsync(string outfitId)
+    {
+        CensusQuery? query = _queryFactory.Create("outfit");
 
         query.ShowFields("outfit_id", "name", "alias", "alias_lower", "member_count");
 
@@ -49,14 +50,14 @@ public class CensusOutfit
         query.AddResolve("member_character(name,prestige_level)");
         query.AddResolve("member_online_status");
 
-        var result = await query.GetAsync<CensusOutfitResolveMemberCharacterModel>();
+        CensusOutfitResolveMemberCharacterModel? result = await query.GetAsync<CensusOutfitResolveMemberCharacterModel>();
 
-        return result.Members;
+        return result?.Members;
     }
 
-    public async Task<IEnumerable<CensusOutfitMemberCharacterModel>> GetOutfitMembersByAliasAsync(string alias)
+    public async Task<IEnumerable<CensusOutfitMemberCharacterModel>?> GetOutfitMembersByAliasAsync(string alias)
     {
-        var query = _queryFactory.Create("outfit");
+        CensusQuery? query = _queryFactory.Create("outfit");
 
         query.ShowFields("outfit_id", "name", "alias", "alias_lower", "member_count");
 
@@ -66,28 +67,16 @@ public class CensusOutfit
         query.AddResolve("member_character(name,prestige_level)");
         query.AddResolve("member_online_status");
 
-        var result = await query.GetAsync<CensusOutfitResolveMemberCharacterModel>();
+        CensusOutfitResolveMemberCharacterModel? result = await query.GetAsync<CensusOutfitResolveMemberCharacterModel>();
 
-        var outfit = ConvertToCensusModel(result);
-
-        var members = result.Members.Select(m => FillOutOutfitMemberCharacterModel(m, outfit)).ToList();
-
-        return members;
+        return result.Members.Select(m => FillOutOutfitMemberCharacterModel(m, result));
     }
 
-    private CensusOutfitModel ConvertToCensusModel(CensusOutfitResolveMemberCharacterModel result)
-    {
-        return new CensusOutfitModel
-        {
-            OutfitId = result.OutfitId,
-            Name = result.Name,
-            Alias = result.Alias,
-            AliasLower = result.AliasLower,
-            MemberCount = result.MemberCount
-        };
-    }
-
-    private CensusOutfitMemberCharacterModel FillOutOutfitMemberCharacterModel(CensusOutfitMemberCharacterModel character, CensusOutfitModel outfit)
+    private static CensusOutfitMemberCharacterModel FillOutOutfitMemberCharacterModel
+    (
+        CensusOutfitMemberCharacterModel character,
+        CensusOutfitModel outfit
+    )
     {
         return new CensusOutfitMemberCharacterModel
         {

@@ -6,9 +6,9 @@ namespace squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 
 public interface IOutfitService
 {
-    Task<Outfit> GetOutfitAsync(string outfitId);
-    Task<Outfit> GetOutfitByAlias(string alias);
-    Task<IEnumerable<Character>> GetOutfitMembersByAlias(string alias);
-    Task<OutfitMember> UpdateCharacterOutfitMembership(Character character);
+    Task<Outfit?> GetOutfitAsync(string outfitId);
+    Task<Outfit?> GetOutfitByAliasAsync(string alias);
+    Task<IEnumerable<Character>?> GetOutfitMembersByAliasAsync(string alias);
+    Task<OutfitMember?> UpdateCharacterOutfitMembershipAsync(Character character);
 
 }
