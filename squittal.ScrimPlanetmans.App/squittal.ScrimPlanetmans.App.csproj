@@ -111,7 +111,6 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="7.0.0" />
     <PackageReference Include="Microsoft.SqlServer.SqlManagementObjects" Version="170.13.0" />
-    <PackageReference Include="Websocket.Client" Version="4.6.1" />
   </ItemGroup>
 
   <ItemGroup>
