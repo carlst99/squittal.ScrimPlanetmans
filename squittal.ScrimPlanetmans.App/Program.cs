@@ -13,7 +13,6 @@ using squittal.ScrimPlanetmans.App.CensusStream.EventHandlers;
 using squittal.ScrimPlanetmans.App.CensusStream.EventHandlers.Control;
 using squittal.ScrimPlanetmans.App.CensusStream.EventHandlers.PreDispatch;
 using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
-using squittal.ScrimPlanetmans.App.CensusStream.Models;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch;
