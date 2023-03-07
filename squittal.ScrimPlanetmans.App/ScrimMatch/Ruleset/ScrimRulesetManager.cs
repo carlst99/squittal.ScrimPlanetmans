@@ -87,7 +87,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
                 }
             }
 
-            var newActiveRuleset = await _rulesetDataService.GetRulesetFromIdAsync(rulesetId, CancellationToken.None);
+            Models.Ruleset? newActiveRuleset = await _rulesetDataService.GetRulesetFromIdAsync(rulesetId, CancellationToken.None);
 
             if (newActiveRuleset == null)
             {
@@ -100,7 +100,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
             ActiveRuleset = newActiveRuleset;
 
-            var message = currentActiveRuleset == null
+            ActiveRulesetChangeMessage message = currentActiveRuleset == null
                 ? new ActiveRulesetChangeMessage(ActiveRuleset)
                 : new ActiveRulesetChangeMessage(ActiveRuleset, currentActiveRuleset);
 
@@ -122,10 +122,10 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
     public async Task<Models.Ruleset?> ActivateDefaultRulesetAsync()
     {
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        var ruleset = await dbContext.Rulesets.FirstOrDefaultAsync(r => r.IsCustomDefault);
+        Models.Ruleset? ruleset = await dbContext.Rulesets.FirstOrDefaultAsync(r => r.IsCustomDefault);
 
         if (ruleset == null)
         {
@@ -153,7 +153,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
         try
         {
-            var currentActiveRuleset = ActiveRuleset;
+            Models.Ruleset? currentActiveRuleset = ActiveRuleset;
 
             if (currentActiveRuleset == null)
             {
@@ -164,7 +164,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
                 return;
             }
 
-            var tempRuleset = await _rulesetDataService.GetRulesetFromIdAsync(currentActiveRuleset.Id, CancellationToken.None);
+            Models.Ruleset? tempRuleset = await _rulesetDataService.GetRulesetFromIdAsync(currentActiveRuleset.Id, CancellationToken.None);
 
             if (tempRuleset == null)
             {
@@ -193,7 +193,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
     private void HandleRulesetRuleChangeMesssage(object? sender, ScrimMessageEventArgs<RulesetRuleChangeMessage> e)
     {
-        var changedRulesetId = e.Message.Ruleset.Id;
+        int changedRulesetId = e.Message.Ruleset.Id;
 
         if (changedRulesetId != ActiveRuleset?.Id)
             return;
@@ -213,7 +213,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
         if (ActiveRuleset is null)
             return;
 
-        var ruleset = e.Message.Ruleset;
+        Models.Ruleset ruleset = e.Message.Ruleset;
 
         _activateRulesetAutoEvent.WaitOne();
 
@@ -236,8 +236,8 @@ public class ScrimRulesetManager : IScrimRulesetManager
         if (ActiveRuleset is null)
             return;
 
-        var ruleset = e.Message.Ruleset;
-        var overlayConfiguration = e.Message.OverlayConfiguration;
+        Models.Ruleset ruleset = e.Message.Ruleset;
+        RulesetOverlayConfiguration overlayConfiguration = e.Message.OverlayConfiguration;
 
         _activateRulesetAutoEvent.WaitOne();
 
@@ -259,10 +259,10 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
     public async Task<Models.Ruleset?> GetDefaultRulesetAsync()
     {
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        var ruleset = await dbContext.Rulesets.FirstOrDefaultAsync(r => r.IsDefault);
+        Models.Ruleset? ruleset = await dbContext.Rulesets.FirstOrDefaultAsync(r => r.IsDefault);
 
         if (ruleset == null)
         {
@@ -276,42 +276,40 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
     public async Task SeedDefaultRuleset()
     {
-        _logger.LogInformation($"Seeding Default Ruleset...");
+        _logger.LogInformation("Seeding Default Ruleset...");
 
-        var stopWatchSetup = new Stopwatch();
-        var stopWatchCollections = new Stopwatch();
-        var stopWatchOverlay = new Stopwatch();
-        var stopWatchActionRules = new Stopwatch();
-        var stopWatchItemRules = new Stopwatch();
-        var stopWatchItemCategoryRules = new Stopwatch();
-        var stopWatchFacilityRules = new Stopwatch();
-        var stopWatchFinalize = new Stopwatch();
+        Stopwatch stopWatchSetup = new();
+        Stopwatch stopWatchCollections = new();
+        Stopwatch stopWatchOverlay = new();
+        Stopwatch stopWatchActionRules = new();
+        Stopwatch stopWatchItemRules = new();
+        Stopwatch stopWatchItemCategoryRules = new();
+        Stopwatch stopWatchFacilityRules = new();
+        Stopwatch stopWatchFinalize = new();
 
-        var stopWatchTotal = Stopwatch.StartNew();
+        Stopwatch stopWatchTotal = Stopwatch.StartNew();
         stopWatchSetup.Start();
 
 
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        var defaultRulesetId = DEFAULT_RULESET_ID;
-
-        var storeRuleset = await dbContext.Rulesets.FirstOrDefaultAsync(r => r.Id == defaultRulesetId);
+        Models.Ruleset? storeRuleset = await dbContext.Rulesets.FirstOrDefaultAsync(r => r.Id == DEFAULT_RULESET_ID);
 
         bool rulesetExistsInDb = false;
 
         RulesetOverlayConfiguration? storeOverlayConfiguration = null;
 
-        var storeActionRules = new List<RulesetActionRule>();
-        var storeItemCategoryRules = new List<RulesetItemCategoryRule>();
+        List<RulesetActionRule>? storeActionRules = new();
+        List<RulesetItemCategoryRule>? storeItemCategoryRules = new();
         List<RulesetItemRule>? storeItemRules = null;
-        var storeFacilityRules = new List<RulesetFacilityRule>();
+        List<RulesetFacilityRule>? storeFacilityRules = new();
 
         if (storeRuleset != null)
         {
             stopWatchCollections.Start();
 
-            var storeRulesetWithCollections = await _rulesetDataService.GetRulesetFromIdAsync(storeRuleset.Id, CancellationToken.None);
+            Models.Ruleset? storeRulesetWithCollections = await _rulesetDataService.GetRulesetFromIdAsync(storeRuleset.Id, CancellationToken.None);
             if (storeRulesetWithCollections is not null)
             {
                 storeOverlayConfiguration = storeRulesetWithCollections.RulesetOverlayConfiguration;
@@ -331,8 +329,8 @@ public class ScrimRulesetManager : IScrimRulesetManager
         }
         else
         {
-            var utcNow = DateTime.UtcNow;
-            var newRuleset = new Models.Ruleset
+            DateTime utcNow = DateTime.UtcNow;
+            Models.Ruleset newRuleset = new()
             {
                 Name = "Default",
                 DateCreated = utcNow
@@ -388,9 +386,9 @@ public class ScrimRulesetManager : IScrimRulesetManager
         stopWatchActionRules.Start();
 
         #region Action rules
-        var defaultActionRules = GetDefaultActionRules();
-        var createdActionRules = new List<RulesetActionRule>();
-        var allActionRules = new List<RulesetActionRule>();
+        RulesetActionRule[] defaultActionRules = GetDefaultActionRules();
+        List<RulesetActionRule> createdActionRules = new();
+        List<RulesetActionRule> allActionRules = new();
 
         List<ScrimActionType> allActionEnumValues = Enum.GetValues<ScrimActionType>()
             .Where
@@ -399,28 +397,28 @@ public class ScrimRulesetManager : IScrimRulesetManager
             )
             .ToList();
 
-        var allActionValues = new List<ScrimActionType>();
+        List<ScrimActionType> allActionValues = new();
         allActionValues.AddRange(allActionEnumValues);
         allActionValues.AddRange(storeActionRules.Select(ar => ar.ScrimActionType).Where(a => !allActionValues.Contains(a)).ToList());
 
-        foreach (var actionType in allActionValues)
+        foreach (ScrimActionType actionType in allActionValues)
         {
-            var storeEntity = storeActionRules?.FirstOrDefault(r => r.ScrimActionType == actionType);
-            var defaultEntity = defaultActionRules.FirstOrDefault(r => r.ScrimActionType == actionType);
+            RulesetActionRule? storeEntity = storeActionRules?.FirstOrDefault(r => r.ScrimActionType == actionType);
+            RulesetActionRule? defaultEntity = defaultActionRules.FirstOrDefault(r => r.ScrimActionType == actionType);
 
-            var isValidAction = storeEntity == null || allActionEnumValues.Any(enumValue => enumValue == storeEntity.ScrimActionType);
+            bool isValidAction = storeEntity == null || allActionEnumValues.Any(enumValue => enumValue == storeEntity.ScrimActionType);
 
             if (storeEntity == null)
             {
                 if (defaultEntity != null)
                 {
-                    defaultEntity.RulesetId = defaultRulesetId;
+                    defaultEntity.RulesetId = DEFAULT_RULESET_ID;
                     createdActionRules.Add(defaultEntity);
                     allActionRules.Add(defaultEntity);
                 }
                 else
                 {
-                    var newEntity = BuildRulesetActionRule(defaultRulesetId, actionType);
+                    RulesetActionRule newEntity = BuildRulesetActionRule(DEFAULT_RULESET_ID, actionType);
                     createdActionRules.Add(newEntity);
                     allActionRules.Add(newEntity);
                 }
@@ -459,30 +457,30 @@ public class ScrimRulesetManager : IScrimRulesetManager
         stopWatchItemCategoryRules.Start();
 
         #region Item Category Rules
-        var defaultItemCategoryRules = GetDefaultItemCategoryRules();
-        var createdItemCategoryRules = new List<RulesetItemCategoryRule>();
+        RulesetItemCategoryRule[] defaultItemCategoryRules = GetDefaultItemCategoryRules();
+        List<RulesetItemCategoryRule> createdItemCategoryRules = new();
 
-        var allItemCategoryRules = new List<RulesetItemCategoryRule>();
+        List<RulesetItemCategoryRule> allItemCategoryRules = new();
 
-        foreach (var categoryId in allItemCategoryIds)
+        foreach (int categoryId in allItemCategoryIds)
         {
-            var isWeaponItemCategoryId = (allWeaponItemCategoryIds.Contains(categoryId));
+            bool isWeaponItemCategoryId = (allWeaponItemCategoryIds.Contains(categoryId));
 
-            var storeEntity = storeItemCategoryRules?.FirstOrDefault(r => r.ItemCategoryId == categoryId);
-            var defaultEntity = defaultItemCategoryRules.FirstOrDefault(r => r.ItemCategoryId == categoryId);
+            RulesetItemCategoryRule? storeEntity = storeItemCategoryRules?.FirstOrDefault(r => r.ItemCategoryId == categoryId);
+            RulesetItemCategoryRule? defaultEntity = defaultItemCategoryRules.FirstOrDefault(r => r.ItemCategoryId == categoryId);
 
             if (storeEntity == null)
             {
                 if (defaultEntity != null)
                 {
-                    defaultEntity.RulesetId = defaultRulesetId;
+                    defaultEntity.RulesetId = DEFAULT_RULESET_ID;
 
                     createdItemCategoryRules.Add(defaultEntity);
                     allItemCategoryRules.Add(defaultEntity);
                 }
                 else if (isWeaponItemCategoryId)
                 {
-                    var newEntity = BuildRulesetItemCategoryRule(defaultRulesetId, categoryId, 0);
+                    RulesetItemCategoryRule newEntity = BuildRulesetItemCategoryRule(DEFAULT_RULESET_ID, categoryId, 0);
                     createdItemCategoryRules.Add(newEntity);
                     allItemCategoryRules.Add(newEntity);
 
@@ -517,10 +515,10 @@ public class ScrimRulesetManager : IScrimRulesetManager
         stopWatchItemRules.Start();
 
         #region Item Rules
-        var defaultItemRules = GetDefaultItemRules();
-        var createdItemRules = new List<RulesetItemRule>();
+        RulesetItemRule[] defaultItemRules = GetDefaultItemRules();
+        List<RulesetItemRule> createdItemRules = new();
 
-        var allItemIds = new List<int>(defaultItemRules.Select(r => r.ItemId));
+        List<int> allItemIds = new(defaultItemRules.Select(r => r.ItemId));
         if (storeItemRules != null)
         {
             allItemIds.AddRange(storeItemRules.Where(r => !allItemIds.Contains(r.ItemId)).Select(r => r.ItemId));
@@ -528,19 +526,19 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
         allItemIds.AddRange(allWeaponItems.Where(r => !allItemIds.Contains(r.Id)).Select(r => r.Id));
 
-        var allItemRules = new List<RulesetItemRule>();
+        List<RulesetItemRule> allItemRules = new();
 
-        foreach (var itemId in allItemIds)
+        foreach (int itemId in allItemIds)
         {
-            var isWeaponItem = (allWeaponItems.Any(r => r.Id == itemId));
+            bool isWeaponItem = (allWeaponItems.Any(r => r.Id == itemId));
 
-            var storeEntity = storeItemRules?.FirstOrDefault(r => r.ItemId == itemId);
-            var defaultEntity = defaultItemRules.FirstOrDefault(r => r.ItemId == itemId);
+            RulesetItemRule? storeEntity = storeItemRules?.FirstOrDefault(r => r.ItemId == itemId);
+            RulesetItemRule? defaultEntity = defaultItemRules.FirstOrDefault(r => r.ItemId == itemId);
 
             int? categoryId = allWeaponItems.Where(i => i.Id == itemId).Select(i => i.ItemCategoryId)
                 .FirstOrDefault();
 
-            var categoryDefersToItems = false;
+            bool categoryDefersToItems = false;
 
             if (categoryId != null)
             {
@@ -551,18 +549,18 @@ public class ScrimRulesetManager : IScrimRulesetManager
             {
                 if (defaultEntity != null)
                 {
-                    defaultEntity.RulesetId = defaultRulesetId;
+                    defaultEntity.RulesetId = DEFAULT_RULESET_ID;
 
                     createdItemRules.Add(defaultEntity);
                     allItemRules.Add(defaultEntity);
                 }
                 else if (isWeaponItem && categoryDefersToItems)
                 {
-                    var defaultPoints = allItemCategoryRules.Where(r => r.ItemCategoryId == categoryId)
+                    int defaultPoints = allItemCategoryRules.Where(r => r.ItemCategoryId == categoryId)
                         .Select(r => r.Points)
                         .FirstOrDefault();
 
-                    var newEntity = BuildRulesetItemRule(defaultRulesetId, itemId, categoryId ?? 0, defaultPoints);
+                    RulesetItemRule newEntity = BuildRulesetItemRule(DEFAULT_RULESET_ID, itemId, categoryId ?? 0, defaultPoints);
 
                     createdItemRules.Add(newEntity);
                     allItemRules.Add(newEntity);
@@ -577,7 +575,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
                         defaultEntity.ItemCategoryId = (int)categoryId;
                     }
 
-                    defaultEntity.RulesetId = defaultRulesetId;
+                    defaultEntity.RulesetId = DEFAULT_RULESET_ID;
 
                     storeEntity = defaultEntity;
 
@@ -602,23 +600,23 @@ public class ScrimRulesetManager : IScrimRulesetManager
         stopWatchFacilityRules.Start();
 
         #region Facility Rules
-        var defaultFacilityRules = GetDefaultFacilityRules();
+        RulesetFacilityRule[] defaultFacilityRules = GetDefaultFacilityRules();
 
-        var createdFacilityRules = new List<RulesetFacilityRule>();
+        List<RulesetFacilityRule> createdFacilityRules = new();
 
-        var allFacilityRules = new List<RulesetFacilityRule>(storeFacilityRules);
-        allFacilityRules.AddRange(defaultFacilityRules.Where(d => !allFacilityRules.Any(a => a.FacilityId == d.FacilityId)));
+        List<RulesetFacilityRule> allFacilityRules = new(storeFacilityRules);
+        allFacilityRules.AddRange(defaultFacilityRules.Where(d => allFacilityRules.All(a => a.FacilityId != d.FacilityId)));
 
-        foreach (var facilityRule in allFacilityRules)
+        foreach (RulesetFacilityRule facilityRule in allFacilityRules)
         {
-            var storeEntity = storeFacilityRules?.FirstOrDefault(r => r.FacilityId == facilityRule.FacilityId);
-            var defaultEntity = defaultFacilityRules.FirstOrDefault(r => r.FacilityId == facilityRule.FacilityId);
+            RulesetFacilityRule? storeEntity = storeFacilityRules?.FirstOrDefault(r => r.FacilityId == facilityRule.FacilityId);
+            RulesetFacilityRule? defaultEntity = defaultFacilityRules.FirstOrDefault(r => r.FacilityId == facilityRule.FacilityId);
 
             if (storeEntity == null)
             {
                 if (defaultEntity != null)
                 {
-                    defaultEntity.RulesetId = defaultRulesetId;
+                    defaultEntity.RulesetId = DEFAULT_RULESET_ID;
 
                     createdFacilityRules.Add(defaultEntity);
 
@@ -663,21 +661,29 @@ public class ScrimRulesetManager : IScrimRulesetManager
         await dbContext.SaveChangesAsync();
 
         stopWatchFinalize.Stop();
-
         stopWatchTotal.Stop();
-        var elapsedMs = stopWatchTotal.ElapsedMilliseconds;
 
-        var totalTime = $"Finished seeding Default Ruleset (elapsed: {elapsedMs / 1000.0}s)";
-        var setupTime = $"\n\t\t   Setup: {stopWatchSetup.ElapsedMilliseconds / 1000.0}s";
-        var collectionsTime = $"\n\t\t\t   Get Collections: {stopWatchCollections.ElapsedMilliseconds / 1000.0}s";
-        var overlayTime = $"\n\t\t\t   Overlay Configuration: {stopWatchOverlay.ElapsedMilliseconds / 1000.0}s";
-        var actionsTime = $"\n\t\t   Action Rules: {stopWatchActionRules.ElapsedMilliseconds / 1000.0}s";
-        var itemCatsTime = $"\n\t\t   Item Category Rules: {stopWatchItemCategoryRules.ElapsedMilliseconds / 1000.0}s";
-        var itemsTime = $"\n\t\t   Item Rules: {stopWatchItemRules.ElapsedMilliseconds / 1000.0}s";
-        var facilitiesTime = $"\n\t\t   Facility Rules: {stopWatchFacilityRules.ElapsedMilliseconds / 1000.0}s";
-        var finalizeTime = $"\n\t\t   Finalize: {stopWatchFinalize.ElapsedMilliseconds / 1000.0}s";
-
-        _logger.LogInformation($"{totalTime}{setupTime}{collectionsTime}{overlayTime}{actionsTime}{itemCatsTime}{itemsTime}{facilitiesTime}{finalizeTime}");
+        _logger.LogInformation
+        (
+            "Finished seeding default ruleset (elapsed: {TotalTime})" +
+            "\n\tSetup: {SetupTime}" +
+            "\n\t\t Get Collections: {CollectionsTime}" +
+            "\n\t\tOverlay Configuration: {OverlayTime}" +
+            "\n\tAction Rules: {ActionsTime}" +
+            "\n\tItem Category Rules: {ItemCategoriesTime}" +
+            "\n\tItem Rules: {ItemsTime}" +
+            "\n\tFacility Rules: {FacilitiesTime}" +
+            "\n\tFinalize: {FinalizeTime}",
+            stopWatchTotal.Elapsed,
+            stopWatchSetup.Elapsed,
+            stopWatchCollections.Elapsed,
+            stopWatchOverlay.Elapsed,
+            stopWatchActionRules.Elapsed,
+            stopWatchItemCategoryRules.Elapsed,
+            stopWatchItemRules.Elapsed,
+            stopWatchFacilityRules.Elapsed,
+            stopWatchFinalize.Elapsed
+        );
     }
 
     private static RulesetItemCategoryRule[] GetDefaultItemCategoryRules()
