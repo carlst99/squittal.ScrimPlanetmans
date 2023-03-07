@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.SqlServer.Management.Smo;
@@ -85,13 +87,13 @@ public class SqlScriptRunner : ISqlScriptRunner
 
         try
         {
-            string[] files = Directory.GetFiles(directoryPath);
+            IEnumerable<string> files = Directory.GetFiles(directoryPath)
+                .Where(f => f.EndsWith(".sql"))
+                .OrderBy(f => f);
 
             foreach (string file in files)
             {
-                if (!file.EndsWith(".sql"))
-                    continue;
-
+                _logger.LogDebug("Running sql file {FileName}", file);
                 RunSqlScript(file, true);
             }
         }
