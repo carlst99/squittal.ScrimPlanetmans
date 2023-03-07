@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.CensusServices;
 using squittal.ScrimPlanetmans.App.CensusStream;
 using squittal.ScrimPlanetmans.App.CensusStream.EventHandlers;
@@ -64,6 +63,7 @@ public class Program
                 .EnableSensitiveDataLogging(builder.Environment.IsDevelopment())
         );
 
+        services.AddTransient<DbInitializerService>();
         services.AddSingleton<IDbContextHelper, DbContextHelper>();
         services.AddSingleton<IDbSeeder, DbSeeder>();
         services.AddTransient<ISqlScriptRunner, SqlScriptRunner>();
@@ -152,23 +152,18 @@ public class Program
         app.MapBlazorHub();
         app.MapFallbackToPage("/_Host");
 
-        InitializeDatabase(app.Services);
+        if (!InitializeDatabase(app.Services))
+            return;
 
         app.Run();
     }
 
-    private static void InitializeDatabase(IServiceProvider serviceProvider)
+    private static bool InitializeDatabase(IServiceProvider serviceProvider)
     {
         using IServiceScope scope = serviceProvider.CreateScope();
 
-        try
-        {
-            DbInitializer.Initialize(scope.ServiceProvider);
-        }
-        catch (Exception ex)
-        {
-            ILogger<Program> logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "An error occured initializing the DB");
-        }
+        return scope.ServiceProvider
+            .GetRequiredService<DbInitializerService>()
+            .Initialize();
     }
 }
