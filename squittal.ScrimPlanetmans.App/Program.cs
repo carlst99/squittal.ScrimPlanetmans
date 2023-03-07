@@ -73,11 +73,7 @@ public class Program
         // Register Census REST services
         services.AddCensusServices
         (
-            options => options.CensusServiceId = Environment.GetEnvironmentVariable
-                (
-                    "DaybreakGamesServiceKey",
-                    EnvironmentVariableTarget.User
-                )
+            options => options.CensusServiceId = builder.Configuration["DaybreakGamesServiceKey"]
         );
         services.AddCensusHelpers();
 
