@@ -65,7 +65,12 @@ public class Program
                 .EnableSensitiveDataLogging(builder.Environment.IsDevelopment())
         );
 
-        // Register internal Census services
+        services.AddSingleton<IDbContextHelper, DbContextHelper>();
+        services.AddSingleton<IDbSeeder, DbSeeder>();
+        services.AddTransient<ISqlScriptRunner, SqlScriptRunner>();
+        services.AddTransient<DatabaseMaintenanceService>();
+
+        // Register Census REST services
         services.AddCensusServices
         (
             options => options.CensusServiceId = Environment.GetEnvironmentVariable
@@ -76,7 +81,20 @@ public class Program
         );
         services.AddCensusHelpers();
 
-        // Register DbgCensus services
+        services.AddTransient<IFactionService, FactionService>();
+        services.AddSingleton<IZoneService, ZoneService>();
+        services.AddSingleton<IItemService, ItemService>();
+        services.AddSingleton<IItemCategoryService, ItemCategoryService>();
+        services.AddSingleton<IFacilityService, FacilityService>();
+        services.AddTransient<IFacilityTypeService, FacilityTypeService>();
+        services.AddTransient<IVehicleService, VehicleService>();
+        services.AddSingleton<IWorldService, WorldService>();
+        services.AddSingleton<ICharacterService, CharacterService>();
+        services.AddSingleton<IOutfitService, OutfitService>();
+        services.AddSingleton<IProfileService, ProfileService>();
+        services.AddTransient<ILoadoutService, LoadoutService>();
+
+        // Register Census EventStream Services
         builder.Services.Configure<EventStreamOptions>(builder.Configuration.GetSection(nameof(EventStreamOptions)));
 
         services.AddCensusEventHandlingServices()
@@ -90,34 +108,15 @@ public class Program
             .AddPayloadHandler<VehicleDestroyEventHandler>()
             .AddPayloadHandler<UnknownPayloadHandler>();
 
+        services.AddSingleton<IEventFilterService, EventFilterService>();
+        services.AddSingleton<IEventStreamHealthService, EventStreamHealthService>();
+
         services.AddHostedService<EventStreamWorker>();
 
-        services.AddSingleton<IDbContextHelper, DbContextHelper>();
-
-        services.AddSingleton<IEventFilterService, EventFilterService>();
+        // Register Scrim services
         services.AddSingleton<IScrimMessageBroadcastService, ScrimMessageBroadcastService>();
-
-        services.AddTransient<IFactionService, FactionService>();
-        services.AddSingleton<IZoneService, ZoneService>();
-
-        services.AddSingleton<IItemService, ItemService>();
-        services.AddSingleton<IItemCategoryService, ItemCategoryService>();
-        services.AddSingleton<IFacilityService, FacilityService>();
-        services.AddTransient<IFacilityTypeService, FacilityTypeService>();
-        services.AddTransient<IVehicleService, VehicleService>();
-
-        services.AddTransient<IVehicleTypeService, VehicleTypeService>();
-        services.AddTransient<IDeathEventTypeService, DeathEventTypeService>();
-
         services.AddSingleton<IScrimRulesetManager, ScrimRulesetManager>();
-
         services.AddSingleton<IScrimMatchDataService, ScrimMatchDataService>();
-
-        services.AddSingleton<IWorldService, WorldService>();
-        services.AddSingleton<ICharacterService, CharacterService>();
-        services.AddSingleton<IOutfitService, OutfitService>();
-        services.AddSingleton<IProfileService, ProfileService>();
-        services.AddTransient<ILoadoutService, LoadoutService>();
 
         services.AddSingleton<IScrimTeamsManager, ScrimTeamsManager>();
         services.AddSingleton<IScrimPlayersService, ScrimPlayersService>();
@@ -126,21 +125,16 @@ public class Program
         services.AddSingleton<IScrimMatchEngine, ScrimMatchEngine>();
         services.AddSingleton<IScrimMatchScorer, ScrimMatchScorer>();
 
+        services.AddTransient<IDeathEventTypeService, DeathEventTypeService>();
+        services.AddTransient<IVehicleTypeService, VehicleTypeService>();
         services.AddSingleton<IConstructedTeamService, ConstructedTeamService>();
 
         services.AddSingleton<IRulesetDataService, RulesetDataService>();
 
         services.AddTransient<IScrimMatchReportDataService, ScrimMatchReportDataService>();
 
-        services.AddTransient<IStreamClient, StreamClient>();
-        services.AddSingleton<IEventStreamHealthService, EventStreamHealthService>();
-
         services.AddSingleton<IApplicationDataLoader, ApplicationDataLoader>();
         services.AddHostedService<ApplicationDataLoaderHostedService>();
-
-        services.AddSingleton<IDbSeeder, DbSeeder>();
-        services.AddTransient<ISqlScriptRunner, SqlScriptRunner>();
-        services.AddTransient<DatabaseMaintenanceService>();
 
         WebApplication app = builder.Build();
 
