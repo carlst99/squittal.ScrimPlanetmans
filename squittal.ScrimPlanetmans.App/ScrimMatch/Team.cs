@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
@@ -84,10 +85,8 @@ public class Team
         return PlayersMap.Keys.ToList();
     }
 
-    public bool TryGetPlayerFromId(string characterId, out Player player)
-    {
-        return PlayersMap.TryGetValue(characterId, out player);
-    }
+    public bool TryGetPlayerFromId(string characterId, [NotNullWhen(true)] out Player? player)
+        => PlayersMap.TryGetValue(characterId, out player);
 
     public bool TryAddPlayer(Player player)
     {

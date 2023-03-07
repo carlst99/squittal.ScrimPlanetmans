@@ -4,6 +4,7 @@
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <UserSecretsId>2b0d58ab-a6b6-4e8d-a011-111e238176d7</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -97,6 +98,7 @@
 
   <ItemGroup>
     <PackageReference Include="DaybreakGames.Census" Version="3.2.4" />
+    <PackageReference Include="DbgCensus.EventStream.EventHandlers" Version="3.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="7.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.3">
       <PrivateAssets>all</PrivateAssets>

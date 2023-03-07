@@ -236,21 +236,15 @@ public class Player : IEquitable<Player>
         => p is not null
             && p.Id == Id;
 
-    public static bool operator ==(Player lhs, Player rhs)
+    public static bool operator ==(Player? lhs, Player? rhs)
     {
-        if (ReferenceEquals(lhs, null))
-        {
-            if (ReferenceEquals(rhs, null))
-            {
-                return true;
-            }
+        if (lhs is not null && rhs is not null)
+            return lhs.Equals(rhs);
 
-            return false;
-        }
-        return lhs.Equals(rhs);
+        return lhs is null && rhs is null;
     }
 
-    public static bool operator !=(Player lhs, Player rhs)
+    public static bool operator !=(Player? lhs, Player? rhs)
     {
         return !(lhs == rhs);
     }

@@ -1,4 +1,6 @@
 using System;
+using DbgCensus.EventStream;
+using DbgCensus.EventStream.EventHandlers.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -7,6 +9,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.CensusServices;
 using squittal.ScrimPlanetmans.App.CensusStream;
+using squittal.ScrimPlanetmans.App.CensusStream.EventHandlers;
+using squittal.ScrimPlanetmans.App.CensusStream.EventHandlers.Control;
+using squittal.ScrimPlanetmans.App.CensusStream.EventHandlers.PreDispatch;
 using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
 using squittal.ScrimPlanetmans.App.CensusStream.Models;
 using squittal.ScrimPlanetmans.App.Data;
@@ -40,6 +45,7 @@ public class Program
         services.AddServerSideBlazor();
         services.AddSignalR();
 
+        // Register the database
         services.AddDbContext<PlanetmansDbContext>
         (
             options => options.UseSqlServer
@@ -55,9 +61,10 @@ public class Program
                         );
                     }
                 )
-                .EnableSensitiveDataLogging(false)
+                .EnableSensitiveDataLogging(builder.Environment.IsDevelopment())
         );
 
+        // Register internal Census services
         services.AddCensusServices
         (
             options => options.CensusServiceId = Environment.GetEnvironmentVariable
@@ -68,8 +75,21 @@ public class Program
         );
         services.AddCensusHelpers();
 
+        // Register DbgCensus services
+        builder.Services.Configure<EventStreamOptions>(builder.Configuration.GetSection(nameof(EventStreamOptions)));
+
+        services.AddCensusEventHandlingServices()
+            .RegisterPreDispatchHandler<EventFilterPreDispatchHandler>()
+            .RegisterPreDispatchHandler<DuplicatePreventionPreDispatchHandler>()
+            .AddPayloadHandler<ConnectionStateChangedPayloadHandler>()
+            .AddPayloadHandler<DeathEventHandler>()
+            .AddPayloadHandler<UnknownPayloadHandler>();
+
+        services.AddHostedService<EventStreamWorker>();
+
         services.AddSingleton<IDbContextHelper, DbContextHelper>();
 
+        services.AddSingleton<IEventFilterService, EventFilterService>();
         services.AddSingleton<IScrimMessageBroadcastService, ScrimMessageBroadcastService>();
 
         services.AddTransient<IFactionService, FactionService>();
@@ -108,10 +128,7 @@ public class Program
         services.AddTransient<IScrimMatchReportDataService, ScrimMatchReportDataService>();
 
         services.AddTransient<IStreamClient, StreamClient>();
-        services.AddSingleton<IWebsocketEventHandler, WebsocketEventHandler>();
-        services.AddSingleton<IWebsocketMonitor, WebsocketMonitor>();
-        services.AddSingleton<IWebsocketHealthMonitor, WebsocketHealthMonitor>();
-        services.AddHostedService<WebsocketMonitorHostedService>();
+        services.AddSingleton<IEventStreamHealthService, EventStreamHealthService>();
 
         services.AddSingleton<IApplicationDataLoader, ApplicationDataLoader>();
         services.AddHostedService<ApplicationDataLoaderHostedService>();

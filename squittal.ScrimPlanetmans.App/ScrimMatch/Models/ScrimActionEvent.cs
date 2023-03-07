@@ -16,8 +16,8 @@ public abstract class ScrimActionEvent
 
 public class ScrimDeathActionEvent : ScrimActionEvent
 {
-    public Player AttackerPlayer { get; set; }
-    public Player VictimPlayer { get; set; }
+    public Player? AttackerPlayer { get; set; }
+    public Player? VictimPlayer { get; set; }
     public ScrimActionWeaponInfo Weapon { get; set; }
 
     public string AttackerCharacterId { get; set; }
@@ -164,7 +164,7 @@ public class ScrimActionWeaponInfo
 {
     public int Id { get; set; }
     public int? ItemCategoryId { get; set; }
-    public string Name { get; set; } = "Unknown weapon";
+    public string Name { get; set; }
     public bool IsVehicleWeapon { get; set; } = false;
 }
 

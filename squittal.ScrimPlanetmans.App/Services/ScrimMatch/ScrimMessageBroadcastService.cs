@@ -1,4 +1,6 @@
 ﻿using System;
+using DbgCensus.Core.Objects;
+using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
 using squittal.ScrimPlanetmans.App.Logging;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
@@ -7,6 +9,8 @@ namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 
 public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisposable
 {
+    private readonly IEventFilterService _eventFilter;
+
     private bool _isDisposed;
     private LogFileWriter? _logFileWriter;
 
@@ -43,6 +47,11 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     public event EventHandler<ScrimMessageEventArgs<RulesetOverlayConfigurationChangeMessage>>? RaiseRulesetOverlayConfigurationChangeEvent;
 
     #endregion Handler Events & Delegates
+
+    public ScrimMessageBroadcastService(IEventFilterService eventFilter)
+    {
+        _eventFilter = eventFilter;
+    }
 
     #region Logging
     public void DisableLogging()
@@ -90,6 +99,10 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
 
     public void BroadcastMatchConfigurationUpdateMessage(MatchConfigurationUpdateMessage message)
     {
+        _eventFilter.IsEventStoringEnabled = message.MatchConfiguration.SaveEventsToDatabase;
+        _eventFilter.SetFacility((uint)message.MatchConfiguration.FacilityId);
+        _eventFilter.SetWorld((WorldDefinition)message.MatchConfiguration.WorldId);
+
         OnRaiseMatchConfigurationUpdateEvent(new ScrimMessageEventArgs<MatchConfigurationUpdateMessage>(message));
 
         TrySaveToLogFile(message.Info);
@@ -248,6 +261,15 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     #region Team Player/Outfit/Constructed Team Changes
     public void BroadcastTeamPlayerChangeMessage(TeamPlayerChangeMessage message)
     {
+
+        if (ulong.TryParse(message.PlayerId, out ulong playerId))
+        {
+            if (message.ChangeType is TeamPlayerChangeType.Add)
+                _eventFilter.AddCharacter(playerId);
+            else if (message.ChangeType is TeamPlayerChangeType.Remove)
+                _eventFilter.RemoveCharacter(playerId);
+        }
+
         OnRaiseTeamPlayerChangeEvent(new ScrimMessageEventArgs<TeamPlayerChangeMessage>(message));
 
         TrySaveToLogFile(message.Info);

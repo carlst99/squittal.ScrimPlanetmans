@@ -12,11 +12,11 @@ namespace squittal.ScrimPlanetmans.App.ScrimMatch;
 public class ScrimMatchEngine : IScrimMatchEngine
 {
     private readonly IScrimTeamsManager _teamsManager;
-    private readonly IWebsocketMonitor _wsMonitor;
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly IScrimMatchDataService _matchDataService;
     private readonly IScrimRulesetManager _rulesetManager;
     private readonly ILogger<ScrimMatchEngine> _logger;
+    private readonly IEventFilterService _eventFilter;
 
     private readonly IStatefulTimer _timer;
 
@@ -38,16 +38,24 @@ public class ScrimMatchEngine : IScrimMatchEngine
     private DateTime _matchStartTime;
 
 
-    public ScrimMatchEngine(IScrimTeamsManager teamsManager, IWebsocketMonitor wsMonitor, IStatefulTimer timer,
-        IScrimMatchDataService matchDataService, IScrimMessageBroadcastService messageService, IScrimRulesetManager rulesetManager, ILogger<ScrimMatchEngine> logger)
+    public ScrimMatchEngine
+    (
+        IScrimTeamsManager teamsManager,
+        IStatefulTimer timer,
+        IScrimMatchDataService matchDataService,
+        IScrimMessageBroadcastService messageService,
+        IScrimRulesetManager rulesetManager,
+        ILogger<ScrimMatchEngine> logger,
+        IEventFilterService eventFilter
+    )
     {
         _teamsManager = teamsManager;
-        _wsMonitor = wsMonitor;
         _timer = timer;
         _messageService = messageService;
         _matchDataService = matchDataService;
         _rulesetManager = rulesetManager;
         _logger = logger;
+        _eventFilter = eventFilter;
 
         _messageService.RaiseMatchTimerTickEvent += async (s, e) => await OnMatchTimerTick(s, e);
 
@@ -83,11 +91,10 @@ public class ScrimMatchEngine : IScrimMatchEngine
             await EndRound();
         }
 
-        _wsMonitor.DisableScoring();
+        _eventFilter.IsScoringEnabled = false;
         if (!isRematch)
-        {
-            _wsMonitor.RemoveAllCharacterSubscriptions();
-        }
+            _eventFilter.RemoveAllCharacters();
+
         _messageService.DisableLogging();
 
         var previousWorldId = MatchConfiguration.WorldIdString;
@@ -138,12 +145,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
     public void ConfigureMatch(MatchConfiguration configuration)
     {
         MatchConfiguration = configuration;
-
         _roundSecondsMax = MatchConfiguration.RoundSecondsTotal;
-
-        _wsMonitor.SetFacilitySubscription(MatchConfiguration.FacilityId);
-        _wsMonitor.SetWorldSubscription(MatchConfiguration.WorldId);
-
         SendMatchConfigurationUpdateMessage();
     }
 
@@ -166,7 +168,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
         _isRunning = false;
         _matchState = MatchState.Stopped;
 
-        _wsMonitor.DisableScoring();
+        _eventFilter.IsScoringEnabled = false;
 
         // Stop the timer if forcing the round to end (as opposed to timer reaching 0)
         if (GetLatestTimerTickMessage().MatchTimerStatus.State != MatchTimerState.Stopped)
@@ -252,7 +254,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
         }
 
         _timer.Start();
-        _wsMonitor.EnableScoring();
+        _eventFilter.IsScoringEnabled = true;
 
         SendMatchStateUpdateMessage();
     }
@@ -262,7 +264,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
         _isRunning = false;
         _matchState = MatchState.Paused;
 
-        _wsMonitor.DisableScoring();
+        _eventFilter.IsScoringEnabled = false;
         _timer.Pause();
 
         SendMatchStateUpdateMessage();
@@ -278,7 +280,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
         }
             
         _timer.Reset();
-        _wsMonitor.DisableScoring();
+        _eventFilter.IsScoringEnabled = false;
 
         await _teamsManager.RollBackAllTeamStats(_currentRound);
 
@@ -310,14 +312,18 @@ public class ScrimMatchEngine : IScrimMatchEngine
         }
 
         _timer.Resume();
-        _wsMonitor.EnableScoring();
+        _eventFilter.IsScoringEnabled = true;
 
         SendMatchStateUpdateMessage();
     }
 
     public void SubmitPlayersList()
     {
-        _wsMonitor.AddCharacterSubscriptions(_teamsManager.GetAllPlayerIds());
+        foreach (string id in _teamsManager.GetAllPlayerIds())
+        {
+            if (ulong.TryParse(id, out ulong parsed))
+                _eventFilter.AddCharacter(parsed);
+        }
     }
 
     private async Task OnMatchTimerTick(object sender, ScrimMessageEventArgs<MatchTimerTickMessage> e)

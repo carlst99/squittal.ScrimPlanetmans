@@ -2686,21 +2686,21 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
 
     #endregion Match Entity Availability Methods
 
-    public Player GetPlayerFromId(string characterId)
+    public Player? GetPlayerFromId(string characterId)
     {
-        var teamOrdinal = GetTeamOrdinalFromPlayerId(characterId);
+        int? teamOrdinal = GetTeamOrdinalFromPlayerId(characterId);
         if (teamOrdinal == null)
         {
             return null;
         }
 
-        var team = GetTeam((int)teamOrdinal);
+        Team? team = GetTeam((int)teamOrdinal);
         if (team == null)
         {
             return null;
         }
 
-        team.TryGetPlayerFromId(characterId, out var player);
+        team.TryGetPlayerFromId(characterId, out Player? player);
 
         return player;
     }
@@ -2717,12 +2717,10 @@ public class ScrimTeamsManager : IScrimTeamsManager, IDisposable
         }
     }
 
-    public bool DoPlayersShareTeam(Player firstPlayer, Player secondPlayer)
+    public bool DoPlayersShareTeam(Player? firstPlayer, Player? secondPlayer)
     {
-        if (firstPlayer == null || secondPlayer == null)
-        {
+        if (firstPlayer is null || secondPlayer is null)
             return false;
-        }
 
         return firstPlayer.TeamOrdinal == secondPlayer.TeamOrdinal;
     }

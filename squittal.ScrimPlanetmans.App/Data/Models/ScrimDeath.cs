@@ -15,10 +15,10 @@ public class ScrimDeath
     public DateTime Timestamp { get; set; }
 
     [Required]
-    public string AttackerCharacterId { get; set; }
+    public string? AttackerCharacterId { get; set; }
 
     [Required]
-    public string VictimCharacterId { get; set; }
+    public string? VictimCharacterId { get; set; }
 
     [Required]
     public int ScrimMatchRound { get; set; }
@@ -39,8 +39,8 @@ public class ScrimDeath
     public string VictimNameFull { get; set; }
     public int VictimFactionId { get; set; }
     public int? VictimLoadoutId { get; set; }
-    public string VictimOutfitId { get; set; }
-    public string VictimOutfitAlias { get; set; }
+    public string? VictimOutfitId { get; set; }
+    public string? VictimOutfitAlias { get; set; }
     public bool VictimIsOutfitless { get; set; }
 
     public bool IsHeadshot { get; set; }

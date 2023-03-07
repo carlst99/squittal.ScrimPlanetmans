@@ -14,7 +14,7 @@ public interface IScrimTeamsManager
     Team GetTeamOne();
     Team GetTeamTwo();
 
-    Player GetPlayerFromId(string characterId);
+    Player? GetPlayerFromId(string characterId);
 
     IEnumerable<string> GetAllPlayerIds();
     IEnumerable<Player> GetParticipatingPlayers();
@@ -42,7 +42,7 @@ public interface IScrimTeamsManager
 
     Team? GetTeamFromOutfitAlias(string aliasLower);
 
-    bool DoPlayersShareTeam(Player firstPlayer, Player secondPlayer);
+    bool DoPlayersShareTeam(Player? firstPlayer, Player? secondPlayer);
     bool IsOutfitAvailable(string alias);
     Task<bool> TryAddFreeTextInputCharacterToTeam(int teamOrdinal, string inputString);
 

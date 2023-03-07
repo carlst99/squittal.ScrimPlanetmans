@@ -4,14 +4,16 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using DbgCensus.EventStream.Abstractions.Objects.Events;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.CensusStream.Models;
 
-public class WebsocketHealthMonitor : IWebsocketHealthMonitor
+/// <inheritdoc />
+public class EventStreamHealthService : IEventStreamHealthService
 {
-    private readonly ILogger<WebsocketHealthMonitor> _logger;
+    private readonly ILogger<EventStreamHealthService> _logger;
 
     private readonly ConcurrentDictionary<int, ConcurrentDictionary<string, DateTime>> _worldsLastSeenEvents = new ConcurrentDictionary<int, ConcurrentDictionary<string, DateTime>>();
 
@@ -21,7 +23,7 @@ public class WebsocketHealthMonitor : IWebsocketHealthMonitor
         {  "Death", TimeSpan.FromMinutes(5) }
     };
 
-    public WebsocketHealthMonitor(ILogger<WebsocketHealthMonitor> logger)
+    public EventStreamHealthService(ILogger<EventStreamHealthService> logger)
     {
         _logger = logger;
     }
@@ -54,7 +56,7 @@ public class WebsocketHealthMonitor : IWebsocketHealthMonitor
         _worldsLastSeenEvents.TryRemove(worldId, out var _);
     }
 
-    public void ClearAllWorlds()
+    public void ResetHealth()
     {
         _worldsLastSeenEvents.Clear();
     }
@@ -95,5 +97,19 @@ public class WebsocketHealthMonitor : IWebsocketHealthMonitor
         }
 
         return true;
+    }
+
+    // TODO: 
+    public bool IsHealthy(string clientName)
+    {
+        return true;
+    }
+
+    public void PushReceivedEvent<T>(string clientName, T receivedEvent) where T : IEvent
+    {
+    }
+
+    public void ResetHealth(string clientName)
+    {
     }
 }

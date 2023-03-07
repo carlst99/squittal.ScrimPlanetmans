@@ -16,13 +16,13 @@
 
 @inject IScrimMessageBroadcastService MessageService
 @inject IScrimMatchEngine ScrimMatchEngine
-@inject IWebsocketMonitor WebsocketMonitor
 @inject IScrimMatchScorer MatchScorer
 @inject IItemService ItemService
 @inject IFacilityService FacilityService
 @inject IZoneService ZoneService
 @inject IWorldService WorldService
 @inject IScrimRulesetManager RulesetManager
+@inject IEventFilterService EventFilter
 
 @implements IDisposable
 
@@ -388,8 +388,9 @@
     #region  Match & Subscription State Buttons
     private async Task GetCensusStreamStatus()
     {
-        var status = await WebsocketMonitor.GetStatus();
-        _isStreamServiceEnabled = status.IsEnabled;
+        // TODO: Observability of websocket status
+        //var status = await WebsocketMonitor.GetStatus();
+        _isStreamServiceEnabled = true;//status.IsEnabled;
 
         if (!_isStreamServiceEnabled)
         {
@@ -410,8 +411,8 @@
 
     private void EndCensusSubscription()
     {
-        WebsocketMonitor.RemoveAllCharacterSubscriptions();
-        LogAdminMessage($"Removed all characters from Stream Monitor!");
+        EventFilter.RemoveAllCharacters();
+        LogAdminMessage("Removed all characters from Stream Monitor!");
     }
 
     #region Match Controls
