@@ -75,11 +75,11 @@ public class ApplicationDataLoader : IApplicationDataLoader
 
             await _rulesetManager.SetUpActiveRulesetAsync();
 
-            await _matchScorer.SetActiveRulesetAsync();
+            await _matchScorer.SetActiveRulesetAsync(cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed loading application data: {ex}");
+            _logger.LogError(ex, "Failed loading application data");
         }
     }
 

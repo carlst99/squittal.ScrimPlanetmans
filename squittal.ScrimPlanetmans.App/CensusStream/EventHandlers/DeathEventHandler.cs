@@ -6,7 +6,6 @@ using DbgCensus.EventStream.EventHandlers.Abstractions;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
 using squittal.ScrimPlanetmans.App.Data;
-using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
@@ -28,7 +27,7 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly IScrimMatchScorer _scorer;
     private readonly IScrimMatchDataService _scrimMatchService;
-    private readonly IDbContextHelper _dbContextHelper;
+    private readonly PlanetmansDbContext _dbContext;
 
     public DeathEventHandler
     (
@@ -39,7 +38,7 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
         IScrimMessageBroadcastService messageService,
         IScrimMatchScorer scorer,
         IScrimMatchDataService scrimMatchService,
-        IDbContextHelper dbContextHelper
+        PlanetmansDbContext dbContext
     )
     {
         _logger = logger;
@@ -49,26 +48,22 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
         _messageService = messageService;
         _scorer = scorer;
         _scrimMatchService = scrimMatchService;
-        _dbContextHelper = dbContextHelper;
+        _dbContext = dbContext;
     }
 
+    /// <inheritdoc />
     public async Task HandleAsync(IDeath payload, CancellationToken ct = default)
     {
         bool involvesBenchedPlayer = false;
         string attackerId = payload.AttackerCharacterID.ToString();
         string victimId = payload.CharacterID.ToString();
 
-        ScrimDeathActionEvent deathEvent = new()
-        {
-            Timestamp = payload.Timestamp.UtcDateTime,
-            ZoneId = (int)payload.ZoneID.Definition,
-            IsHeadshot = payload.IsHeadshot
-        };
-
+        ScrimActionWeaponInfo weapon;
         Item? weaponItem = await _itemService.GetWeaponItemAsync((int)payload.AttackerWeaponID);
+
         if (weaponItem is not null)
         {
-            deathEvent.Weapon = new ScrimActionWeaponInfo
+            weapon = new ScrimActionWeaponInfo
             {
                 Id = weaponItem.Id,
                 ItemCategoryId = weaponItem.ItemCategoryId,
@@ -78,36 +73,50 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
         }
         else
         {
-            deathEvent.Weapon = new ScrimActionWeaponInfo
+            weapon = new ScrimActionWeaponInfo
             {
                 Id = (int)payload.AttackerWeaponID
             };
         }
 
+        ScrimDeathActionEvent deathEvent = new()
+        {
+            Timestamp = payload.Timestamp.UtcDateTime,
+            ZoneId = (int)payload.ZoneID.CombinedId,
+            IsHeadshot = payload.IsHeadshot,
+            Weapon = weapon
+        };
+
         try
         {
-            deathEvent.AttackerCharacterId = attackerId;
-            deathEvent.AttackerLoadoutId = (int)payload.AttackerLoadoutID;
-
-            Player? attackerPlayer = _teamsManager.GetPlayerFromId(attackerId);
-            deathEvent.AttackerPlayer = attackerPlayer;
-
-            if (attackerPlayer is not null)
+            if (payload.AttackerCharacterID is not 0)
             {
-                _teamsManager.SetPlayerLoadoutId(attackerId, deathEvent.AttackerLoadoutId);
-                involvesBenchedPlayer = involvesBenchedPlayer || attackerPlayer.IsBenched;
+                deathEvent.AttackerCharacterId = attackerId;
+                deathEvent.AttackerLoadoutId = (int)payload.AttackerLoadoutID;
+
+                Player? attackerPlayer = _teamsManager.GetPlayerFromId(attackerId);
+                deathEvent.AttackerPlayer = attackerPlayer;
+
+                if (attackerPlayer is not null)
+                {
+                    _teamsManager.SetPlayerLoadoutId(attackerId, deathEvent.AttackerLoadoutId);
+                    involvesBenchedPlayer = involvesBenchedPlayer || attackerPlayer.IsBenched;
+                }
             }
 
-            deathEvent.VictimCharacterId = victimId;
-            deathEvent.VictimLoadoutId = (int)payload.CharacterLoadoutID;
-
-            Player? victimPlayer = _teamsManager.GetPlayerFromId(victimId);
-            deathEvent.VictimPlayer = victimPlayer;
-
-            if (victimPlayer is not null)
+            if (payload.CharacterID is not 0)
             {
-                _teamsManager.SetPlayerLoadoutId(victimId, deathEvent.VictimLoadoutId);
-                involvesBenchedPlayer = involvesBenchedPlayer || victimPlayer.IsBenched;
+                deathEvent.VictimCharacterId = victimId;
+                deathEvent.VictimLoadoutId = (int)payload.CharacterLoadoutID;
+
+                Player? victimPlayer = _teamsManager.GetPlayerFromId(victimId);
+                deathEvent.VictimPlayer = victimPlayer;
+
+                if (victimPlayer is not null)
+                {
+                    _teamsManager.SetPlayerLoadoutId(victimId, deathEvent.VictimLoadoutId);
+                    involvesBenchedPlayer = involvesBenchedPlayer || victimPlayer.IsBenched;
+                }
             }
 
             deathEvent.ActionType = GetDeathScrimActionType(deathEvent);
@@ -125,7 +134,7 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
 
                 if (_eventFilter.IsScoringEnabled && !involvesBenchedPlayer)
                 {
-                    var scoringResult = await _scorer.ScoreDeathEvent(deathEvent);
+                    var scoringResult = await _scorer.ScoreDeathEventAsync(deathEvent, ct);
                     deathEvent.Points = scoringResult.Points;
                     deathEvent.IsBanned = scoringResult.IsBanned;
 
@@ -171,11 +180,8 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
                             //VictimResultingNetScore = deathEvent.VictimPlayer.EventAggregate.NetScore
                         };
 
-                        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                        PlanetmansDbContext dbContext = factory.GetDbContext();
-
-                        dbContext.ScrimDeaths.Add(dataModel);
-                        await dbContext.SaveChangesAsync(ct);
+                        _dbContext.ScrimDeaths.Add(dataModel);
+                        await _dbContext.SaveChangesAsync(ct);
                     }
                 }
             }

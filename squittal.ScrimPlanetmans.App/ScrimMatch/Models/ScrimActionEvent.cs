@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
@@ -18,10 +19,10 @@ public class ScrimDeathActionEvent : ScrimActionEvent
 {
     public Player? AttackerPlayer { get; set; }
     public Player? VictimPlayer { get; set; }
-    public ScrimActionWeaponInfo Weapon { get; set; }
+    public required ScrimActionWeaponInfo Weapon { get; set; }
 
-    public string AttackerCharacterId { get; set; }
-    public string VictimCharacterId { get; set; }
+    public string? AttackerCharacterId { get; set; }
+    public string? VictimCharacterId { get; set; }
 
     public int? AttackerLoadoutId { get; set; }
     public int? AttackerVehicleId { get; set; }
@@ -34,23 +35,24 @@ public class ScrimDeathActionEvent : ScrimActionEvent
 
 public class ScrimExperienceGainActionEvent : ScrimActionEvent
 {
-    public ScrimActionExperienceGainInfo ExperienceGainInfo { get; set; }
+    public required ScrimActionExperienceGainInfo ExperienceGainInfo { get; set; }
 
     public ExperienceType ExperienceType { get; set; }
 
-    public int? LoadoutId { get; set; }
+    public int LoadoutId { get; set; }
 
     public int Points { get; set; }
 }
 
 public class ScrimReviveActionEvent : ScrimExperienceGainActionEvent
 {
-    public Player MedicPlayer { get; set; }
-    public Player RevivedPlayer { get; set; }
+    public Player? MedicPlayer { get; set; }
+    public Player? RevivedPlayer { get; set; }
 
-    public string MedicCharacterId { get; set; }
-    public string RevivedCharacterId { get; set; }
+    public string? MedicCharacterId { get; set; }
+    public string? RevivedCharacterId { get; set; }
 
+    [SetsRequiredMembers]
     public ScrimReviveActionEvent(ScrimExperienceGainActionEvent baseExperienceEvent)
     {
         Timestamp = baseExperienceEvent.Timestamp;
@@ -63,12 +65,13 @@ public class ScrimReviveActionEvent : ScrimExperienceGainActionEvent
 
 public class ScrimAssistActionEvent : ScrimExperienceGainActionEvent
 {
-    public Player AttackerPlayer { get; set; }
-    public Player VictimPlayer { get; set; }
+    public Player? AttackerPlayer { get; set; }
+    public Player? VictimPlayer { get; set; }
 
-    public string AttackerCharacterId { get; set; }
-    public string VictimCharacterId { get; set; }
+    public string? AttackerCharacterId { get; set; }
+    public string? VictimCharacterId { get; set; }
 
+    [SetsRequiredMembers]
     public ScrimAssistActionEvent(ScrimExperienceGainActionEvent baseExperienceEvent)
     {
         Timestamp = baseExperienceEvent.Timestamp;
@@ -99,9 +102,9 @@ public class ScrimUtilityAssistActionEvent : ScrimExperienceGainActionEvent
 
 public class ScrimObjectiveTickActionEvent : ScrimExperienceGainActionEvent
 {
-    public Player Player { get; set; }
+    public Player? Player { get; set; }
 
-    public string PlayerCharacterId { get; set; }
+    public string? PlayerCharacterId { get; set; }
 
     // TODO: Experience IDs of 15 & 16 (Control Point - Attack / Defend seem to populate other_id with
     // an opposing player, but not sure what it means at the moment
@@ -112,6 +115,8 @@ public class ScrimObjectiveTickActionEvent : ScrimExperienceGainActionEvent
     //public int? LoadoutId { get; set; }
 
     //public int Points { get; set; }
+
+    [SetsRequiredMembers]
     public ScrimObjectiveTickActionEvent(ScrimExperienceGainActionEvent baseExperienceEvent)
     {
         Timestamp = baseExperienceEvent.Timestamp;
@@ -176,18 +181,18 @@ public class ScrimActionExperienceGainInfo
 
 public class ScrimVehicleDestructionActionEvent : ScrimActionEvent
 {
-    public Player AttackerPlayer { get; set; }
-    public Player VictimPlayer { get; set; }
+    public Player? AttackerPlayer { get; set; }
+    public Player? VictimPlayer { get; set; }
 
-    public ScrimActionWeaponInfo Weapon { get; set; }
+    public required ScrimActionWeaponInfo Weapon { get; set; }
 
-    public ScrimActionVehicleInfo AttackerVehicle { get; set; }
-    public ScrimActionVehicleInfo VictimVehicle { get; set; }
+    public ScrimActionVehicleInfo? AttackerVehicle { get; set; }
+    public ScrimActionVehicleInfo? VictimVehicle { get; set; }
 
     public string AttackerCharacterId { get; set; }
     public string VictimCharacterId { get; set; }
 
-    public int? AttackerLoadoutId { get; set; }
+    public int AttackerLoadoutId { get; set; }
 
     public int? VictimFactionId { get; set; }
 

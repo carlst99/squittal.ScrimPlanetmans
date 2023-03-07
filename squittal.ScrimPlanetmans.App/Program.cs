@@ -61,6 +61,7 @@ public class Program
                         );
                     }
                 )
+                .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
                 .EnableSensitiveDataLogging(builder.Environment.IsDevelopment())
         );
 
@@ -83,6 +84,10 @@ public class Program
             .RegisterPreDispatchHandler<DuplicatePreventionPreDispatchHandler>()
             .AddPayloadHandler<ConnectionStateChangedPayloadHandler>()
             .AddPayloadHandler<DeathEventHandler>()
+            .AddPayloadHandler<FacilityControlEventHandler>()
+            .AddPayloadHandler<GainExperiencePayloadHandler>()
+            .AddPayloadHandler<PlayerLogEventHandler>()
+            .AddPayloadHandler<VehicleDestroyEventHandler>()
             .AddPayloadHandler<UnknownPayloadHandler>();
 
         services.AddHostedService<EventStreamWorker>();

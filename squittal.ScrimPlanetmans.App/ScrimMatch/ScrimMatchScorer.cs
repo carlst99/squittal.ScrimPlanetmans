@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Models;
@@ -18,7 +19,7 @@ public class ScrimMatchScorer : IScrimMatchScorer
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly ILogger<ScrimMatchEngine> _logger;
 
-    private Ruleset.Models.Ruleset _activeRuleset;
+    private Ruleset.Models.Ruleset? _activeRuleset;
 
     public ScrimMatchScorer(IScrimRulesetManager rulesets, IScrimTeamsManager teamsManager, IScrimMessageBroadcastService messageService, ILogger<ScrimMatchEngine> logger)
     {
@@ -31,14 +32,14 @@ public class ScrimMatchScorer : IScrimMatchScorer
         _messageService.RaiseRulesetRuleChangeEvent += OnRulesetRuleChangeEvent;
     }
 
-    private async void OnActiveRulesetChangeEvent(object sender, ScrimMessageEventArgs<ActiveRulesetChangeMessage> e)
+    private async void OnActiveRulesetChangeEvent(object? sender, ScrimMessageEventArgs<ActiveRulesetChangeMessage> e)
     {
         await SetActiveRulesetAsync();
     }
 
-    private async void OnRulesetRuleChangeEvent(object sender, ScrimMessageEventArgs<RulesetRuleChangeMessage> e)
+    private async void OnRulesetRuleChangeEvent(object? sender, ScrimMessageEventArgs<RulesetRuleChangeMessage> e)
     {
-        if (_activeRuleset.Id == e.Message.Ruleset.Id)
+        if (_activeRuleset?.Id == e.Message.Ruleset.Id)
         {
             await SetActiveRulesetAsync();
         }
@@ -46,13 +47,13 @@ public class ScrimMatchScorer : IScrimMatchScorer
         // TODO: specific methods for only updating Rule Type that changed (Action Rules or Item Category Rules)
     }
 
-    public async Task SetActiveRulesetAsync()
+    public async Task SetActiveRulesetAsync(CancellationToken ct = default)
     {
         _activeRuleset = await _rulesets.GetActiveRulesetAsync();
     }
 
     #region Death Events
-    public async Task<ScrimEventScoringResult> ScoreDeathEvent(ScrimDeathActionEvent death)
+    public async Task<ScrimEventScoringResult> ScoreDeathEventAsync(ScrimDeathActionEvent death, CancellationToken ct = default)
     {
         return death.DeathType switch
         {
@@ -138,7 +139,7 @@ public class ScrimMatchScorer : IScrimMatchScorer
     #endregion Death Events
 
     #region Vehicle Destruction Events
-    public async Task<ScrimEventScoringResult> ScoreVehicleDestructionEvent(ScrimVehicleDestructionActionEvent destruction)
+    public async Task<ScrimEventScoringResult> ScoreVehicleDestructionEventAsync(ScrimVehicleDestructionActionEvent destruction, CancellationToken ct = default)
     {
         return destruction.DeathType switch
         {
@@ -266,7 +267,7 @@ public class ScrimMatchScorer : IScrimMatchScorer
     #endregion Vehicle Destruction Events
 
     #region Experience Events
-    public async Task<ScrimEventScoringResult> ScoreReviveEvent(ScrimReviveActionEvent revive)
+    public async Task<ScrimEventScoringResult> ScoreReviveEventAsync(ScrimReviveActionEvent revive, CancellationToken ct = default)
     {
         var actionType = revive.ActionType;
         var scoringResult = GetActionRulePoints(actionType);
@@ -291,7 +292,7 @@ public class ScrimMatchScorer : IScrimMatchScorer
         return scoringResult;
     }
 
-    public async Task<ScrimEventScoringResult> ScoreAssistEvent(ScrimAssistActionEvent assist)
+    public async Task<ScrimEventScoringResult> ScoreAssistEventAsync(ScrimAssistActionEvent assist, CancellationToken ct = default)
     {
         var actionType = assist.ActionType;
         var scoringResult = GetActionRulePoints(actionType);
@@ -365,7 +366,7 @@ public class ScrimMatchScorer : IScrimMatchScorer
         return scoringResult;
     }
 
-    public async Task<ScrimEventScoringResult> ScoreObjectiveTickEvent(ScrimObjectiveTickActionEvent objective)
+    public async Task<ScrimEventScoringResult> ScoreObjectiveTickEventAsync(ScrimObjectiveTickActionEvent objective, CancellationToken ct = default)
     {
         var actionType = objective.ActionType;
         var scoringResult = GetActionRulePoints(actionType);

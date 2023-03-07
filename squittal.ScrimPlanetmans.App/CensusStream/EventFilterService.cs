@@ -83,7 +83,8 @@ public class EventFilterService : IEventFilterService
                 || _characters.Contains(facilityCapture.CharacterID),
             IPlayerFacilityDefend facilityDefend => facilityDefend.FacilityID == _facility
                 || _characters.Contains(facilityDefend.CharacterID),
-            IPlayerLogin or IPlayerLogout => true,
+            IPlayerLogin playerLogin => _characters.Contains(playerLogin.CharacterID),
+            IPlayerLogout playerLogout => _characters.Contains(playerLogout.CharacterID),
             ISkillAdded skillAdded => _characters.Contains(skillAdded.CharacterID),
             IVehicleDestroy vehicleDestroy => vehicleDestroy.FacilityID == _facility
                 || _characters.Contains(vehicleDestroy.AttackerCharacterID)
