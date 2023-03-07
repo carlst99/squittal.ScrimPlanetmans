@@ -136,9 +136,9 @@ public class ZoneService : IZoneService
         {
             zones = (await _censusZone.GetAllZones()).ToList();
         }
-        catch
+        catch (Exception ex)
         {
-            _logger.LogError("Census API query failed: get all Zones. Refreshing store from backup...");
+            _logger.LogError(ex, "Census API query failed: get all Zones. Refreshing store from backup...");
             return false;
         }
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -78,9 +79,9 @@ public class LoadoutService : ILoadoutService
         {
             censusLoadouts = (await _censusLoadout.GetAllLoadoutsAsync()).ToArray();
         }
-        catch
+        catch (Exception ex)
         {
-            _logger.LogError("Census API query failed: get all Loadouts. Refreshing store from backup...");
+            _logger.LogError(ex, "Census API query failed: get all Loadouts. Refreshing store from backup...");
             return false;
         }
 

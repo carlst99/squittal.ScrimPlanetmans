@@ -94,9 +94,9 @@ public class VehicleService : IVehicleService
         {
             vehicles = (await _censusVehicle.GetAllVehicles()).ToArray();
         }
-        catch
+        catch (Exception ex)
         {
-            _logger.LogError("Census API query failed: get all Vehicles. Refreshing store from backup...");
+            _logger.LogError(ex, "Census API query failed: get all Vehicles. Refreshing store from backup...");
             return false;
         }
 

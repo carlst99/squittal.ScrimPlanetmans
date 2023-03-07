@@ -186,9 +186,9 @@ public class ProfileService : IProfileService, IDisposable
         {
             censusProfiles = (await _censusProfile.GetAllProfilesAsync()).ToArray();
         }
-        catch
+        catch (Exception ex)
         {
-            _logger.LogError("Census API query failed: get all Profiles. Refreshing store from backup...");
+            _logger.LogError(ex, "Census API query failed: get all Profiles. Refreshing store from backup...");
             return false;
         }
 

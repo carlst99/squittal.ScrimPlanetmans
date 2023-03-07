@@ -121,7 +121,7 @@ public class FacilityService : IFacilityService
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error setting up Scrimmable Map Regions Map: {ex}");
+            _logger.LogError(ex, "Error setting up Scrimmable Map Regions Map");
         }
         finally
         {
@@ -185,9 +185,9 @@ public class FacilityService : IFacilityService
         {
             mapRegions = await _censusFacility.GetAllMapRegions();
         }
-        catch
+        catch (Exception ex)
         {
-            _logger.LogError("Census API query failed: get all Map Regions. Refreshing store from backup...");
+            _logger.LogError(ex, "Census API query failed: get all Map Regions. Refreshing store from backup...");
             return false;
         }
 

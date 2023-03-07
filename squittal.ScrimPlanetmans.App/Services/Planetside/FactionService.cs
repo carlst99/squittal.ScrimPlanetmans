@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -96,9 +97,9 @@ public class FactionService : IFactionService
         {
             factions = await _censusFaction.GetAllFactions();
         }
-        catch
+        catch (Exception ex)
         {
-            _logger.LogError("Census API query failed: get all Factions. Refreshing store from backup...");
+            _logger.LogError(ex, "Census API query failed: get all Factions. Refreshing store from backup...");
             return false;
         }
 

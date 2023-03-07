@@ -216,9 +216,9 @@ public class ItemService : IItemService
             items = (await _censusItem.GetAllWeaponItems())
                 .ToList();
         }
-        catch
+        catch (Exception ex)
         {
-            _logger.LogError("Census API query failed: get all weapon Items. Refreshing store from backup...");
+            _logger.LogError(ex, "Census API query failed: get all weapon Items. Refreshing store from backup...");
             return false;
         }
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -79,9 +80,9 @@ public class FacilityTypeService : IFacilityTypeService
         {
             facilityTypes = await _censusFacility.GetAllFacilityTypes();
         }
-        catch
+        catch (Exception ex)
         {
-            _logger.LogError("Census API query failed: get all Facility Types. Refreshing store from backup...");
+            _logger.LogError(ex, "Census API query failed: get all Facility Types. Refreshing store from backup...");
             return false;
         }
 

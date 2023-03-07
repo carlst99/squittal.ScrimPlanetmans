@@ -355,9 +355,9 @@ public class ItemCategoryService : IItemCategoryService
         {
             itemCategories = (await _censusItemCategory.GetAllItemCategories()).ToList();
         }
-        catch
+        catch (Exception ex)
         {
-            _logger.LogError("Census API query failed: get all Item Categories. Refreshing store from backup...");
+            _logger.LogError(ex, "Census API query failed: get all Item Categories. Refreshing store from backup...");
             return false;
         }
 
