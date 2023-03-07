@@ -1,9 +1,6 @@
-﻿// Credit to Lampjaw @ Voidwell.DaybreakGames
-
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using DbgCensus.Core.Objects;
 using DbgCensus.EventStream.Abstractions.Objects.Events;
 using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
