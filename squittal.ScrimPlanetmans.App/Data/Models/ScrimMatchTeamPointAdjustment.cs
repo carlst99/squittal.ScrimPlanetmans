@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 namespace squittal.ScrimPlanetmans.App.Data.Models;
@@ -9,7 +10,7 @@ public class ScrimMatchTeamPointAdjustment
     [Required]
     public string ScrimMatchId { get; set; }
     [Required]
-    public int TeamOrdinal { get; set; }
+    public TeamDefinition TeamOrdinal { get; set; }
     [Required]
     public DateTime Timestamp { get; set;}
 

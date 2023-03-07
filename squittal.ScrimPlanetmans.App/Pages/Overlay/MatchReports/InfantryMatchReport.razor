@@ -1,4 +1,5 @@
 ﻿@using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models
+@using squittal.ScrimPlanetmans.App.Models
 @if (_renderedStatsType != null && _renderedStatsType == OverlayStatsDisplayType.InfantryScores)
 {
     <div id="MatchStats" class="match-report infantry @GetReportCss()">
@@ -6,16 +7,16 @@
         @if (_renderedCompact)
         {
             <div class="team-report-container team1">
-                <InfantryMatchReportTeam i_TeamOrdinal=1 i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=false />
+                <InfantryMatchReportTeam i_TeamOrdinal="TeamDefinition.Team1" i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=false />
             </div>
             <div class="team-report-container team2">
-                <InfantryMatchReportTeam i_TeamOrdinal=2 i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=false />
+                <InfantryMatchReportTeam i_TeamOrdinal="TeamDefinition.Team2" i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=false />
             </div>
         }
         else
         {
-            <InfantryMatchReportTeam i_TeamOrdinal=1 i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=false />
-            <InfantryMatchReportTeam i_TeamOrdinal=2 i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=false />
+            <InfantryMatchReportTeam i_TeamOrdinal="TeamDefinition.Team1" i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=false />
+            <InfantryMatchReportTeam i_TeamOrdinal="TeamDefinition.Team2" i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=false />
         }
 
     </div>
@@ -27,16 +28,16 @@ else if (_renderedStatsType != null && _renderedStatsType == OverlayStatsDisplay
         @if (_renderedCompact)
         {
             <div class="team-report-container team1">
-                <InfantryMatchReportTeam i_TeamOrdinal=1 i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=true />
+                <InfantryMatchReportTeam i_TeamOrdinal="TeamDefinition.Team1" i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=true />
             </div>
             <div class="team-report-container team2">
-                <InfantryMatchReportTeam i_TeamOrdinal=2 i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=true />
+                <InfantryMatchReportTeam i_TeamOrdinal="TeamDefinition.Team2" i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=true />
             </div>
         }
         else
         {
-            <InfantryMatchReportTeam i_TeamOrdinal=1 i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=true />
-            <InfantryMatchReportTeam i_TeamOrdinal=2 i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=true />
+            <InfantryMatchReportTeam i_TeamOrdinal="TeamDefinition.Team1" i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=true />
+            <InfantryMatchReportTeam i_TeamOrdinal="TeamDefinition.Team2" i_ShowHsr=_renderedShowHsr i_UseObjectiveStats=true />
         }
 
     </div>

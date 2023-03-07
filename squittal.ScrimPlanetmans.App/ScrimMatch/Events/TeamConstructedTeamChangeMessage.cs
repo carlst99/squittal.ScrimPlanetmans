@@ -1,40 +1,20 @@
-﻿using System;
-using squittal.ScrimPlanetmans.App.Data.Models;
+﻿using squittal.ScrimPlanetmans.App.Data.Models;
+using squittal.ScrimPlanetmans.App.Models;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
-public class TeamConstructedTeamChangeMessage
+public record TeamConstructedTeamChangeMessage
+(
+    TeamDefinition TeamOrdinal,
+    ConstructedTeam ConstructedTeam,
+    int FactionId,
+    TeamChangeType ChangeType,
+    int? PlayersFound = null
+)
 {
-    public ConstructedTeam ConstructedTeam { get; set; }
-    public int TeamOrdinal { get; set; }
-    public int FactionId { get; set; }
-
-    public int? PlayersFound { get; set; }
-
-    public TeamChangeType ChangeType { get; set; }
-    public string Info { get; set; }
-
-    public TeamConstructedTeamChangeMessage(int teamOrdinal, ConstructedTeam constructedTeam, int factionId, TeamChangeType changeType, int? playersFound = null)
+    public string GetInfoMessage()
     {
-        TeamOrdinal = teamOrdinal;
-        ConstructedTeam = constructedTeam;
-        FactionId = factionId;
-        ChangeType = changeType;
-
-        PlayersFound = playersFound;
-
-        Info = GetInfoMessage();
-    }
-
-    private string GetInfoMessage()
-    {
-        if (ConstructedTeam == null)
-        {
-            return string.Empty;
-        }
-
-        var type = Enum.GetName(typeof(TeamChangeType), ChangeType).ToUpper();
-
+        string type = ChangeType.ToString().ToUpper();
         return $"Team {TeamOrdinal} Constructed Team {type}: [{ConstructedTeam.Alias}] {ConstructedTeam.Name} [{ConstructedTeam.Id}] - Faction {FactionId}";
     }
 }

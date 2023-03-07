@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
@@ -154,7 +155,7 @@ public class ScrimFacilityControlActionEvent : ScrimActionEvent
     public string FacilityName { get; set; } = string.Empty;
 
     public FacilityControlType ControlType { get; set; }
-    public int ControllingTeamOrdinal { get; set; }
+    public TeamDefinition ControllingTeamOrdinal { get; set; }
 
     public int Points { get; set; }
 

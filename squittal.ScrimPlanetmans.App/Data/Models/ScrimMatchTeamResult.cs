@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using squittal.ScrimPlanetmans.App.Models;
 
 namespace squittal.ScrimPlanetmans.App.Data.Models;
 
@@ -8,7 +9,7 @@ public class ScrimMatchTeamResult
     [Required]
     public string ScrimMatchId { get; set; }
     [Required]
-    public int TeamOrdinal { get; set; }
+    public TeamDefinition TeamOrdinal { get; set; }
 
     public int Points { get; set; }
     public int NetScore { get; set; }

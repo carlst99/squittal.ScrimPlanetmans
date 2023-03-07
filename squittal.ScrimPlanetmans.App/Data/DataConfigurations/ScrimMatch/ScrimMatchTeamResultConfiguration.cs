@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using squittal.ScrimPlanetmans.App.Data.Models;
+using squittal.ScrimPlanetmans.App.Models;
 
 namespace squittal.ScrimPlanetmans.App.Data.DataConfigurations.ScrimMatch;
 
@@ -35,7 +36,10 @@ public class ScrimMatchTeamResultConfiguration : IEntityTypeConfiguration<ScrimM
         builder.Property(e => e.ObjectiveDefenseTicks).HasDefaultValue(0);
         builder.Property(e => e.BaseDefenses).HasDefaultValue(0);
         builder.Property(e => e.BaseCaptures).HasDefaultValue(0);
-
-
+        builder.Property(e => e.TeamOrdinal).HasConversion
+        (
+            p => (int)p,
+            p => (TeamDefinition)p
+        );
     }
 }

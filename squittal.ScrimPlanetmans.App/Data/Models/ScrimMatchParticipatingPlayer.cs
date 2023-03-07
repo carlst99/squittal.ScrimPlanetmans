@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 
 namespace squittal.ScrimPlanetmans.App.Data.Models;
@@ -12,7 +13,7 @@ public class ScrimMatchParticipatingPlayer
     public string CharacterId { get; set; }
 
     [Required]
-    public int TeamOrdinal { get; set; }
+    public TeamDefinition TeamOrdinal { get; set; }
 
 
     public string NameFull { get; set; }

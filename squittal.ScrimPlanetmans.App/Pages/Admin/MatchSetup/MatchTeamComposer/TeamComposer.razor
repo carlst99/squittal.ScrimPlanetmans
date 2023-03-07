@@ -292,7 +292,7 @@
 
 @code {
     [Parameter]
-    public int i_teamOrdinal { get; set; }
+    public TeamDefinition i_teamOrdinal { get; set; }
 
     #region Form & Input Variables
     private OutfitAlias _inputAlias = new OutfitAlias();
@@ -349,7 +349,7 @@
     #endregion Constructed Team Selection Variables
 
     #region Helpers
-    private int _renderedTeamOrdinal;
+    private TeamDefinition _renderedTeamOrdinal;
     #endregion
 
     #region Initialization Methods
@@ -437,7 +437,7 @@
         var newAlias = _inputAlias.Alias;
         var newAliasLower = newAlias.ToLower();
 
-        if (!_validOutfitAliasHistory.Contains(newAliasLower) && TeamsManager.IsOutfitAvailable(newAliasLower, out Team owningTeam))
+        if (!_validOutfitAliasHistory.Contains(newAliasLower) && !TeamsManager.IsOutfitOwnedByTeam(newAliasLower, out _))
         {
             _teamOutfitsLoading.Add(newAliasLower);
 
@@ -550,7 +550,7 @@
     {
         try
         {
-            return await TeamsManager.TryAddFreeTextInputCharacterToTeam(i_teamOrdinal, input);
+            return await TeamsManager.TryAddFreeTextInputCharacterToTeamAsync(i_teamOrdinal, input);
         }
         catch (DaybreakGames.Census.Exceptions.CensusServiceUnavailableException ex)
         {
@@ -834,7 +834,7 @@
         }
         else if (message.ChangeType == TeamChangeType.Remove)
         {
-            _teamConstructedTeams.RemoveAll(t => t.ConstructedTeam.Id == constructedTeam.Id && t.ActiveFactionId == factionId);
+            _teamConstructedTeams.RemoveAll(t => t.ConstructedTeam?.Id == constructedTeam.Id && t.ActiveFactionId == factionId);
 
             //_availableConstructedTeams.Add(constructedTeam);
             //if (TeamsManager.IsConstructedTeamAnyFactionAvailable(constructedTeam.Id))
@@ -920,7 +920,7 @@
     {
         var message = e.Message;
 
-        var teamOrdinal = message.TeamOrdinal;
+        var teamOrdinal = message.Ordinal;
         var newAlias = message.NewAlias;
 
         if (teamOrdinal != i_teamOrdinal)
@@ -937,7 +937,7 @@
     {
         var message = e.Message;
 
-        var teamOrdinal = message.TeamOrdinal;
+        var teamOrdinal = message.Ordinal;
         var newFactionId = message.NewFactionId;
 
         if (teamOrdinal != i_teamOrdinal)

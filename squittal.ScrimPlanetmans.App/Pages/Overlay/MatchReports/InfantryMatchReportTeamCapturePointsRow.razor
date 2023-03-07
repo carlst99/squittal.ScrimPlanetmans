@@ -6,6 +6,7 @@
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
+@using squittal.ScrimPlanetmans.App.Models
 @implements IDisposable
 
 @if (_team != null)
@@ -22,11 +23,11 @@
 
 @code {
     [Parameter]
-    public int i_TeamOrdinal { get; set; }
+    public TeamDefinition i_TeamOrdinal { get; set; }
 
     private Team _team { get; set; }
 
-    private int _renderedTeamOrdinal { get; set; }
+    private TeamDefinition _renderedTeamOrdinal { get; set; }
 
     private ScrimEventAggregate _renderedEventAggregate { get; set; } = new ScrimEventAggregate();
 

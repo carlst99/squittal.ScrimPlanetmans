@@ -1,4 +1,4 @@
-﻿using System;
+﻿using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
@@ -10,18 +10,18 @@ public class TeamPlayerChangeMessage
     public string PlayerId { get; set; }
     public string PlayerNameDisplay { get; set; }
     public bool IsOnline { get; set; }
-    public int TeamOrdinal { get; set; }
+    public TeamDefinition TeamOrdinal { get; set; }
 
-    public string OutfitId { get; set; } = string.Empty;
-    public string OutfitAlias { get; set; } = string.Empty;
-    public string OutfitAliasLower { get; set; } = string.Empty;
+    public string OutfitId { get; set; }
+    public string OutfitAlias { get; set; }
+    public string OutfitAliasLower { get; set; }
 
-    public bool IsOutfitless { get; set; } = false; // assume most players will be added via outfits
-    public bool IsLastOfOutfit { get; set; } = false;
+    public bool IsOutfitless { get; set; } // assume most players will be added via outfits
+    public bool IsLastOfOutfit { get; set; }
 
     public TeamPlayerChangeType ChangeType { get; private set; }
 
-    public string Info { get => GetInfoMessage(); }
+    public string Info => GetInfoMessage();
 
     public TeamPlayerChangeMessage(Player player, TeamPlayerChangeType type, bool isLastOfOutfit = false)
     {
@@ -37,22 +37,17 @@ public class TeamPlayerChangeMessage
         OutfitAlias = player.OutfitAlias;
         OutfitAliasLower = player.OutfitAliasLower;
 
-        IsOutfitless = (!string.IsNullOrWhiteSpace(OutfitAliasLower));
+        IsOutfitless = !string.IsNullOrWhiteSpace(OutfitAliasLower);
         IsLastOfOutfit = isLastOfOutfit;
     }
 
     private string GetInfoMessage()
     {
-        if (Player == null)
-        {
-            return string.Empty;
-        }
-
-        var type = ChangeType != TeamPlayerChangeType.Default
-            ? Enum.GetName(typeof(TeamPlayerChangeType), ChangeType).ToUpper()
+        string type = ChangeType != TeamPlayerChangeType.Default
+            ? ChangeType.ToString().ToUpper()
             : string.Empty;
 
-        var online = Player.IsOnline == true
+        string online = Player.IsOnline
             ? " ONLINE"
             : string.Empty;
 

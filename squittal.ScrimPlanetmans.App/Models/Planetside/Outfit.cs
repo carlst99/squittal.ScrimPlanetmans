@@ -18,7 +18,7 @@ public class Outfit
     public int? FactionId { get; set; }
     public int? WorldId { get; set; }
 
-    public int TeamOrdinal { get; set; }
+    public TeamDefinition TeamOrdinal { get; set; }
 
     public Faction Faction { get; set; }
     public World World { get; set; }

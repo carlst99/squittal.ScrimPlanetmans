@@ -294,7 +294,7 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     {
         OnRaiseTeamConstructedTeamChangeEvent(new ScrimMessageEventArgs<TeamConstructedTeamChangeMessage>(message));
 
-        TrySaveToLogFile(message.Info);
+        TrySaveToLogFile(message.GetInfoMessage());
     }
     protected virtual void OnRaiseTeamConstructedTeamChangeEvent(ScrimMessageEventArgs<TeamConstructedTeamChangeMessage> e)
     {
@@ -306,7 +306,8 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     {
         OnRaiseTeamAliasChangeEvent(new ScrimMessageEventArgs<TeamAliasChangeMessage>(message));
 
-        TrySaveToLogFile(message.Info);
+        string info = $"Alias for Team {message.Ordinal} changed from {message.OldAlias} to {message.NewAlias}";
+        TrySaveToLogFile(info);
     }
     protected virtual void OnRaiseTeamAliasChangeEvent(ScrimMessageEventArgs<TeamAliasChangeMessage> e)
     {
@@ -317,7 +318,18 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     {
         OnRaiseTeamFactionChangeEvent(new ScrimMessageEventArgs<TeamFactionChangeMessage>(message));
 
-        TrySaveToLogFile(message.Info);
+        string newIdDisplay = message.NewFactionId is not { } newFactionId
+            ? string.Empty
+            : $"{newFactionId}-";
+        string oldIdDisplay = message.OldFactionId is not { } oldFactionId
+            ? string.Empty
+            : $"{oldFactionId}-";
+
+        TrySaveToLogFile
+        (
+            $"Alias for Team {message.Ordinal} changed from {oldIdDisplay}{message.OldFactionAbbreviation} " +
+            $"to {newIdDisplay}{message.NewFactionAbbreviation}"
+        );
     }
     protected virtual void OnRaiseTeamFactionChangeEvent(ScrimMessageEventArgs<TeamFactionChangeMessage> e)
     {
@@ -328,7 +340,8 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     {
         OnRaiseTeamLockStatusChangeEvent(new ScrimMessageEventArgs<TeamLockStatusChangeMessage>(message));
 
-        TrySaveToLogFile(message.Info);
+        string info = $"Team {message.TeamOrdinal} " + (message.IsLocked ? "locked" : "unlocked");
+        TrySaveToLogFile(info);
     }
     protected virtual void OnRaiseTeamLockStatusChangeEvent(ScrimMessageEventArgs<TeamLockStatusChangeMessage> e)
     {

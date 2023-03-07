@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
@@ -26,8 +27,8 @@ public class ScrimDeath
     public ScrimActionType ActionType { get; set; }
     public DeathEventType DeathType { get; set; }
 
-    public int AttackerTeamOrdinal { get; set; }
-    public int VictimTeamOrdinal { get; set; }
+    public TeamDefinition AttackerTeamOrdinal { get; set; }
+    public TeamDefinition VictimTeamOrdinal { get; set; }
 
     public string AttackerNameFull { get; set; }
     public int AttackerFactionId { get; set; }

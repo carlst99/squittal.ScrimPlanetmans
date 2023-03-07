@@ -1,17 +1,5 @@
-﻿namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
+﻿using squittal.ScrimPlanetmans.App.Models;
 
-public class TeamLockStatusChangeMessage
-{
-    public int TeamOrdinal { get; set; }
-    public bool IsLocked { get; set; }
-    public string Info { get; set; }
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
-
-    public TeamLockStatusChangeMessage(int teamOrdinal, bool newIsLocked)
-    {
-        TeamOrdinal = teamOrdinal;
-        IsLocked = newIsLocked;
-
-        Info = IsLocked ? $"Team {TeamOrdinal} locked" : $"Team {TeamOrdinal} unlocked";
-    }
-}
+public record TeamLockStatusChangeMessage(TeamDefinition TeamOrdinal, bool IsLocked);

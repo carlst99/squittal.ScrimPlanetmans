@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
@@ -25,8 +26,8 @@ public class ScrimRevive
     public ScrimActionType ActionType { get; set; }
 
     // Technically, different teams can have players from the same faction
-    public int MedicTeamOrdinal { get; set; }
-    public int RevivedTeamOrdinal { get; set; }
+    public TeamDefinition MedicTeamOrdinal { get; set; }
+    public TeamDefinition RevivedTeamOrdinal { get; set; }
 
     public int? MedicLoadoutId { get; set; }
     public int? RevivedLoadoutId { get; set; }

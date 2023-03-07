@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
@@ -25,8 +26,8 @@ public class ScrimSpotAssist
     public ScrimActionType ActionType { get; set; }
 
     // Technically, different teams can have players from the same faction
-    public int SpotterTeamOrdinal { get; set; }
-    public int VictimTeamOrdinal { get; set; }
+    public TeamDefinition SpotterTeamOrdinal { get; set; }
+    public TeamDefinition VictimTeamOrdinal { get; set; }
 
     public int? SpotterLoadoutId { get; set; }
     public int? VictimLoadoutId { get; set; }

@@ -1,6 +1,7 @@
 ﻿@using squittal.ScrimPlanetmans.App.Pages.Shared;
 @using System.Collections.Concurrent;
 @using squittal.ScrimPlanetmans.App.CensusStream.Interfaces
+@using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
@@ -118,8 +119,8 @@
 
 @code {
     [Parameter]
-    public int i_teamOrdinal { get; set; }
-    private int _renderedTeamOrdinal { get; set; }
+    public TeamDefinition i_teamOrdinal { get; set; }
+    private TeamDefinition _renderedTeamOrdinal { get; set; }
 
     [Parameter]
     public bool i_showRemovals { get; set; } = false;

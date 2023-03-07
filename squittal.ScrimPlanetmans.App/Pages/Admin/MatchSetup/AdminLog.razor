@@ -104,7 +104,7 @@
 
     private void ReceiveTeamConstructedTeamChangeEvent(object sender, ScrimMessageEventArgs<TeamConstructedTeamChangeMessage> e)
     {
-        var info = e.Message.Info;
+        var info = e.Message.GetInfoMessage();
         LogMessage((MarkupString)info, e.CreatedTime);
     }
 

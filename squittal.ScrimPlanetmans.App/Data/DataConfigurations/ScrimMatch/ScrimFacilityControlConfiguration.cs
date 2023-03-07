@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using squittal.ScrimPlanetmans.App.Data.Models;
+using squittal.ScrimPlanetmans.App.Models;
 
 namespace squittal.ScrimPlanetmans.App.Data.DataConfigurations.ScrimMatch;
 
@@ -19,6 +20,11 @@ public class ScrimFacilityControlConfiguration : IEntityTypeConfiguration<ScrimF
         });
 
         builder.Property(e => e.Points).HasDefaultValue(0);
+        builder.Property(e => e.ControllingTeamOrdinal).HasConversion
+        (
+            t => (int)t,
+            t => (TeamDefinition)t
+        );
 
         builder.Ignore(e => e.ScrimMatch);
         builder.Ignore(e => e.ControllingFaction);

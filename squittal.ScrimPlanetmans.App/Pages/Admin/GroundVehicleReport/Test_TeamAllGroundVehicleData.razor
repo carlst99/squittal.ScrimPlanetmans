@@ -365,7 +365,7 @@
 
 @code {
     [Parameter]
-    public int i_teamOrdinal { get; set; }
+    public TeamDefinition i_teamOrdinal { get; set; }
 
     #region Form & Input Variables
     private OutfitAlias _inputAlias = new OutfitAlias();
@@ -403,7 +403,7 @@
 
     #region Helpers
     private IEnumerable<World> _worlds;
-    private int _renderedTeamOrdinal;
+    private TeamDefinition _renderedTeamOrdinal;
     #endregion
 
     /***********

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
@@ -18,7 +19,7 @@ public class ScrimFacilityControl
     public int FacilityId { get; set; }
 
     [Required]
-    public int ControllingTeamOrdinal { get; set; }
+    public TeamDefinition ControllingTeamOrdinal { get; set; }
 
     [Required]
     public int ScrimMatchRound { get; set; }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text.RegularExpressions;
+using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.Services.Planetside;
 
@@ -9,7 +10,7 @@ public class Player : IEquitable<Player>
 {
     public string Id { get; }
 
-    public int TeamOrdinal { get; set; }
+    public TeamDefinition TeamOrdinal { get; set; }
 
     public ScrimEventAggregate EventAggregate => EventAggregateTracker.TotalStats;
     public ScrimEventAggregateRoundTracker EventAggregateTracker { get; set; } = new();

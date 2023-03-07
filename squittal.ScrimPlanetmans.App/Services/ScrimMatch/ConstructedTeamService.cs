@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.Models;
@@ -49,24 +50,20 @@ public class ConstructedTeamService : IConstructedTeamService
 
 
     #region GET Methods
-    public async Task<ConstructedTeam> GetConstructedTeam(int teamId, bool ignoreCollections = false)
+    public async Task<ConstructedTeam?> GetConstructedTeam(int teamId, bool ignoreCollections = false)
     {
-        if (_constructedTeamsMap.Count == 0 || !_constructedTeamsMap.Any())
-        {
+        if (_constructedTeamsMap.IsEmpty)
             await SetUpConstructedTeamsMap();
-        }
 
-        _constructedTeamsMap.TryGetValue(teamId, out var team);
+        _constructedTeamsMap.TryGetValue(teamId, out ConstructedTeam? team);
 
         if (ignoreCollections || team == null)
-        {
             return team;
-        }
 
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
             team.PlayerMemberships = await dbContext.ConstructedTeamPlayerMemberships.Where(m => m.ConstructedTeamId == teamId).ToListAsync();
 
@@ -74,7 +71,7 @@ public class ConstructedTeamService : IConstructedTeamService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            _logger.LogError(ex, "Failed to get constructed team");
 
             return null;
         }

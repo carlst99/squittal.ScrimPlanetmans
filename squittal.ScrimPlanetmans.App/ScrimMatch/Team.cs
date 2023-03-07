@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using squittal.ScrimPlanetmans.App.Data.Models;
+using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
@@ -9,88 +11,74 @@ namespace squittal.ScrimPlanetmans.App.ScrimMatch;
 
 public class Team
 {
-    public string Alias { get; set; } //first seed team, or a custom value
-    public string NameInternal { get; set; } //team1 or team2
-    public int TeamOrdinal { get; private set; } //1 or 2
+    private readonly ConcurrentDictionary<string, ConstructedTeamMatchInfo> constructedTeamsMap = new();
+    private readonly ConcurrentDictionary<string, Player> _playersMap = new();
+    private readonly ConcurrentDictionary<string, Outfit> _outfitsMap = new();
+    private readonly ConcurrentDictionary<string, Player> _participatingPlayersMap = new();
+
+    private bool _hasCustomAlias;
+
+    public string Alias { get; set; }
+    public string NameInternal { get; }
+    public TeamDefinition TeamOrdinal { get; }
     public int? FactionId { get; set; }
 
-    public bool IsLocked { get; set; } = false;
+    public bool IsLocked { get; set; }
 
-    public ScrimEventAggregate EventAggregate
+    public ScrimEventAggregate EventAggregate => EventAggregateTracker.TotalStats;
+
+    public ScrimEventAggregateRoundTracker EventAggregateTracker { get; set; } = new();
+
+    public List<Player> Players { get; } = new();
+
+    public List<Player> ParticipatingPlayers { get; set; } = new();
+
+    public List<Outfit> Outfits { get; } = new();
+
+    public List<ConstructedTeamMatchInfo> ConstructedTeamsMatchInfo { get; set; } = new();
+
+    public List<ScrimSeriesMatchResult> ScrimSeriesMatchResults { get; } = new();
+
+    public Team(string alias, string nameInternal, TeamDefinition teamOrdinal)
     {
-        get
-        {
-            return EventAggregateTracker.TotalStats;
-        }
-    }
-
-    public ScrimEventAggregateRoundTracker EventAggregateTracker { get; set; } = new ScrimEventAggregateRoundTracker();
-
-    public List<Player> Players { get; private set; } = new List<Player>();
-
-    public List<Player> ParticipatingPlayers { get; set; } = new List<Player>();
-
-    private ConcurrentDictionary<string, Player> ParticipatingPlayersMap { get; set; } = new ConcurrentDictionary<string, Player>();
-
-    public List<Outfit> Outfits { get; private set; } = new List<Outfit>();
-
-    public List<ConstructedTeamMatchInfo> ConstructedTeamsMatchInfo { get; set; } = new List<ConstructedTeamMatchInfo>();
-    private ConcurrentDictionary<string, ConstructedTeamMatchInfo> ConstructedTeamsMap { get; set; } = new ConcurrentDictionary<string, ConstructedTeamMatchInfo>();
-
-    private ConcurrentDictionary<string, Player> PlayersMap { get; set; } = new ConcurrentDictionary<string, Player>();
-
-    private ConcurrentDictionary<string, Outfit> OutfitsMap { get; set; } = new ConcurrentDictionary<string, Outfit>();
-
-    public List<ScrimSeriesMatchResult> ScrimSeriesMatchResults { get; private set; } = new List<ScrimSeriesMatchResult>();
-
-    public bool HasCustomAlias { get; private set; } = false;
-
-
-    public Team(string alias, string nameInternal, int teamOrdinal)
-    {
-        TrySetAlias(alias, false);
+        TrySetAlias(alias);
         NameInternal = nameInternal;
         TeamOrdinal = teamOrdinal;
     }
 
+    [MemberNotNull(nameof(Alias))]
     public bool TrySetAlias(string alias, bool isCustomAlias = false)
     {
         // Don't overwrite a custom display alias unless the new one is also custom
-        if (!HasCustomAlias || isCustomAlias)
-        {
-            Alias = alias;
-            HasCustomAlias = isCustomAlias;
-            return true;
-        }
-        else
-        {
+        if (_hasCustomAlias && !isCustomAlias && Alias is not null)
             return false;
-        }
+
+        Alias = alias;
+        _hasCustomAlias = isCustomAlias;
+        return true;
     }
 
     public void ResetAlias(string alias)
     {
         Alias = alias;
-        HasCustomAlias = false;
+        _hasCustomAlias = false;
     }
 
 
     #region Team Players
+
     public bool ContainsPlayer(string characterId)
-    {
-        return PlayersMap.ContainsKey(characterId);
-    }
+        => _playersMap.ContainsKey(characterId);
+
     public IEnumerable<string> GetAllPlayerIds()
-    {
-        return PlayersMap.Keys.ToList();
-    }
+        => _playersMap.Keys;
 
     public bool TryGetPlayerFromId(string characterId, [NotNullWhen(true)] out Player? player)
-        => PlayersMap.TryGetValue(characterId, out player);
+        => _playersMap.TryGetValue(characterId, out player);
 
     public bool TryAddPlayer(Player player)
     {
-        if(!PlayersMap.TryAdd(player.Id, player))
+        if(!_playersMap.TryAdd(player.Id, player))
         {
             return false;
         }
@@ -102,7 +90,7 @@ public class Team
 
     public bool TryRemovePlayer(string characterId)
     {
-        if (!PlayersMap.TryRemove(characterId, out var player))
+        if (!_playersMap.TryRemove(characterId, out var player))
         {
             return false;
         }
@@ -111,7 +99,7 @@ public class Team
 
         ParticipatingPlayers.Remove(player);
 
-        ParticipatingPlayersMap.TryRemove(player.Id, out Player removedPlayer);
+        _participatingPlayersMap.TryRemove(player.Id, out Player removedPlayer);
 
         RemovePlayerObjectiveTicksFromTeamAggregate(player); // TODO: remove this when Objective Ticks are saved to DB
 
@@ -164,28 +152,28 @@ public class Team
 
         if (player.IsParticipating)
         {
-            return ParticipatingPlayersMap.TryAdd(playerId, player);
+            return _participatingPlayersMap.TryAdd(playerId, player);
         }
         else
         {
-            return ParticipatingPlayersMap.TryRemove(playerId, out Player removedPlayer);
+            return _participatingPlayersMap.TryRemove(playerId, out Player removedPlayer);
         }
     }
 
     public IEnumerable<Player> GetParticipatingPlayers()
     {
-        return ParticipatingPlayersMap.Values.ToList();
+        return _participatingPlayersMap.Values.ToList();
     }
     #endregion Team Players
 
     #region Team Outfits
     public bool ContainsOutfit(string alias)
     {
-        return OutfitsMap.ContainsKey(alias.ToLower());
+        return _outfitsMap.ContainsKey(alias.ToLower());
     }
     public bool TryAddOutfit(Outfit outfit)
     {
-        if (!OutfitsMap.TryAdd(outfit.AliasLower, outfit))
+        if (!_outfitsMap.TryAdd(outfit.AliasLower, outfit))
         {
             return false;
         }
@@ -197,7 +185,7 @@ public class Team
 
     public bool TryRemoveOutfit(string aliasLower)
     {
-        if (!OutfitsMap.TryRemove(aliasLower, out var outfitOut))
+        if (!_outfitsMap.TryRemove(aliasLower, out var outfitOut))
         {
             return false;
         }
@@ -219,18 +207,18 @@ public class Team
     #region Team Contstructed Teams
     public bool ContainsConstructedTeamFaction(int constructedTeamId, int factionId)
     {
-        return ConstructedTeamsMap.ContainsKey(GetConstructedTeamFactionKey(constructedTeamId, factionId));
+        return constructedTeamsMap.ContainsKey(GetConstructedTeamFactionKey(constructedTeamId, factionId));
     }
 
     public bool TryAddConstructedTeamFaction(ConstructedTeamMatchInfo matchInfo)
     {
-        var constructedTeam = matchInfo.ConstructedTeam;
-        var factionId = matchInfo.ActiveFactionId;
-
-        if (!ConstructedTeamsMap.TryAdd(GetConstructedTeamFactionKey(constructedTeam.Id, factionId), matchInfo))
-        {
+        ConstructedTeam? constructedTeam = matchInfo.ConstructedTeam;
+        if (constructedTeam is null)
             return false;
-        }
+
+        int factionId = matchInfo.ActiveFactionId;
+        if (!constructedTeamsMap.TryAdd(GetConstructedTeamFactionKey(constructedTeam.Id, factionId), matchInfo))
+            return false;
 
         ConstructedTeamsMatchInfo.Add(matchInfo);
 
@@ -239,12 +227,12 @@ public class Team
 
     public bool TryRemoveConstructedTeamFaction(int constructedTeamId, int factionId)
     {
-        if (!ConstructedTeamsMap.TryRemove(GetConstructedTeamFactionKey(constructedTeamId, factionId), out var teamOut))
+        if (!constructedTeamsMap.TryRemove(GetConstructedTeamFactionKey(constructedTeamId, factionId), out _))
         {
             return false;
         }
 
-        ConstructedTeamsMatchInfo.RemoveAll(ctmi => ctmi.ConstructedTeam.Id == constructedTeamId && ctmi.ActiveFactionId == factionId);
+        ConstructedTeamsMatchInfo.RemoveAll(ctmi => ctmi.ConstructedTeam?.Id == constructedTeamId && ctmi.ActiveFactionId == factionId);
 
         return true;
     }
@@ -271,7 +259,7 @@ public class Team
         ClearEventAggregateHistory();
 
         ParticipatingPlayers.Clear();
-        ParticipatingPlayersMap.Clear();
+        _participatingPlayersMap.Clear();
     }
 
     public void AddStatsUpdate(ScrimEventAggregate update)

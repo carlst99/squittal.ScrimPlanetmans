@@ -7,6 +7,7 @@ using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
+using squittal.ScrimPlanetmans.App.ScrimMatch;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
@@ -69,8 +70,8 @@ public class FacilityControlEventHandler : IPayloadHandler<IFacilityControl>
             return;
         }
 
-        int? controllingTeamOrdinal = _teamsManager.GetFirstTeamWithFactionId(newFactionId);
-        if (controllingTeamOrdinal is null)
+        Team? controllingTeam = _teamsManager.GetFirstTeamWithFactionId(newFactionId);
+        if (controllingTeam is null)
         {
             _logger.LogInformation
             (
@@ -92,7 +93,7 @@ public class FacilityControlEventHandler : IPayloadHandler<IFacilityControl>
             "newFactionId={NewFactionId} oldFactionId={OldFactionId}",
             type,
             actionType,
-            controllingTeamOrdinal,
+            controllingTeam.TeamOrdinal,
             payload.WorldID,
             payload.FacilityID,
             payload.NewFactionID,
@@ -116,7 +117,7 @@ public class FacilityControlEventHandler : IPayloadHandler<IFacilityControl>
             Timestamp = payload.Timestamp.UtcDateTime,
             WorldId = (int)payload.WorldID,
             ZoneId = (int)payload.ZoneID.CombinedId,
-            ControllingTeamOrdinal = (int)controllingTeamOrdinal,
+            ControllingTeamOrdinal = controllingTeam.TeamOrdinal,
             ControlType = type,
             ActionType = actionType
         };

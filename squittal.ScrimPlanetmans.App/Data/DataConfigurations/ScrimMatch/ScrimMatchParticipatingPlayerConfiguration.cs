@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using squittal.ScrimPlanetmans.App.Data.Models;
+using squittal.ScrimPlanetmans.App.Models;
 
 namespace squittal.ScrimPlanetmans.App.Data.DataConfigurations.ScrimMatch;
 
@@ -18,6 +19,11 @@ public class ScrimMatchParticipatingPlayerConfiguration : IEntityTypeConfigurati
 
         builder.Property(e => e.IsFromOutfit).HasDefaultValue(false);
         builder.Property(e => e.IsFromConstructedTeam).HasDefaultValue(false);
+        builder.Property(e => e.TeamOrdinal).HasConversion
+        (
+            p => (int)p,
+            p => (TeamDefinition)p
+        );
 
         builder.Ignore(e => e.ScrimMatch);
         builder.Ignore(e => e.Faction);

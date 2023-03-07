@@ -1,19 +1,5 @@
-﻿namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
+﻿using squittal.ScrimPlanetmans.App.Models;
 
-public class TeamAliasChangeMessage
-{
-    public int TeamOrdinal { get; set; }
-    public string NewAlias { get; set; }
-    public string OldAlias { get; set; }
+namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
-    public string Info { get; set; }
-
-    public TeamAliasChangeMessage(int teamOrdinal, string newAlias, string oldAlias)
-    {
-        TeamOrdinal = teamOrdinal;
-        NewAlias = newAlias;
-        OldAlias = oldAlias;
-
-        Info = $"Alias for Team {TeamOrdinal} changed from {OldAlias} to {NewAlias}";
-    }
-}
+public record TeamAliasChangeMessage(TeamDefinition Ordinal, string NewAlias, string OldAlias);

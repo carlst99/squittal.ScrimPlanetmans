@@ -1,11 +1,12 @@
 ﻿@using squittal.ScrimPlanetmans.App.ScrimMatch.Models
+@using squittal.ScrimPlanetmans.App.Models
 @if (i_player != null)
 {
-    if (i_TeamOrdinal == 1)
+    if (i_TeamOrdinal == TeamDefinition.Team1)
     {
         <TeamPlayerCompactStatusCellDetails i_player=i_player i_NoScore=i_NoScore />
     }
-    else if (i_TeamOrdinal == 2)
+    else if (i_TeamOrdinal == TeamDefinition.Team2)
     {
         <TeamPlayerCompactStatusCellDetails i_player=i_player i_NoScore=i_NoScore />
     }
@@ -17,13 +18,13 @@
     public Player i_player { get; set; }
 
     [Parameter]
-    public int i_TeamOrdinal { get; set; }
+    public TeamDefinition i_TeamOrdinal { get; set; }
 
     [Parameter]
     public bool i_NoScore { get; set; }
 
     private string _renderedPlayerId;
-    private int _renderedTeamOrdinal { get; set; }
+    private TeamDefinition _renderedTeamOrdinal { get; set; }
 
     protected override void OnParametersSet()
     {

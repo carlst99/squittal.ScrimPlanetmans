@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
@@ -215,14 +216,11 @@ public class ScrimMatchEngine : IScrimMatchEngine
     {
         var matchId = _matchStartTime.ToString("yyyyMMddTHHmmss");
 
-        for (var i = 1; i <= 3; i++)
+        foreach (TeamDefinition teamOrdinal in Enum.GetValues<TeamDefinition>())
         {
-            var alias = _teamsManager.GetTeamAliasDisplay(i);
-
+            string alias = _teamsManager.GetTeamAliasDisplay(teamOrdinal);
             if (string.IsNullOrWhiteSpace(alias))
-            {
                 continue;
-            }
 
             matchId = $"{matchId}_{alias}";
         }

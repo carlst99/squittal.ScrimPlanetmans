@@ -91,19 +91,19 @@
 
         MessageService.RaiseScrimFacilityControlActionEvent += ReceiveFacilityControlEvent;
 
-        _teamAlias1 = ScrimTeamsManager.GetTeamAliasDisplay(1);
-        var teamPoints1 = ScrimTeamsManager.GetTeamScoreDisplay(1);
+        _teamAlias1 = ScrimTeamsManager.GetTeamAliasDisplay(TeamDefinition.Team1);
+        var teamPoints1 = ScrimTeamsManager.GetTeamScoreDisplay(TeamDefinition.Team1);
 
         _teamPoints1 = (teamPoints1 == null) ? 0 : (int)teamPoints1;
 
-        _teamFactionId1 = ScrimTeamsManager.GetTeam(1).FactionId;
+        _teamFactionId1 = ScrimTeamsManager.GetTeam(TeamDefinition.Team1).FactionId;
 
-        _teamAlias2 = ScrimTeamsManager.GetTeamAliasDisplay(2);
-        var teamPoints2 = ScrimTeamsManager.GetTeamScoreDisplay(2);
+        _teamAlias2 = ScrimTeamsManager.GetTeamAliasDisplay(TeamDefinition.Team2);
+        var teamPoints2 = ScrimTeamsManager.GetTeamScoreDisplay(TeamDefinition.Team2);
 
         _teamPoints2 = (teamPoints2 == null) ? 0 : (int)teamPoints2;
 
-        _teamFactionId2 = ScrimTeamsManager.GetTeam(2).FactionId;
+        _teamFactionId2 = ScrimTeamsManager.GetTeam(TeamDefinition.Team2).FactionId;
 
         UpdateSeriesMatchResults();
 
@@ -118,20 +118,20 @@
 
         if (_teamFactionId1 == null)
         {
-            UpdateTeamFactionDisplay(1, string.Empty);
+            UpdateTeamFactionDisplay(TeamDefinition.Team1, string.Empty);
         }
         else
         {
-            UpdateTeamFactionDisplay(1, FactionService.GetFactionAbbrevFromId((int)_teamFactionId1));
+            UpdateTeamFactionDisplay(TeamDefinition.Team1, FactionService.GetFactionAbbrevFromId((int)_teamFactionId1));
         }
 
         if (_teamFactionId2 == null)
         {
-            UpdateTeamFactionDisplay(2, string.Empty);
+            UpdateTeamFactionDisplay(TeamDefinition.Team2, string.Empty);
         }
         else
         {
-            UpdateTeamFactionDisplay(2, FactionService.GetFactionAbbrevFromId((int)_teamFactionId2));
+            UpdateTeamFactionDisplay(TeamDefinition.Team2, FactionService.GetFactionAbbrevFromId((int)_teamFactionId2));
         }
     }
 
@@ -181,16 +181,16 @@
         }
     }
 
-    private void UpdateTeamFactionDisplay(int teamOrdinal, string newAbbreviation)
+    private void UpdateTeamFactionDisplay(TeamDefinition teamOrdinal, string newAbbreviation)
     {
         if (string.IsNullOrWhiteSpace(newAbbreviation))
         {
-            if (teamOrdinal == 1)
+            if (teamOrdinal == TeamDefinition.Team1)
             {
                 _teamFactionDisplay1[0] = ".";
                 _teamFactionDisplay1[1] = ".";
             }
-            else if (teamOrdinal == 2)
+            else if (teamOrdinal == TeamDefinition.Team2)
             {
                 _teamFactionDisplay2[0] = ".";
                 _teamFactionDisplay2[1] = ".";
@@ -198,12 +198,12 @@
         }
         else
         {
-            if (teamOrdinal == 1)
+            if (teamOrdinal == TeamDefinition.Team1)
             {
                 _teamFactionDisplay1[0] = newAbbreviation[0].ToString();
                 _teamFactionDisplay1[1] = newAbbreviation[1].ToString();
             }
-            else if (teamOrdinal == 2)
+            else if (teamOrdinal == TeamDefinition.Team2)
             {
                 _teamFactionDisplay2[0] = newAbbreviation[0].ToString();
                 _teamFactionDisplay2[1] = newAbbreviation[1].ToString();
@@ -213,8 +213,8 @@
 
     private void UpdateTeamsControlCounts()
     {
-        _teamControls1 = ScrimTeamsManager.GetCurrentMatchRoundTeamWeightedCapturesCount(1);
-        _teamControls2 = ScrimTeamsManager.GetCurrentMatchRoundTeamWeightedCapturesCount(2);
+        _teamControls1 = ScrimTeamsManager.GetCurrentMatchRoundTeamWeightedCapturesCount(TeamDefinition.Team1);
+        _teamControls2 = ScrimTeamsManager.GetCurrentMatchRoundTeamWeightedCapturesCount(TeamDefinition.Team2);
     }
 
     #region Event Handling
@@ -227,12 +227,12 @@
 
         bool pointsChanged = false;
 
-        if (teamOrdinal == 1 && newPoints != _teamPoints1)
+        if (teamOrdinal == TeamDefinition.Team1 && newPoints != _teamPoints1)
         {
             _teamPoints1 = newPoints;
             pointsChanged = true;
         }
-        else if (teamOrdinal == 2 && newPoints != _teamPoints2)
+        else if (teamOrdinal == TeamDefinition.Team2 && newPoints != _teamPoints2)
         {
             _teamPoints2 = newPoints;
             pointsChanged = true;
@@ -252,9 +252,9 @@
 
         var controllingTeamOrdinal = message.FacilityControl.ControllingTeamOrdinal;
 
-        if (controllingTeamOrdinal == 1)
+        if (controllingTeamOrdinal == TeamDefinition.Team1)
         {
-            var newTeamControls = ScrimTeamsManager.GetCurrentMatchRoundTeamWeightedCapturesCount(1);
+            var newTeamControls = ScrimTeamsManager.GetCurrentMatchRoundTeamWeightedCapturesCount(TeamDefinition.Team1);
 
             if (newTeamControls != _teamControls1)
             {
@@ -263,9 +263,9 @@
             }
 
         }
-        else if (controllingTeamOrdinal == 2)
+        else if (controllingTeamOrdinal == TeamDefinition.Team2)
         {
-            var newTeamControls = ScrimTeamsManager.GetCurrentMatchRoundTeamWeightedCapturesCount(2);
+            var newTeamControls = ScrimTeamsManager.GetCurrentMatchRoundTeamWeightedCapturesCount(TeamDefinition.Team2);
 
             if (newTeamControls != _teamControls2)
             {
@@ -279,17 +279,17 @@
     {
         var message = e.Message;
 
-        var teamOrdinal = message.TeamOrdinal;
+        var teamOrdinal = message.Ordinal;
         var newAlias = message.NewAlias;
 
         bool aliasChanged = false;
 
-        if (teamOrdinal == 1 && newAlias != _teamAlias1)
+        if (teamOrdinal == TeamDefinition.Team1 && newAlias != _teamAlias1)
         {
             _teamAlias1 = newAlias;
             aliasChanged = true;
         }
-        else if (teamOrdinal == 2 && newAlias != _teamAlias2)
+        else if (teamOrdinal == TeamDefinition.Team2 && newAlias != _teamAlias2)
         {
             _teamAlias2 = newAlias;
             aliasChanged = true;
@@ -339,19 +339,19 @@
     {
         var message = e.Message;
 
-        var teamOrdinal = message.TeamOrdinal;
+        var teamOrdinal = message.Ordinal;
         var newFactionId = message.NewFactionId;
         var newFactionAbbreviation = message.NewFactionAbbreviation;
 
         bool factionChanged = false;
 
-        if (teamOrdinal == 1 && newFactionId != _teamFactionId1)
+        if (teamOrdinal == TeamDefinition.Team1 && newFactionId != _teamFactionId1)
         {
             _teamFactionId1 = newFactionId;
 
             factionChanged = true;
         }
-        else if (teamOrdinal == 2 && newFactionId != _teamFactionId2)
+        else if (teamOrdinal == TeamDefinition.Team2 && newFactionId != _teamFactionId2)
         {
             _teamFactionId2 = newFactionId;
             factionChanged = true;
@@ -368,8 +368,8 @@
 
     private void UpdateSeriesMatchResults()
     {
-        _teamSeriesResults1 = ScrimTeamsManager.GetTeamsScrimSeriesMatchResults(1);
-        _teamSeriesResults2 = ScrimTeamsManager.GetTeamsScrimSeriesMatchResults(2);
+        _teamSeriesResults1 = ScrimTeamsManager.GetTeamsScrimSeriesMatchResults(TeamDefinition.Team1);
+        _teamSeriesResults2 = ScrimTeamsManager.GetTeamsScrimSeriesMatchResults(TeamDefinition.Team2);
     }
 
     private string GetSeriesMatchTallyCssClass(ScrimSeriesMatchResultType? matchResultType)

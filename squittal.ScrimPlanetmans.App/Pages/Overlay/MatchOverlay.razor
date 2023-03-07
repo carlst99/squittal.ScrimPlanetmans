@@ -1,5 +1,7 @@
 ﻿@page "/Overlay"
-@using Microsoft.AspNetCore.WebUtilities @*for QueryHelpers*@
+@using Microsoft.AspNetCore.WebUtilities 
+@using squittal.ScrimPlanetmans.App.Models
+@*for QueryHelpers*@
 @using squittal.ScrimPlanetmans.App.Pages.Overlay.TeamPlayers;
 @using squittal.ScrimPlanetmans.App.Pages.Overlay.Scoreboard;
 @using squittal.ScrimPlanetmans.App.Pages.Overlay.MatchReports;
@@ -20,8 +22,8 @@
 
 @if (_players && _activeStatsDisplayType != null)
 {
-    <TeamPlayerStatusesContainer i_TeamOrdinal=1 i_Compact=_compact i_StatsType=(OverlayStatsDisplayType)_activeStatsDisplayType i_ShowPlayerScoresSetting=_showStatusPanelScores />
-    <TeamPlayerStatusesContainer i_TeamOrdinal=2 i_Compact=_compact i_StatsType=(OverlayStatsDisplayType)_activeStatsDisplayType i_ShowPlayerScoresSetting=_showStatusPanelScores />
+    <TeamPlayerStatusesContainer i_TeamOrdinal="TeamDefinition.Team1" i_Compact=_compact i_StatsType=(OverlayStatsDisplayType)_activeStatsDisplayType i_ShowPlayerScoresSetting=_showStatusPanelScores />
+    <TeamPlayerStatusesContainer i_TeamOrdinal="TeamDefinition.Team2" i_Compact=_compact i_StatsType=(OverlayStatsDisplayType)_activeStatsDisplayType i_ShowPlayerScoresSetting=_showStatusPanelScores />
 }
 
 @if (_scoreboard)
