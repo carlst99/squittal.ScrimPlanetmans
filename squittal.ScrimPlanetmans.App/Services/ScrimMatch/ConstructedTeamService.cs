@@ -88,7 +88,7 @@ public class ConstructedTeamService : IConstructedTeamService
         }
     }
 
-    public async Task<int> GetConstructedTeamMemberCount(int teamId)
+    public async Task<int> GetConstructedTeamMemberCountAsync(int teamId, CancellationToken ct = default)
     {
         try
         {
@@ -97,7 +97,7 @@ public class ConstructedTeamService : IConstructedTeamService
 
             return await dbContext.ConstructedTeamPlayerMemberships
                 .Where(m => m.ConstructedTeamId == teamId)
-                .CountAsync();
+                .CountAsync(cancellationToken: ct);
         }
         catch (Exception ex)
         {
@@ -363,16 +363,6 @@ public class ConstructedTeamService : IConstructedTeamService
         };
     }
 
-    private static ConstructedTeam ConvertToDbModel(ConstructedTeamInfo formInfo)
-    {
-        return new ConstructedTeam
-        {
-            Name = formInfo.Name,
-            Alias = formInfo.Alias,
-            IsHiddenFromSelection = formInfo.IsHiddenFromSelection
-        };
-    }
-
     public async Task<IEnumerable<ConstructedTeam>> GetConstructedTeamsAsync
     (
         bool includeHiddenTeams = false,
@@ -390,12 +380,12 @@ public class ConstructedTeamService : IConstructedTeamService
     #endregion GET Methods
 
     #region CREATE / EDIT Methods
-    public async Task SaveConstructedTeam(ConstructedTeamFormInfo constructedTeamFormInfo)
-    {
-        await CreateConstructedTeamAsync(ConvertToDbModel(constructedTeamFormInfo));
-    }
 
-    public async Task<bool> UpdateConstructedTeamInfo(ConstructedTeam teamUpdate)
+    public async Task<bool> UpdateConstructedTeamInfoAsync
+    (
+        ConstructedTeam teamUpdate,
+        CancellationToken ct = default
+    )
     {
         int updateId = teamUpdate.Id;
         string updateName = teamUpdate.Name;
@@ -414,14 +404,14 @@ public class ConstructedTeamService : IConstructedTeamService
             return false;
         }
 
-        using (await _constructedTeamLock.WaitAsync($"{updateId}"))
+        using (await _constructedTeamLock.WaitAsync($"{updateId}", ct))
         {
             try
             {
                 using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
                 PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                ConstructedTeam? storeEntity = await GetConstructedTeamAsync(updateId, true);
+                ConstructedTeam? storeEntity = await GetConstructedTeamAsync(updateId, true, ct);
 
                 if (storeEntity == null)
                 {
@@ -438,9 +428,9 @@ public class ConstructedTeamService : IConstructedTeamService
 
                 dbContext.ConstructedTeams.Update(storeEntity);
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
 
-                await SetUpConstructedTeamsMapAsync();
+                await SetUpConstructedTeamsMapAsync(ct);
 
                 ConstructedTeamInfoChangeMessage message = new(storeEntity, oldName, oldAlias, oldIsHidden);
                 _messageService.BroadcastConstructedTeamInfoChangeMessage(message);

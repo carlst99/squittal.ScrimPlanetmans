@@ -45,8 +45,16 @@ public interface IConstructedTeamService
         CancellationToken ct = default
     );
 
-    Task<bool> UpdateConstructedTeamInfo(ConstructedTeam teamUpdate);
-    Task<int> GetConstructedTeamMemberCount(int teamId);
+    Task<bool> UpdateConstructedTeamInfoAsync
+    (
+        ConstructedTeam teamUpdate,
+        CancellationToken ct = default
+    );
+    Task<int> GetConstructedTeamMemberCountAsync
+    (
+        int teamId,
+        CancellationToken ct = default
+    );
 
     Task<IEnumerable<ConstructedTeamMemberDetails>> GetConstructedTeamFactionMemberDetailsAsync
     (

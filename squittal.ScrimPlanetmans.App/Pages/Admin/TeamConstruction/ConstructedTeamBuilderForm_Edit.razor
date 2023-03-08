@@ -263,7 +263,7 @@
 
             await InvokeAsync(async () =>
             {
-                _renderedCharactersCount = await ConstructedTeamsService.GetConstructedTeamMemberCount(_renderedTeamId);
+                _renderedCharactersCount = await ConstructedTeamsService.GetConstructedTeamMemberCountAsync(_renderedTeamId);
 
                 _isChangingTeam = false;
                 StateHasChanged();
@@ -289,7 +289,7 @@
             return;
         }
 
-        _renderedCharactersCount = await ConstructedTeamsService.GetConstructedTeamMemberCount(_renderedTeamId);
+        _renderedCharactersCount = await ConstructedTeamsService.GetConstructedTeamMemberCountAsync(_renderedTeamId);
 
         InvokeAsyncStateHasChanged();
     }
@@ -381,7 +381,7 @@
         var updateTeam = _editFormTeam;
         updateTeam.Id = _renderedTeamId;
 
-        if (await ConstructedTeamsService.UpdateConstructedTeamInfo(updateTeam))
+        if (await ConstructedTeamsService.UpdateConstructedTeamInfoAsync(updateTeam))
         {
             _editFormTeam = new ConstructedTeam();
             _editFormTeam.Name = _renderedTeam.Name;
