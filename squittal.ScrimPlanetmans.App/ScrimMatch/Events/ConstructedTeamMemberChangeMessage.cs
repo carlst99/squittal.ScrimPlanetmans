@@ -1,38 +1,40 @@
-﻿using System;
-using squittal.ScrimPlanetmans.App.Models;
+﻿using squittal.ScrimPlanetmans.App.Models;
+using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.Models.Forms;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public class ConstructedTeamMemberChangeMessage
 {
-    public Character Character { get; set; }
-    public ConstructedTeamMemberDetails MemberDetails { get; set; }
-    public string CharacterId { get; set; }
-    public int TeamId { get; set; }
-    public ConstructedTeamMemberChangeType ChangeType { get; set; }
-
-    public string MemberAlias { get; set; }
-
+    public CensusCharacter? Character { get; }
+    public ConstructedTeamMemberDetails? MemberDetails { get; }
+    public ulong CharacterId { get; }
+    public int TeamId { get; }
+    public ConstructedTeamMemberChangeType ChangeType { get; }
+    public string? MemberAlias { get; }
     public string Info { get; set; } // => GetInfoMessage(); }
 
     // ADD Message
-    public ConstructedTeamMemberChangeMessage(int teamId, Character character, ConstructedTeamMemberDetails memberDetails, ConstructedTeamMemberChangeType changeType)
+    public ConstructedTeamMemberChangeMessage
+    (
+        int teamId,
+        CensusCharacter character,
+        ConstructedTeamMemberDetails memberDetails,
+        ConstructedTeamMemberChangeType changeType
+    )
     {
         Character = character;
+        CharacterId = character.CharacterId;
         MemberDetails = memberDetails;
-        CharacterId = character.Id;
         TeamId = teamId;
         ChangeType = changeType;
-
         MemberAlias = memberDetails.NameAlias;
 
         Info = GetInfoMessage();
     }
 
     // REMOVE Message
-    public ConstructedTeamMemberChangeMessage(int teamId, string characterId, ConstructedTeamMemberChangeType changeType)
+    public ConstructedTeamMemberChangeMessage(int teamId, ulong characterId, ConstructedTeamMemberChangeType changeType)
     {
         CharacterId = characterId;
         TeamId = teamId;
@@ -42,7 +44,14 @@ public class ConstructedTeamMemberChangeMessage
     }
 
     // UPDATE ALIAS Message
-    public ConstructedTeamMemberChangeMessage(int teamId, string characterId, ConstructedTeamMemberChangeType changeType, string oldAlias, string newAlias)
+    public ConstructedTeamMemberChangeMessage
+    (
+        int teamId,
+        ulong characterId,
+        ConstructedTeamMemberChangeType changeType,
+        string oldAlias,
+        string newAlias
+    )
     {
         CharacterId = characterId;
         TeamId = teamId;
@@ -50,10 +59,10 @@ public class ConstructedTeamMemberChangeMessage
 
         MemberAlias = newAlias;
 
-        var type = Enum.GetName(typeof(ConstructedTeamMemberChangeType), ChangeType).ToUpper();
+        string type = ChangeType.ToString().ToUpper();
 
-        var oldAliasDisplay = string.IsNullOrWhiteSpace(oldAlias) ? "null" : oldAlias;
-        var newAliasDisplay = string.IsNullOrWhiteSpace(newAlias) ? "null" : newAlias;
+        string oldAliasDisplay = string.IsNullOrWhiteSpace(oldAlias) ? "null" : oldAlias;
+        string newAliasDisplay = string.IsNullOrWhiteSpace(newAlias) ? "null" : newAlias;
 
         Info = $"Constructed Team {TeamId} Character {type}: {oldAliasDisplay} => {newAliasDisplay} [{CharacterId}]";
     }
@@ -61,13 +70,10 @@ public class ConstructedTeamMemberChangeMessage
     private string GetInfoMessage()
     {
         string characterName = string.Empty;
-            
-        if (Character != null)
-        {
-            characterName = Character.Name;
-        }
+        if (Character is not null)
+            characterName = Character.Name.First;
 
-        var type = Enum.GetName(typeof(ConstructedTeamMemberChangeType), ChangeType).ToUpper();
+        string type = ChangeType.ToString().ToUpper();
 
         return $"Constructed Team {TeamId} Character {type}: {characterName} [{CharacterId}]";
     }

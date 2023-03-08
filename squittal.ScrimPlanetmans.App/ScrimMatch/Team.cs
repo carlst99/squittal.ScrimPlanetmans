@@ -12,9 +12,9 @@ namespace squittal.ScrimPlanetmans.App.ScrimMatch;
 public class Team
 {
     private readonly ConcurrentDictionary<string, ConstructedTeamMatchInfo> constructedTeamsMap = new();
-    private readonly ConcurrentDictionary<string, Player> _playersMap = new();
+    private readonly ConcurrentDictionary<ulong, Player> _playersMap = new();
     private readonly ConcurrentDictionary<string, Outfit> _outfitsMap = new();
-    private readonly ConcurrentDictionary<string, Player> _participatingPlayersMap = new();
+    private readonly ConcurrentDictionary<ulong, Player> _participatingPlayersMap = new();
 
     private bool _hasCustomAlias;
 
@@ -67,13 +67,13 @@ public class Team
 
     #region Team Players
 
-    public bool ContainsPlayer(string characterId)
+    public bool ContainsPlayer(ulong characterId)
         => _playersMap.ContainsKey(characterId);
 
-    public IEnumerable<string> GetAllPlayerIds()
+    public IEnumerable<ulong> GetAllPlayerIds()
         => _playersMap.Keys;
 
-    public bool TryGetPlayerFromId(string characterId, [NotNullWhen(true)] out Player? player)
+    public bool TryGetPlayerFromId(ulong characterId, [NotNullWhen(true)] out Player? player)
         => _playersMap.TryGetValue(characterId, out player);
 
     public bool TryAddPlayer(Player player)
@@ -88,9 +88,9 @@ public class Team
         return true;
     }
 
-    public bool TryRemovePlayer(string characterId)
+    public bool TryRemovePlayer(ulong characterId)
     {
-        if (!_playersMap.TryRemove(characterId, out var player))
+        if (!_playersMap.TryRemove(characterId, out Player? player))
         {
             return false;
         }
@@ -99,7 +99,7 @@ public class Team
 
         ParticipatingPlayers.Remove(player);
 
-        _participatingPlayersMap.TryRemove(player.Id, out Player removedPlayer);
+        _participatingPlayersMap.TryRemove(player.Id, out Player? removedPlayer);
 
         RemovePlayerObjectiveTicksFromTeamAggregate(player); // TODO: remove this when Objective Ticks are saved to DB
 

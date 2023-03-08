@@ -16,10 +16,10 @@ public class ScrimVehicleDestruction
     public DateTime Timestamp { get; set; }
 
     [Required]
-    public string AttackerCharacterId { get; set; }
+    public ulong AttackerCharacterId { get; set; }
 
     [Required]
-    public string VictimCharacterId { get; set; }
+    public ulong VictimCharacterId { get; set; }
     [Required]
     public int VictimVehicleId { get; set; }
 
@@ -39,15 +39,15 @@ public class ScrimVehicleDestruction
     public string AttackerNameFull { get; set; }
     public int AttackerFactionId { get; set; }
     public int? AttackerLoadoutId { get; set; }
-    public string AttackerOutfitId { get; set; }
-    public string AttackerOutfitAlias { get; set; }
+    public ulong? AttackerOutfitId { get; set; }
+    public string? AttackerOutfitAlias { get; set; }
     public bool AttackerIsOutfitless { get; set; }
 
     public string VictimNameFull { get; set; }
     public int VictimFactionId { get; set; }
     public int? VictimLoadoutId { get; set; }
-    public string VictimOutfitId { get; set; }
-    public string VictimOutfitAlias { get; set; }
+    public ulong? VictimOutfitId { get; set; }
+    public string? VictimOutfitAlias { get; set; }
     public bool VictimIsOutfitless { get; set; }
 
     public int? WeaponId { get; set; }

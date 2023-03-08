@@ -19,6 +19,6 @@ public interface IScrimMatchDataService
     Task<Data.Models.ScrimMatch> GetCurrentMatch();
 
     IEnumerable<Data.Models.ScrimMatch> GetAllMatches();
-    Task<bool> TryRemoveMatchParticipatingPlayer(string characterId);
+    Task<bool> TryRemoveMatchParticipatingPlayer(ulong characterId);
     Task SaveMatchParticipatingPlayer(Player player);
 }

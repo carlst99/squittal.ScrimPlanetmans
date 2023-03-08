@@ -5,9 +5,9 @@ namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public class PlayerLoginMessage
 {
-    public Player Player { get; set; }
-    public PlayerLogin Login { get; set; }
-    public string Info { get; set; } = string.Empty;
+    public Player Player { get; }
+    public PlayerLogin Login { get; }
+    public string Info { get; }
 
     public PlayerLoginMessage(Player player, PlayerLogin login)
     {

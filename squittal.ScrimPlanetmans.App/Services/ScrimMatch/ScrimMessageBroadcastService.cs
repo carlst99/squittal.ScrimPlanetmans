@@ -261,17 +261,12 @@ public class ScrimMessageBroadcastService : IScrimMessageBroadcastService, IDisp
     #region Team Player/Outfit/Constructed Team Changes
     public void BroadcastTeamPlayerChangeMessage(TeamPlayerChangeMessage message)
     {
-
-        if (ulong.TryParse(message.PlayerId, out ulong playerId))
-        {
-            if (message.ChangeType is TeamPlayerChangeType.Add)
-                _eventFilter.AddCharacter(playerId);
-            else if (message.ChangeType is TeamPlayerChangeType.Remove)
-                _eventFilter.RemoveCharacter(playerId);
-        }
+        if (message.ChangeType is TeamPlayerChangeType.Add)
+            _eventFilter.AddCharacter(message.PlayerId);
+        else if (message.ChangeType is TeamPlayerChangeType.Remove)
+            _eventFilter.RemoveCharacter(message.PlayerId);
 
         OnRaiseTeamPlayerChangeEvent(new ScrimMessageEventArgs<TeamPlayerChangeMessage>(message));
-
         TrySaveToLogFile(message.Info);
     }
     protected virtual void OnRaiseTeamPlayerChangeEvent(ScrimMessageEventArgs<TeamPlayerChangeMessage> e)

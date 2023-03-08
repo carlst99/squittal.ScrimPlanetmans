@@ -15,10 +15,10 @@ public class ScrimSpotAssist
     public DateTime Timestamp { get; set; }
 
     [Required]
-    public string SpotterCharacterId { get; set; }
+    public ulong? SpotterCharacterId { get; set; }
 
     [Required]
-    public string VictimCharacterId { get; set; }
+    public ulong? VictimCharacterId { get; set; }
 
     [Required]
     public int ScrimMatchRound { get; set; }

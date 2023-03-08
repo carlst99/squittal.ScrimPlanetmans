@@ -99,6 +99,7 @@
   <ItemGroup>
     <PackageReference Include="DaybreakGames.Census" Version="3.2.4" />
     <PackageReference Include="DbgCensus.EventStream.EventHandlers" Version="3.3.0" />
+    <PackageReference Include="DbgCensus.Rest" Version="3.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="7.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.3">
       <PrivateAssets>all</PrivateAssets>

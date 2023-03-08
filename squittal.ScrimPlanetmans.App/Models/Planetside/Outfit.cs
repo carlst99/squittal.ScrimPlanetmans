@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using squittal.ScrimPlanetmans.App.Models.CensusRest;
 
 namespace squittal.ScrimPlanetmans.App.Models.Planetside;
 
@@ -22,5 +23,5 @@ public class Outfit
 
     public Faction Faction { get; set; }
     public World World { get; set; }
-    public Character LeaderCharacter { get; set; }
+    public CensusCharacter LeaderCharacter { get; set; }
 }

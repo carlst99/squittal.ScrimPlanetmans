@@ -153,8 +153,6 @@
     public bool i_viewOnly { get; set; } = true;
     private bool _renderedViewOnly { get; set; } = true;
 
-    private ConstructedTeamFormInfo _renderedTeam { get; set; } = new ConstructedTeamFormInfo();
-
     private IEnumerable<ConstructedTeam> _storedTeamsList { get; set; } = new List<ConstructedTeam>();
 
     private bool _isChangingTeam { get; set; } = false;
@@ -179,7 +177,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _storedTeamsList = await TeamService.GetConstructedTeams(true);
+        _storedTeamsList = await TeamService.GetConstructedTeamsAsync(true);
     }
 
     protected override void OnParametersSet()
@@ -266,7 +264,7 @@
         {
             return;
         }
-        var newTeamEntity = await TeamService.CreateConstructedTeam(newTeam);
+        var newTeamEntity = await TeamService.CreateConstructedTeamAsync(newTeam);
 
         _newTeamForm = new ConstructedTeam();
 
@@ -277,7 +275,7 @@
             HandleOnSelectTeamChange(newTeamEntity.Id.ToString());
         }
 
-        _storedTeamsList = await TeamService.GetConstructedTeams(true);
+        _storedTeamsList = await TeamService.GetConstructedTeamsAsync(true);
 
         InvokeAsyncStateHasChanged();
     }

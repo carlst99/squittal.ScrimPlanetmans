@@ -18,17 +18,18 @@ public abstract class ScrimActionEvent
 
 public class ScrimDeathActionEvent : ScrimActionEvent
 {
-    public Player? AttackerPlayer { get; set; }
-    public Player? VictimPlayer { get; set; }
-    public required ScrimActionWeaponInfo Weapon { get; set; }
-
-    public string? AttackerCharacterId { get; set; }
-    public string? VictimCharacterId { get; set; }
-
-    public int? AttackerLoadoutId { get; set; }
+    /// <summary>
+    /// May be null in cases such as outside interference.
+    /// </summary>
+    public Player? AttackerPlayer { get; init; }
+    public required Player VictimPlayer { get; init; }
+    public required ScrimActionWeaponInfo Weapon { get; init; }
+    public required ulong AttackerCharacterId { get; init; }
+    public required ulong VictimCharacterId { get; init; }
+    public required int AttackerLoadoutId { get; init; }
+    public required int VictimLoadoutId { get; init; }
     public int? AttackerVehicleId { get; set; }
-    public int? VictimLoadoutId { get; set; }
-    public bool IsHeadshot { get; set; }
+    public bool IsHeadshot { get; init; }
 
     public int Points { get; set; }
     public DeathEventType DeathType { get; set; }
@@ -50,36 +51,54 @@ public class ScrimReviveActionEvent : ScrimExperienceGainActionEvent
     public Player? MedicPlayer { get; set; }
     public Player? RevivedPlayer { get; set; }
 
-    public string? MedicCharacterId { get; set; }
-    public string? RevivedCharacterId { get; set; }
+    public ulong MedicCharacterId { get; }
+    public ulong RevivedCharacterId { get; }
 
     [SetsRequiredMembers]
-    public ScrimReviveActionEvent(ScrimExperienceGainActionEvent baseExperienceEvent)
+    public ScrimReviveActionEvent
+    (
+        ScrimExperienceGainActionEvent baseExperienceEvent,
+        ulong medicCharacterId,
+        ulong revivedCharacterId
+    )
     {
         Timestamp = baseExperienceEvent.Timestamp;
         ZoneId = baseExperienceEvent.ZoneId;
         ExperienceGainInfo = baseExperienceEvent.ExperienceGainInfo;
         ExperienceType = baseExperienceEvent.ExperienceType;
         LoadoutId = baseExperienceEvent.LoadoutId;
+        MedicCharacterId = medicCharacterId;
+        RevivedCharacterId = revivedCharacterId;
     }
 }
 
 public class ScrimAssistActionEvent : ScrimExperienceGainActionEvent
 {
-    public Player? AttackerPlayer { get; set; }
-    public Player? VictimPlayer { get; set; }
+    public Player? AttackerPlayer { get; }
+    public Player? VictimPlayer { get; }
 
-    public string? AttackerCharacterId { get; set; }
-    public string? VictimCharacterId { get; set; }
+    public ulong AttackerCharacterId { get; }
+    public ulong? VictimCharacterId { get; }
 
     [SetsRequiredMembers]
-    public ScrimAssistActionEvent(ScrimExperienceGainActionEvent baseExperienceEvent)
+    public ScrimAssistActionEvent
+    (
+        ScrimExperienceGainActionEvent baseExperienceEvent,
+        ulong attackerCharacterId,
+        Player? attackerPlayer,
+        ulong? victimCharacterId,
+        Player? victimPlayer
+    )
     {
         Timestamp = baseExperienceEvent.Timestamp;
         ZoneId = baseExperienceEvent.ZoneId;
         ExperienceGainInfo = baseExperienceEvent.ExperienceGainInfo;
         ExperienceType = baseExperienceEvent.ExperienceType;
         LoadoutId = baseExperienceEvent.LoadoutId;
+        AttackerCharacterId = attackerCharacterId;
+        AttackerPlayer = attackerPlayer;
+        VictimCharacterId = victimCharacterId;
+        VictimPlayer = victimPlayer;
     }
 }
 
@@ -105,7 +124,7 @@ public class ScrimObjectiveTickActionEvent : ScrimExperienceGainActionEvent
 {
     public Player? Player { get; set; }
 
-    public string? PlayerCharacterId { get; set; }
+    public ulong PlayerCharacterId { get; }
 
     // TODO: Experience IDs of 15 & 16 (Control Point - Attack / Defend seem to populate other_id with
     // an opposing player, but not sure what it means at the moment
@@ -118,13 +137,14 @@ public class ScrimObjectiveTickActionEvent : ScrimExperienceGainActionEvent
     //public int Points { get; set; }
 
     [SetsRequiredMembers]
-    public ScrimObjectiveTickActionEvent(ScrimExperienceGainActionEvent baseExperienceEvent)
+    public ScrimObjectiveTickActionEvent(ScrimExperienceGainActionEvent baseExperienceEvent, ulong playerCharacterId)
     {
         Timestamp = baseExperienceEvent.Timestamp;
         ZoneId = baseExperienceEvent.ZoneId;
         ExperienceGainInfo = baseExperienceEvent.ExperienceGainInfo;
         ExperienceType = baseExperienceEvent.ExperienceType;
         LoadoutId = baseExperienceEvent.LoadoutId;
+        PlayerCharacterId = playerCharacterId;
     }
 }
 
@@ -166,19 +186,15 @@ public class ScrimFacilityControlActionEvent : ScrimActionEvent
     public string OutfitId { get; set; }
 }
 
-public class ScrimActionWeaponInfo
-{
-    public int Id { get; set; }
-    public int? ItemCategoryId { get; set; }
-    public string Name { get; set; }
-    public bool IsVehicleWeapon { get; set; } = false;
-}
+public record ScrimActionWeaponInfo
+(
+    int Id,
+    int? ItemCategoryId,
+    string? Name,
+    bool? IsVehicleWeapon
+);
 
-public class ScrimActionExperienceGainInfo
-{
-    public int Id { get; set; }
-    public int Amount { get; set; }
-}
+public record ScrimActionExperienceGainInfo(int Id, int Amount);
 
 public class ScrimVehicleDestructionActionEvent : ScrimActionEvent
 {

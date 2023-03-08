@@ -1,6 +1,9 @@
 using System;
 using DbgCensus.EventStream;
 using DbgCensus.EventStream.EventHandlers.Extensions;
+using DbgCensus.Rest;
+using DbgCensus.Rest.Extensions;
+using DbgCensus.Rest.Objects;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -8,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
 using squittal.ScrimPlanetmans.App.CensusServices;
 using squittal.ScrimPlanetmans.App.CensusStream;
 using squittal.ScrimPlanetmans.App.CensusStream.EventHandlers;
@@ -20,6 +24,7 @@ using squittal.ScrimPlanetmans.App.ScrimMatch;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset;
 using squittal.ScrimPlanetmans.App.Services;
+using squittal.ScrimPlanetmans.App.Services.CensusRest;
 using squittal.ScrimPlanetmans.App.Services.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
@@ -102,6 +107,12 @@ public class Program
         services.AddTransient<DatabaseMaintenanceService>();
 
         // Register Census REST services
+        builder.Services.Configure<CensusQueryOptions>(builder.Configuration.GetSection(nameof(CensusQueryOptions)))
+            .Configure<CensusQueryOptions>(o => o.LanguageCode = CensusLanguage.English);
+
+        services.AddCensusRestServices()
+            .AddTransient<ICensusCharacterService, CensusCharacterService>();
+
         services.AddCensusServices
         (
             options => options.CensusServiceId = builder.Configuration["DaybreakGamesServiceKey"]
@@ -116,7 +127,6 @@ public class Program
         services.AddTransient<IFacilityTypeService, FacilityTypeService>();
         services.AddTransient<IVehicleService, VehicleService>();
         services.AddSingleton<IWorldService, WorldService>();
-        services.AddSingleton<ICharacterService, CharacterService>();
         services.AddSingleton<IOutfitService, OutfitService>();
         services.AddSingleton<IProfileService, ProfileService>();
         services.AddTransient<ILoadoutService, LoadoutService>();

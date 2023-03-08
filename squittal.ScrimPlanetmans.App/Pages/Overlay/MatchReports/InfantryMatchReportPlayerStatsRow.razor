@@ -13,7 +13,7 @@
 {
     <div id="@($"{_player.NameDisplay}-stats")" class="stats-row player">
         <div id="@($"{_player.NameDisplay}-label")" class="label primary-light">
-            <TeamPlayerStatusRowLoadout i_player=@_player/><span>@_player.NameDisplay</span>
+            <TeamPlayerStatusRowLoadout i_player="@_player"/><span>@_player.NameDisplay</span>
         </div>
         
         @if (!_renderedUseObjectiveStats)
@@ -91,7 +91,7 @@
             _renderedDisplayName = _player.NameDisplay;
         }
 
-        _currentMaxPoints = ScrimTeamsManager.MaxPlayerPointsTracker.GetMaxPoints();
+        _currentMaxPoints = ScrimTeamsManager.MaxPlayerPointsTracker.MaxPoints;
 
         UpdatePointGraphWidth();
     }
@@ -132,7 +132,7 @@
 
             InvokeAsync(() =>
             {
-                _currentMaxPoints = ScrimTeamsManager.MaxPlayerPointsTracker.GetMaxPoints();
+                _currentMaxPoints = ScrimTeamsManager.MaxPlayerPointsTracker.MaxPoints;
 
                 UpdatePointGraphWidth();
 
@@ -154,7 +154,7 @@
 
         if (overlayData.RedrawPointGraph && player != _player)
         {
-            _currentMaxPoints = ScrimTeamsManager.MaxPlayerPointsTracker.GetMaxPoints();
+            _currentMaxPoints = ScrimTeamsManager.MaxPlayerPointsTracker.MaxPoints;
 
             UpdatePointGraphWidth();
 
@@ -168,7 +168,7 @@
                 _renderedEventAggregate = new ScrimEventAggregate();
                 _renderedEventAggregate.Add(_player.EventAggregate);
 
-                _currentMaxPoints = ScrimTeamsManager.MaxPlayerPointsTracker.GetMaxPoints();
+                _currentMaxPoints = ScrimTeamsManager.MaxPlayerPointsTracker.MaxPoints;
 
                 if (redrawGraph)
                 {

@@ -1,5 +1,4 @@
-﻿using squittal.ScrimPlanetmans.App.Models;
-using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
+﻿using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
@@ -7,16 +6,7 @@ public class TeamPlayerChangeMessage
 {
     public Player Player { get; set; }
 
-    public string PlayerId { get; set; }
-    public string PlayerNameDisplay { get; set; }
-    public bool IsOnline { get; set; }
-    public TeamDefinition TeamOrdinal { get; set; }
-
-    public string OutfitId { get; set; }
-    public string OutfitAlias { get; set; }
-    public string OutfitAliasLower { get; set; }
-
-    public bool IsOutfitless { get; set; } // assume most players will be added via outfits
+    public ulong PlayerId { get; set; }
     public bool IsLastOfOutfit { get; set; }
 
     public TeamPlayerChangeType ChangeType { get; private set; }
@@ -27,17 +17,7 @@ public class TeamPlayerChangeMessage
     {
         Player = player;
         ChangeType = type;
-
         PlayerId = player.Id;
-        PlayerNameDisplay = player.NameDisplay;
-        TeamOrdinal = player.TeamOrdinal;
-        IsOnline = player.IsOnline;
-
-        OutfitId = player.OutfitId;
-        OutfitAlias = player.OutfitAlias;
-        OutfitAliasLower = player.OutfitAliasLower;
-
-        IsOutfitless = !string.IsNullOrWhiteSpace(OutfitAliasLower);
         IsLastOfOutfit = isLastOfOutfit;
     }
 
@@ -61,8 +41,8 @@ public enum TeamPlayerChangeType
     Default = 0,
     Add = 1,
     Remove = 2,
-    SubstitueIn = 3,
-    SubstitueOut = 4,
+    SubstituteIn = 3,
+    SubstituteOut = 4,
     SetActive = 5,
     SetInactive = 6
 };

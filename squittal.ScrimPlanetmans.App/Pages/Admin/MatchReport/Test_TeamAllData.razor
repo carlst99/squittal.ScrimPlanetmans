@@ -157,12 +157,12 @@
 
             <div class="sq-content">
 
-                @if (_teamOutfitsLoadingMembers.Contains(outfit.AliasLower) && (_teamPlayersOnline == null || !_teamPlayersOnline.Any(p => p.OutfitId == outfit.Id)))
+                @if (_teamOutfitsLoadingMembers.Contains(outfit.AliasLower) && (_teamPlayersOnline == null || !_teamPlayersOnline.Any(p => p.OutfitId.ToString() == outfit.Id)))
                 {
                     <SpinnerEllipsis />
                 }
 
-                else if (_teamPlayersVisible != null && _teamPlayersVisible.Any(p => p.OutfitId == outfit.Id) && ShowOutfitPlayers(outfit.AliasLower))
+                else if (_teamPlayersVisible != null && _teamPlayersVisible.Any(p => p.OutfitId.ToString() == outfit.Id) && ShowOutfitPlayers(outfit.AliasLower))
                 {
                     <table class="table-responsive-sm table-striped-light @SqCssHelper.GetFactionClassFromId(outfit.FactionId)" style="margin-bottom: 0.5rem;">
                         <thead>
@@ -228,7 +228,7 @@
                         </thead>
 
                         <tbody>
-                            @foreach (var member in _teamPlayersVisible.Where(p => p.OutfitId == outfit.Id).ToList())
+                            @foreach (var member in _teamPlayersVisible.Where(p => p.OutfitId.ToString() == outfit.Id).ToList())
                             {
                                 <tr style="border-top: 1px solid var(--sq-ps2-primary-light); border-bottom: 1px solid var(--sq-ps2-primary-light); background-color: var(--sq-ps2-primary-light-alpha-40);">
                                     <td title="@(member.IsOnline ? "Online" : "Offline")">@SqCssHelper.GetOnlineStatusEmoji(member.IsOnline)</td>

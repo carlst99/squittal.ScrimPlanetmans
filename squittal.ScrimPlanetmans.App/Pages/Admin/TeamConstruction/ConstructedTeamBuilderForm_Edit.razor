@@ -1,5 +1,6 @@
 ﻿@using System.Collections.Concurrent;
 @using squittal.ScrimPlanetmans.App.Data.Models
+@using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.Forms
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.Pages.Shared;
@@ -188,14 +189,14 @@
     private bool _renderedViewOnly { get; set; } = true;
 
     private bool _showEditForm { get; set; } = false;
-    private ConstructedTeam _editFormTeam { get; set; } = new ConstructedTeam();
+    private ConstructedTeam _editFormTeam { get; set; } = new();
 
     private bool _isChangingTeam { get; set; } = false;
 
     private int _noTeamSelectedId { get; set; } = -1;
 
     private ConstructedTeamFormInfo _renderedTeam { get; set; }
-    private List<Character> _renderedCharacters { get; set; } = new List<Character>();
+    private List<CensusCharacter> _renderedCharacters { get; set; } = new();
     private int _renderedCharactersCount { get; set; } = 0;
 
     private string _inputCharacter { get; set; } = string.Empty;
@@ -251,7 +252,7 @@
 
             _renderedTeamId = i_teamId;
 
-            _renderedTeam = await ConstructedTeamsService.GetConstructedTeamFormInfo(_renderedTeamId, true);
+            _renderedTeam = await ConstructedTeamsService.GetConstructedTeamFormInfoAsync(_renderedTeamId, true);
 
             _editFormTeam = new ConstructedTeam();
             _editFormTeam.Name = _renderedTeam.Name;
@@ -359,7 +360,7 @@
         {
             var input = _processingInputs.FirstOrDefault();
 
-            var character = await ConstructedTeamsService.TryAddCharacterToConstructedTeam(_renderedTeamId, input, customPlayerAlias);
+            var character = await ConstructedTeamsService.TryAddCharacterToConstructedTeamAsync(_renderedTeamId, input, customPlayerAlias);
 
             // Don't clear input field if failed to find this character,
             // but clear input field if we found any character
@@ -417,23 +418,20 @@
         {
             lock (_renderedCharacters)
             {
-                while (_changeMessagesQueue.TryDequeue(out ConstructedTeamMemberChangeMessage changeMessage))
+                while (_changeMessagesQueue.TryDequeue(out ConstructedTeamMemberChangeMessage? changeMessage))
                 {
                     var changeType = changeMessage.ChangeType;
                     var characterId = changeMessage.CharacterId;
 
                     if (changeType == ConstructedTeamMemberChangeType.Remove)
                     {
-                        _renderedCharacters.RemoveAll(c => c.Id == characterId);
+                        _renderedCharacters.RemoveAll(c => c.CharacterId == characterId);
                     }
                     else if (changeType == ConstructedTeamMemberChangeType.Add)
                     {
-                        var character = changeMessage.Character;
-
-                        if (!_renderedCharacters.Any(c => c.Id == characterId))
-                        {
+                        CensusCharacter? character = changeMessage.Character;
+                        if (_renderedCharacters.All(c => c.CharacterId != characterId) && character is not null)
                             _renderedCharacters.Add(character);
-                        }
                     }
                 }
 

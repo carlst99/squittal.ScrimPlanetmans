@@ -11,7 +11,6 @@ public class ScrimAssistActionEventMessage : ScrimActionEventMessage
     public ScrimAssistActionEventMessage(ScrimAssistActionEvent assistEvent)
     {
         AssistEvent = assistEvent;
-            
         Timestamp = assistEvent.Timestamp;
 
         if (assistEvent.ActionType == ScrimActionType.OutsideInterference)
@@ -31,7 +30,7 @@ public class ScrimAssistActionEventMessage : ScrimActionEventMessage
     private string GetOutsideInterferenceInfo(ScrimAssistActionEvent assistEvent)
     {
         Player player;
-        string otherCharacterId;
+        ulong? otherCharacterId;
 
         var actionDisplay = GetEnumValueName(assistEvent.ActionType);
 
@@ -47,7 +46,8 @@ public class ScrimAssistActionEventMessage : ScrimActionEventMessage
 
             return $"{actionDisplay} DMG ASSIST: {outfitDisplay}{playerName} [damaged] {otherCharacterId}";
         }
-        else
+
+        if (assistEvent.VictimPlayer is not null)
         {
             player = assistEvent.VictimPlayer;
             otherCharacterId = assistEvent.AttackerCharacterId;
@@ -59,6 +59,8 @@ public class ScrimAssistActionEventMessage : ScrimActionEventMessage
 
             return $"{actionDisplay} DMG ASSISTED DEATH: {otherCharacterId} [damaged] {outfitDisplay}{playerName}";
         }
+
+        return "Invalid outside interference assist (neither player is recognised)";
     }
 
     private string GetAssistInfo(ScrimAssistActionEvent assistEvent)

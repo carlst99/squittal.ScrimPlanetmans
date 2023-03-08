@@ -56,7 +56,7 @@
 
     private void InvokeSateHasChangedIfPlayer(Player eventPlayer)
     {
-        if (eventPlayer.Id != PlayerId || PlayerId != "team")
+        if (eventPlayer.Id.ToString() != PlayerId || PlayerId != "team")
         {
             return;
         }

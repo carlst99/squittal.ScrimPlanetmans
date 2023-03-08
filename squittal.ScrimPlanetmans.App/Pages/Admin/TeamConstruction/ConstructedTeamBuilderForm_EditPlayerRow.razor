@@ -4,8 +4,8 @@
 @using squittal.ScrimPlanetmans.App.Models.Forms
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
+@using System.Diagnostics.CodeAnalysis
 @inject IConstructedTeamService ConstructedTeamsService
-@inject ICharacterService CharacterService
 @inject IFactionService FactionService
 @inject IWorldService WorldService
 @inject IScrimMessageBroadcastService MessageService
@@ -86,16 +86,17 @@
 
 @code {
     [Parameter]
-    public ConstructedTeamMemberDetails i_character { get; set; } = new ConstructedTeamMemberDetails();
-    private ConstructedTeamMemberDetails _renderedCharacter { get; set; } = new ConstructedTeamMemberDetails();
+    public required ConstructedTeamMemberDetails i_character { get; set; }
 
-    private string _renderedCharacterId { get; set; } = string.Empty;
+    private ConstructedTeamMemberDetails? _renderedCharacter { get; set; }
+
+    private ulong _renderedCharacterId { get; set; }
 
     [Parameter]
     public EventCallback<ConstructedTeamMemberDetails> OnCharacterApiDataLoad { get; set; }
 
     [Parameter]
-    public int i_index { get; set; } = 0;
+    public int i_index { get; set; }
     private int _renderedIndex { get; set; } = 0;
 
     [Parameter]
@@ -128,57 +129,49 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (i_character != null && i_character.WorldId != _renderedWorldId)
+        if (i_character.WorldId != _renderedWorldId)
         {
-            World renderedWorld = null;
+            _renderedWorldId = i_character.WorldId;
+            World? renderedWorld = await WorldService.GetWorldAsync(_renderedWorldId);
 
-            if (i_character.WorldId != null)
-            {
-                _renderedWorldId = (int)i_character.WorldId;
-
-                renderedWorld = await WorldService.GetWorldAsync(_renderedWorldId);
-            }
-
-            //var renderedWorld = await WorldService.GetWorldAsync(_renderedWorldId);
-
+    //var renderedWorld = await WorldService.GetWorldAsync(_renderedWorldId);
             _renderedWorldName = renderedWorld == null ? "Unknown World" : renderedWorld.Name;
 
-            await InvokeAsync(() =>
-            {
-                StateHasChanged();
-            });
+            await InvokeAsync(StateHasChanged);
         }
     }
 
     protected override void OnParametersSet()
     {
-        if (i_character.CharacterId != _renderedCharacter.CharacterId || i_index != _renderedIndex
-            || i_factionId != _renderedFactionId || i_teamId != _renderedTeamId || i_character.NameDisplay != _renderedCharacter.NameDisplay)
+        _renderedCharacter ??= i_character;
+
+        if (i_character.CharacterId != _renderedCharacter.CharacterId
+            || i_index != _renderedIndex
+            || i_factionId != _renderedFactionId
+            || i_teamId != _renderedTeamId
+            || i_character.NameDisplay != _renderedCharacter.NameDisplay)
         {
             _renderedIndex = i_index;
             _renderedTeamId = i_teamId;
             _renderedFactionId = i_factionId;
 
-            _renderedCharacter = i_character;
-
             if (_renderedCharacter != null)
             {
                 _renderedCharacterId = _renderedCharacter.CharacterId;
-
                 _inputAlias = _renderedCharacter.NameDisplay;
             }
 
             InvokeAsyncStateHasChanged();
         }
     }
+
     #endregion Initialization Methods
 
     #region Event Handling
-    private void ReceiveConstructedTeamMemberChangeEvent(object sender, ScrimMessageEventArgs<ConstructedTeamMemberChangeMessage> e)
+    private void ReceiveConstructedTeamMemberChangeEvent(object? sender, ScrimMessageEventArgs<ConstructedTeamMemberChangeMessage> e)
     {
         var message = e.Message;
 
-        var teamId = message.TeamId;
         if (message.TeamId != _renderedTeamId || message.CharacterId != _renderedCharacterId)
         {
             return;
@@ -190,7 +183,8 @@
             return;
         }
 
-        _renderedCharacter.NameAlias = message.MemberAlias;
+        if (_renderedCharacter is not null)
+            _renderedCharacter.NameAlias = message.MemberAlias;
 
         InvokeAsyncStateHasChanged();
     }
@@ -200,10 +194,8 @@
     #region UI & Form Controls
     private async void HandleRemovePlayer()
     {
-        if (_renderedCharacter.IsDeleteAllowed)
-        {
-            await ConstructedTeamsService.TryRemoveCharacterFromConstructedTeam(_renderedTeamId, _renderedCharacterId);
-        }
+        if (_renderedCharacter?.IsDeleteAllowed is true)
+            await ConstructedTeamsService.TryRemoveCharacterFromConstructedTeamAsync(_renderedTeamId, _renderedCharacterId);
     }
 
     private void HandleShowEditAliasForm()
@@ -223,10 +215,13 @@
             return;
         }
 
-        if (await ConstructedTeamsService.TryUpdateMemberAlias(_renderedTeamId, _renderedCharacter.CharacterId, _renderedCharacter.NameAlias, newAlias))
+        if (_renderedCharacter is not null)
         {
-            _inputAlias = _renderedCharacter.NameDisplay;
-            _isAliasEditFormVisible = false;
+            if (await ConstructedTeamsService.TryUpdateMemberAliasAsync(_renderedTeamId, _renderedCharacter.CharacterId, _renderedCharacter.NameAlias, newAlias))
+            {
+                _inputAlias = _renderedCharacter.NameDisplay;
+                _isAliasEditFormVisible = false;
+            }
         }
 
         InvokeAsyncStateHasChanged();
@@ -236,14 +231,17 @@
     private void HandleAliasCancel()
     {
         _isAliasEditFormVisible = false;
-        _inputAlias = _renderedCharacter.NameDisplay;
+        _inputAlias = _renderedCharacter?.NameDisplay ?? i_character.NameDisplay;
     }
 
     private async void HandleClearDisplayName()
     {
-        if (await ConstructedTeamsService.TryUpdateMemberAlias(_renderedTeamId, _renderedCharacter.CharacterId, _renderedCharacter.NameAlias, _renderedCharacter.NameFull))
+        if (_renderedCharacter is not null)
         {
-            _inputAlias = _renderedCharacter.NameDisplay;
+            if (await ConstructedTeamsService.TryUpdateMemberAliasAsync(_renderedTeamId, _renderedCharacter.CharacterId, _renderedCharacter.NameAlias, _renderedCharacter.NameFull))
+            {
+                _inputAlias = _renderedCharacter.NameDisplay;
+            }
         }
 
         _isAliasEditFormVisible = false;
@@ -255,14 +253,12 @@
     #region Helper Methods
     private string GetCharacterCellTitle()
     {
-        if (_renderedCharacter.NameFull == $"uc{_renderedCharacter.CharacterId}")
-        {
-            return $"Unknown Character [{_renderedCharacter.CharacterId}]";
-        }
-        else
-        {
-            return $"{_renderedCharacter.NameFull} [{_renderedCharacterId}]";
-        }
+        if (_renderedCharacter is null)
+            return $"i_character.NameFull [{i_character.CharacterId}]";
+
+        return _renderedCharacter.NameFull == $"uc{_renderedCharacter.CharacterId}"
+            ? $"Unknown Character [{_renderedCharacter.CharacterId}]"
+            : $"{_renderedCharacter.NameFull} [{_renderedCharacterId}]";
     }
 
 

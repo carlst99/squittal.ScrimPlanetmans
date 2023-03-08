@@ -10,7 +10,7 @@ public class ScrimMatchParticipatingPlayer
     public string ScrimMatchId { get; set; }
 
     [Required]
-    public string CharacterId { get; set; }
+    public ulong CharacterId { get; set; }
 
     [Required]
     public TeamDefinition TeamOrdinal { get; set; }
@@ -25,8 +25,8 @@ public class ScrimMatchParticipatingPlayer
     public int PrestigeLevel { get; set; }
 
     public bool IsFromOutfit { get; set; }
-    public string OutfitId { get; set; }
-    public string OutfitAlias { get; set; }
+    public ulong? OutfitId { get; set; }
+    public string? OutfitAlias { get; set; }
 
     public bool IsFromConstructedTeam { get; set; }
     public int? ConstructedTeamId { get; set; }

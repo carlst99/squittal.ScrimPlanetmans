@@ -3,18 +3,20 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
+using DbgCensus.Core.Objects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.Models;
+using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.Models.Forms;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
-using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch;
@@ -22,24 +24,27 @@ namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 public class ConstructedTeamService : IConstructedTeamService
 {
     private readonly IDbContextHelper _dbContextHelper;
-    private readonly ICharacterService _characterService;
+    private readonly ICensusCharacterService _characterService;
     private readonly IScrimPlayersService _playerService;
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly ILogger<ConstructedTeamService> _logger;
 
-    public string CurrentMatchId { get; set; }
-    public int CurrentMatchRound { get; set; } = 0;
+    private readonly ConcurrentDictionary<int, ConstructedTeam> _constructedTeamsMap = new();
+    private readonly KeyedSemaphoreSlim _constructedTeamLock = new();
 
-    private ConcurrentDictionary<int, ConstructedTeam> _constructedTeamsMap { get; set; } = new ConcurrentDictionary<int, ConstructedTeam>();
+    public static Regex ConstructedTeamNameRegex { get; } = new("^([A-Za-z0-9()\\[\\]\\-_][ ]{0,1}){1,49}[A-Za-z0-9()\\[\\]\\-_]$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    public static Regex ConstructedTeamAliasRegex { get; } = new("^[A-Za-z0-9]{1,4}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    public static Regex CharacterNameRegex { get; } = new("^[A-Za-z0-9]{1,32}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    public static Regex ConstructedTeamNameRegex { get; } = new Regex("^([A-Za-z0-9()\\[\\]\\-_][ ]{0,1}){1,49}[A-Za-z0-9()\\[\\]\\-_]$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    public static Regex ConstructedTeamAliasRegex { get; } = new Regex("^[A-Za-z0-9]{1,4}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    public static Regex CharacterNameRegex { get; } = new Regex("^[A-Za-z0-9]{1,32}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    private readonly KeyedSemaphoreSlim _constructedTeamLock = new KeyedSemaphoreSlim();
-
-    public ConstructedTeamService(IDbContextHelper dbContextHelper, ICharacterService characterService, IScrimPlayersService playerService,
-        IScrimMessageBroadcastService messageService, ILogger<ConstructedTeamService> logger)
+    public ConstructedTeamService
+    (
+        IDbContextHelper dbContextHelper,
+        ICensusCharacterService characterService,
+        IScrimPlayersService playerService,
+        IScrimMessageBroadcastService messageService,
+        ILogger<ConstructedTeamService> logger
+    )
     {
         _dbContextHelper = dbContextHelper;
         _characterService = characterService;
@@ -50,13 +55,18 @@ public class ConstructedTeamService : IConstructedTeamService
 
 
     #region GET Methods
-    public async Task<ConstructedTeam?> GetConstructedTeam(int teamId, bool ignoreCollections = false)
+
+    public async Task<ConstructedTeam?> GetConstructedTeamAsync
+    (
+        int teamId,
+        bool ignoreCollections = false,
+        CancellationToken ct = default
+    )
     {
         if (_constructedTeamsMap.IsEmpty)
-            await SetUpConstructedTeamsMap();
+            await SetUpConstructedTeamsMapAsync(ct);
 
         _constructedTeamsMap.TryGetValue(teamId, out ConstructedTeam? team);
-
         if (ignoreCollections || team == null)
             return team;
 
@@ -65,14 +75,15 @@ public class ConstructedTeamService : IConstructedTeamService
             using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
             PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            team.PlayerMemberships = await dbContext.ConstructedTeamPlayerMemberships.Where(m => m.ConstructedTeamId == teamId).ToListAsync();
+            team.PlayerMemberships = await dbContext.ConstructedTeamPlayerMemberships
+                .Where(m => m.ConstructedTeamId == teamId)
+                .ToListAsync(cancellationToken: ct);
 
             return team;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get constructed team");
-
             return null;
         }
     }
@@ -81,15 +92,8 @@ public class ConstructedTeamService : IConstructedTeamService
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
-
-            var team = await dbContext.ConstructedTeams.FirstOrDefaultAsync(t => t.Id == teamId);
-
-            if (team == null)
-            {
-                return -1;
-            }
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
             return await dbContext.ConstructedTeamPlayerMemberships
                 .Where(m => m.ConstructedTeamId == teamId)
@@ -97,107 +101,87 @@ public class ConstructedTeamService : IConstructedTeamService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
-
+            _logger.LogError(ex, "Failed to get constructed team member count");
             return -1;
         }
     }
 
-    public async Task<IEnumerable<string>> GetConstructedTeamFactionMemberIds(int teamId, int factionId)
+    public async Task<IEnumerable<ulong>> GetConstructedTeamFactionMemberIdsAsync
+    (
+        int teamId,
+        int factionId,
+        CancellationToken ct = default
+    )
     {
-        try
-        {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var team = await dbContext.ConstructedTeams.FirstOrDefaultAsync(t => t.Id == teamId);
-
-            if (team == null)
-            {
-                return null;
-            }
-
-            return await dbContext.ConstructedTeamPlayerMemberships
-                .Where(m => m.ConstructedTeamId == teamId && m.FactionId == factionId)
-                .Select(m => m.CharacterId)
-                .ToListAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex.ToString());
-
-            return null;
-        }
+        return await dbContext.ConstructedTeamPlayerMemberships
+            .Where(m => m.ConstructedTeamId == teamId && m.FactionId == factionId)
+            .Select(m => m.CharacterId)
+            .ToListAsync(ct);
     }
 
-    public async Task<IEnumerable<ConstructedTeamPlayerMembership>> GetConstructedTeamFactionMembers(int teamId, int factionId)
+    private async Task<List<ConstructedTeamPlayerMembership>> GetConstructedTeamFactionMembersAsync
+    (
+        int teamId,
+        int factionId,
+        CancellationToken ct = default
+    )
     {
-        try
-        {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var team = await dbContext.ConstructedTeams.FirstOrDefaultAsync(t => t.Id == teamId);
-
-            if (team == null)
-            {
-                return null;
-            }
-
-            return await dbContext.ConstructedTeamPlayerMemberships
-                .Where(m => m.ConstructedTeamId == teamId && m.FactionId == factionId)
-                .ToListAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex.ToString());
-
-            return null;
-        }
+        return await dbContext.ConstructedTeamPlayerMemberships
+            .Where(m => m.ConstructedTeamId == teamId && m.FactionId == factionId)
+            .ToListAsync(cancellationToken: ct);
     }
 
-    public async Task<IEnumerable<Character>> GetConstructedTeamFactionCharacters(int teamId, int factionId)
+    public async Task<IEnumerable<CensusCharacter>> GetConstructedTeamFactionCharactersAsync
+    (
+        int teamId,
+        int factionId,
+        CancellationToken ct = default
+    )
     {
-        var members = await GetConstructedTeamFactionMembers(teamId, factionId);
+        List<ConstructedTeamPlayerMembership> unprocessedMembers = await GetConstructedTeamFactionMembersAsync
+        (
+            teamId,
+            factionId,
+            ct
+        );
 
-        if (members == null || !members.Any())
+        if (unprocessedMembers.Count is 0)
+            return Array.Empty<CensusCharacter>();
+
+        IReadOnlyList<CensusCharacter>? retrievedCharacters = await _characterService.GetByIdAsync
+        (
+            unprocessedMembers.Select(m => m.CharacterId),
+            ct
+        );
+
+        List<CensusCharacter> processedCharacters = new();
+
+        if (retrievedCharacters is not null)
         {
-            return null;
-        }
-
-        List<ConstructedTeamPlayerMembership> unprocessedMembers = new List<ConstructedTeamPlayerMembership>();
-        unprocessedMembers.AddRange(members.ToList());
-
-        List<Character> processedCharacters = new List<Character>();
-
-        IEnumerable<Task<Character>> getCharacterTasksQuery =
-            from member in members select _characterService.GetCharacterAsync(member.CharacterId);
-            
-        List<Task<Character>> getCharacterTasks = getCharacterTasksQuery.ToList();
-
-        while (getCharacterTasks.Count > 0)
-        {
-            Task<Character> firstFinishedTask = await Task.WhenAny(getCharacterTasks);
-
-            getCharacterTasks.Remove(firstFinishedTask);
-
-            var character = firstFinishedTask.Result;
-
-            if (character != null)
+            foreach (CensusCharacter character in retrievedCharacters)
             {
+                unprocessedMembers.RemoveAll(m => m.CharacterId == character.CharacterId);
                 processedCharacters.Add(character);
-                unprocessedMembers.RemoveAll(m => m.CharacterId == character.Id);
             }
         }
 
-        foreach (var member in unprocessedMembers)
+        foreach (ConstructedTeamPlayerMembership member in unprocessedMembers)
         {
-            var character = new Character
-            {
-                Name = "Unnamed Player",
-                Id = member.CharacterId,
-                FactionId = member.FactionId
-            };
+            CensusCharacter character = new
+            (
+                member.CharacterId,
+                new CensusCharacter.CharacterName($"Unknown{member.CharacterId}"),
+                (FactionDefinition)member.FactionId,
+                0,
+                WorldDefinition.Jaeger,
+                null
+            );
 
             processedCharacters.Add(character);
         }
@@ -205,108 +189,109 @@ public class ConstructedTeamService : IConstructedTeamService
         return processedCharacters;
     }
 
-    public async Task<IEnumerable<ConstructedTeamMemberDetails>> GetConstructedTeamFactionMemberDetails(int teamId, int factionId)
+    public async Task<IEnumerable<ConstructedTeamMemberDetails>> GetConstructedTeamFactionMemberDetailsAsync
+    (
+        int teamId,
+        int factionId,
+        CancellationToken ct = default
+    )
     {
-        var members = await GetConstructedTeamFactionMembers(teamId, factionId);
+        List<ConstructedTeamPlayerMembership> unprocessedMembers = await GetConstructedTeamFactionMembersAsync
+        (
+            teamId,
+            factionId,
+            ct
+        );
 
-        if (members == null || !members.Any())
+        if (unprocessedMembers.Count is 0)
+            return Array.Empty<ConstructedTeamMemberDetails>();
+
+        List<ConstructedTeamMemberDetails> processedCharacters = new();
+        IReadOnlyList<CensusCharacter>? retrievedCharacters = await _characterService.GetByIdAsync
+        (
+            unprocessedMembers.Select(m => m.CharacterId),
+            ct
+        );
+
+        if (retrievedCharacters is not null)
         {
-            return null;
-        }
-
-        List<ConstructedTeamPlayerMembership> unprocessedMembers = new List<ConstructedTeamPlayerMembership>();
-        unprocessedMembers.AddRange(members.ToList());
-
-        List<ConstructedTeamMemberDetails> processedCharacters = new List<ConstructedTeamMemberDetails>();
-
-        IEnumerable<Task<Character>> getCharacterTasksQuery =
-            from member in members select _characterService.GetCharacterAsync(member.CharacterId);
-            
-        List<Task<Character>> getCharacterTasks = getCharacterTasksQuery.ToList();
-
-        while (getCharacterTasks.Count > 0)
-        {
-            Task<Character> firstFinishedTask = await Task.WhenAny(getCharacterTasks);
-
-            getCharacterTasks.Remove(firstFinishedTask);
-
-            var character = firstFinishedTask.Result;
-
-            if (character != null)
+            foreach (CensusCharacter character in retrievedCharacters)
             {
-                var member = members.Where(m => m.CharacterId == character.Id).FirstOrDefault();
-
+                ConstructedTeamPlayerMembership member = unprocessedMembers.First
+                (
+                    m => m.CharacterId == character.CharacterId
+                );
                 processedCharacters.Add(ConvertToMemberDetailsModel(character, member));
-                unprocessedMembers.RemoveAll(m => m.CharacterId == character.Id);
+
+                unprocessedMembers.RemoveAll(m => m.CharacterId == character.CharacterId);
             }
         }
 
-        foreach (var member in unprocessedMembers)
+        foreach (ConstructedTeamPlayerMembership member in unprocessedMembers)
         {
-            var details = new ConstructedTeamMemberDetails
+            processedCharacters.Add(new ConstructedTeamMemberDetails
             {
+                ConstructedTeamId = member.ConstructedTeamId,
                 NameFull = $"uc{member.CharacterId}",
-                NameAlias = string.Empty,
+                NameAlias = null,
                 CharacterId = member.CharacterId,
                 FactionId = member.FactionId
-            };
-
-            processedCharacters.Add(details);
+            });
         }
 
-        IEnumerable<Task<ConstructedTeamMemberDetails>> isMatchParticipantTasks =
-            from character in processedCharacters select SetConstructedTeamMemberIsMatchParticipantAsync(character);
+        foreach (ConstructedTeamMemberDetails member in processedCharacters)
+            await SetConstructedTeamMemberIsMatchParticipantAsync(member, ct);
 
-        var isMatchParticipantTasksResultArray = await Task.WhenAll(isMatchParticipantTasks);
-
-        return isMatchParticipantTasksResultArray.ToList();
+        return processedCharacters;
     }
 
-    private ConstructedTeamMemberDetails ConvertToMemberDetailsModel(Character character, ConstructedTeamPlayerMembership membership)
+    private static ConstructedTeamMemberDetails ConvertToMemberDetailsModel
+    (
+        CensusCharacter character,
+        ConstructedTeamPlayerMembership membership
+    )
     {
         return new ConstructedTeamMemberDetails
         {
             CharacterId = membership.CharacterId,
             ConstructedTeamId = membership.ConstructedTeamId,
             FactionId = membership.FactionId,
-            NameFull = character.Name,
+            NameFull = character.Name.First,
             NameAlias = membership.Alias,
             PrestigeLevel = character.PrestigeLevel,
-            WorldId = character.WorldId
+            WorldId = (int)character.WorldId
         };
     }
 
-    public async Task<IEnumerable<Player>> GetConstructedTeamFactionPlayers(int teamId, int factionId)
+    public async Task<IEnumerable<Player>> GetConstructedTeamFactionPlayersAsync
+    (
+        int teamId,
+        int factionId,
+        CancellationToken ct = default
+    )
     {
-        var members = await GetConstructedTeamFactionMembers(teamId, factionId);
+        List<ConstructedTeamPlayerMembership> unprocessedMembers = await GetConstructedTeamFactionMembersAsync
+        (
+            teamId,
+            factionId,
+            ct
+        );
 
-        if (members == null || !members.Any())
+        if (unprocessedMembers.Count is 0)
+            return Array.Empty<Player>();
+
+        List<Player> processedPlayers = new();
+        IEnumerable<Player>? retrievedPlayers = await _playerService.GetByIdAsync
+        (
+            unprocessedMembers.Select(m => m.CharacterId),
+            ct
+        );
+
+        if (retrievedPlayers is not null)
         {
-            return null;
-        }
-
-        List<ConstructedTeamPlayerMembership> unprocessedMembers = new List<ConstructedTeamPlayerMembership>();
-        unprocessedMembers.AddRange(members.ToList());
-
-        List<Player> processedPlayers = new List<Player>();
-
-        IEnumerable<Task<Player>> getPlayerTasksQuery =
-            from member in members select _playerService.GetPlayerFromCharacterIdAsync(member.CharacterId);
-
-        List<Task<Player>> getPlayersTasks = getPlayerTasksQuery.ToList();
-
-        while (getPlayersTasks.Count > 0)
-        {
-            Task<Player> firstFinishedTask = await Task.WhenAny(getPlayersTasks);
-
-            getPlayersTasks.Remove(firstFinishedTask);
-
-            var player = firstFinishedTask.Result;
-
-            if (player != null)
+            foreach (Player player in retrievedPlayers)
             {
-                var playerAlias = members.Where(m => m.CharacterId == player.Id).Select(m => m.Alias).FirstOrDefault();
-
+                string? playerAlias = unprocessedMembers.FirstOrDefault(m => m.CharacterId == player.Id)?.Alias;
 
                 player.TrySetNameAlias(playerAlias);
 
@@ -315,22 +300,23 @@ public class ConstructedTeamService : IConstructedTeamService
             }
         }
 
-        foreach (var member in unprocessedMembers)
+        foreach (ConstructedTeamPlayerMembership member in unprocessedMembers)
         {
-            var name = string.IsNullOrWhiteSpace(member.Alias) ? $"up{member.CharacterId}" : member.Alias;
+            string name = string.IsNullOrWhiteSpace(member.Alias)
+                ? $"Unknown{member.CharacterId}"
+                : member.Alias;
 
-            var character = new Character
-            {
-                Id = member.CharacterId,
-                Name = name,
-                IsOnline = true,
-                PrestigeLevel = 0,
-                FactionId = factionId,
-                WorldId = 0
-            };
+            CensusCharacter character = new
+            (
+                member.CharacterId,
+                new CensusCharacter.CharacterName($"Unknown{member.CharacterId}"),
+                (FactionDefinition)member.FactionId,
+                0,
+                WorldDefinition.Jaeger,
+                null
+            );
 
-            var player = new Player(character);
-
+            Player player = new(character, false);
             player.TrySetNameAlias(name);
 
             processedPlayers.Add(player);
@@ -339,51 +325,34 @@ public class ConstructedTeamService : IConstructedTeamService
         return processedPlayers;
     }
 
-    public async Task<ConstructedTeamFormInfo> GetConstructedTeamFormInfo(int teamId, bool ignoreCollections = false)
+    public async Task<ConstructedTeamFormInfo?> GetConstructedTeamFormInfoAsync
+    (
+        int teamId,
+        bool ignoreCollections = false,
+        CancellationToken ct = default
+    )
     {
-        var constructedTeam = await GetConstructedTeam(teamId, ignoreCollections);
-
-        if (constructedTeam == null)
-        {
+        ConstructedTeam? constructedTeam = await GetConstructedTeamAsync(teamId, ignoreCollections, ct);
+        if (constructedTeam is null)
             return null;
-        }
 
-        var teamInfo = ConvertToTeamFormInfo(constructedTeam);
+        ConstructedTeamFormInfo teamInfo = ConvertToTeamFormInfo(constructedTeam);
 
         if (ignoreCollections || !constructedTeam.PlayerMemberships.Any())
-        {
             return teamInfo;
-        }
 
-        var teamCharacters = new List<Character>();
-
-        foreach (var member in constructedTeam.PlayerMemberships)
-        {
-            try
-            {
-                var character = await _characterService.GetCharacterAsync(member.CharacterId);
-
-                if (character != null)
-                {
-                    teamCharacters.Add(character);
-                }
-                else
-                {
-                    _logger.LogError($"Census API returned no data for characterId {member.CharacterId}");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error fetching Census API data for characterId {member.CharacterId}: {ex}");
-            }
-        }
+        IReadOnlyList<CensusCharacter>? teamCharacters = await _characterService.GetByIdAsync
+        (
+            constructedTeam.PlayerMemberships.Select(m => m.CharacterId),
+            ct
+        );
 
         teamInfo.Characters = teamCharacters;
 
         return teamInfo;
     }
 
-    private ConstructedTeamFormInfo ConvertToTeamFormInfo(ConstructedTeam constructedTeam)
+    private static ConstructedTeamFormInfo ConvertToTeamFormInfo(ConstructedTeam constructedTeam)
     {
         return new ConstructedTeamFormInfo
         {
@@ -394,7 +363,7 @@ public class ConstructedTeamService : IConstructedTeamService
         };
     }
 
-    private ConstructedTeam ConvertToDbModel(ConstructedTeamFormInfo formInfo)
+    private static ConstructedTeam ConvertToDbModel(ConstructedTeamInfo formInfo)
     {
         return new ConstructedTeam
         {
@@ -404,44 +373,14 @@ public class ConstructedTeamService : IConstructedTeamService
         };
     }
 
-    public async Task<IEnumerable<ConstructedTeam>> GetConstructedTeamsAsync(bool ignoreCollections = false, bool includeHiddenTeams = false)
+    public async Task<IEnumerable<ConstructedTeam>> GetConstructedTeamsAsync
+    (
+        bool includeHiddenTeams = false,
+        CancellationToken ct = default
+    )
     {
-        try
-        {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
-
-            var teams = includeHiddenTeams
-                ? await dbContext.ConstructedTeams.ToListAsync()
-                : await dbContext.ConstructedTeams.Where(t => !t.IsHiddenFromSelection).ToListAsync();
-
-
-            if (ignoreCollections || !teams.Any())
-            {
-                return teams;
-            }
-
-            foreach (var team in teams)
-            {
-                team.PlayerMemberships = await dbContext.ConstructedTeamPlayerMemberships.Where(m => m.ConstructedTeamId == team.Id).ToListAsync();
-            }
-
-            return teams;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex.ToString());
-
-            return null;
-        }
-    }
-
-    public async Task<IEnumerable<ConstructedTeam>> GetConstructedTeams(bool includeHiddenTeams = false)
-    {
-        if (_constructedTeamsMap.Count == 0 || !_constructedTeamsMap.Any())
-        {
-            await SetUpConstructedTeamsMap();
-        }
+        if (_constructedTeamsMap.IsEmpty)
+            await SetUpConstructedTeamsMapAsync(ct);
 
         return includeHiddenTeams
             ? _constructedTeamsMap.Values.ToList()
@@ -453,25 +392,25 @@ public class ConstructedTeamService : IConstructedTeamService
     #region CREATE / EDIT Methods
     public async Task SaveConstructedTeam(ConstructedTeamFormInfo constructedTeamFormInfo)
     {
-        await CreateConstructedTeam(ConvertToDbModel(constructedTeamFormInfo));
+        await CreateConstructedTeamAsync(ConvertToDbModel(constructedTeamFormInfo));
     }
 
     public async Task<bool> UpdateConstructedTeamInfo(ConstructedTeam teamUpdate)
     {
-        var updateId = teamUpdate.Id;
-        var updateName = teamUpdate.Name;
-        var updateAlias = teamUpdate.Alias;
-        var updateIsHidden = teamUpdate.IsHiddenFromSelection;
+        int updateId = teamUpdate.Id;
+        string updateName = teamUpdate.Name;
+        string updateAlias = teamUpdate.Alias;
+        bool updateIsHidden = teamUpdate.IsHiddenFromSelection;
 
         if (!IsValidConstructedTeamName(updateName))
         {
-            _logger.LogError($"Error update Constructed Team {updateId} info: invalid team name");
+            _logger.LogError("Error updating a constructed team's {Id} info: invalid team name", updateId);
             return false;
         }
 
         if (!IsValidConstructedTeamAlias(updateAlias))
         {
-            _logger.LogError($"Error update Constructed Team {updateId} info: invalid team alias");
+            _logger.LogError("Error updating a constructed team's {ID} info: invalid team alias", updateId);
             return false;
         }
 
@@ -479,19 +418,19 @@ public class ConstructedTeamService : IConstructedTeamService
         {
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeEntity = await GetConstructedTeam(updateId, true);
+                ConstructedTeam? storeEntity = await GetConstructedTeamAsync(updateId, true);
 
                 if (storeEntity == null)
                 {
                     return false;
                 }
 
-                var oldName = storeEntity.Name;
-                var oldAlias = storeEntity.Alias;
-                var oldIsHidden = storeEntity.IsHiddenFromSelection;
+                string oldName = storeEntity.Name;
+                string oldAlias = storeEntity.Alias;
+                bool oldIsHidden = storeEntity.IsHiddenFromSelection;
 
                 storeEntity.Name = updateName;
                 storeEntity.Alias = updateAlias;
@@ -501,221 +440,237 @@ public class ConstructedTeamService : IConstructedTeamService
 
                 await dbContext.SaveChangesAsync();
 
-                await SetUpConstructedTeamsMap();
+                await SetUpConstructedTeamsMapAsync();
 
-                var message = new ConstructedTeamInfoChangeMessage(storeEntity, oldName, oldAlias, oldIsHidden);
+                ConstructedTeamInfoChangeMessage message = new(storeEntity, oldName, oldAlias, oldIsHidden);
                 _messageService.BroadcastConstructedTeamInfoChangeMessage(message);
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error update Constructed Team {updateId} info: {ex}");
+                _logger.LogError(ex, "Error update Constructed Team {ID} info", updateId);
                 return false;
             }
         }
     }
 
-    public async Task<ConstructedTeam> CreateConstructedTeam(ConstructedTeam constructedTeam)
+    public async Task<ConstructedTeam?> CreateConstructedTeamAsync
+    (
+        ConstructedTeam constructedTeam,
+        CancellationToken ct = default
+    )
     {
         if (!IsValidConstructedTeamName(constructedTeam.Name))
-        {
             return null;
-        }
 
         if (!IsValidConstructedTeamAlias(constructedTeam.Alias))
-        {
             return null;
-        }
 
-        using (await _constructedTeamLock.WaitAsync($"{constructedTeam.Id}"))
+        using (await _constructedTeamLock.WaitAsync($"{constructedTeam.Id}", ct))
         {
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
                 dbContext.ConstructedTeams.Add(constructedTeam);
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
 
-                await SetUpConstructedTeamsMap();
+                await SetUpConstructedTeamsMapAsync(ct);
 
                 return constructedTeam;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.ToString());
+                _logger.LogError(ex, "Failed to create a constructed team");
 
                 return null;
             }
         }
     }
 
-    public async Task<Character> TryAddCharacterToConstructedTeam(int teamId, string characterInput, string customAlias)
+    public async Task<CensusCharacter?> TryAddCharacterToConstructedTeamAsync
+    (
+        int teamId,
+        string characterInput,
+        string customAlias,
+        CancellationToken ct = default
+    )
     {
-        Regex idRegex = new Regex("^[0-9]{19}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        bool isId = idRegex.Match(characterInput).Success;
-
-        Character characterOut;
-
-        try
+        Regex idRegex = new("^[0-9]{19}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        if (idRegex.Match(characterInput).Success)
         {
-            if (isId)
+            try
             {
-                characterOut = await TryAddCharacterIdToConstructedTeam(teamId, characterInput, customAlias);
+                CensusCharacter? characterOut = await TryAddCharacterIdToConstructedTeamAsync
+                (
+                    teamId,
+                    ulong.Parse(characterInput),
+                    customAlias,
+                    ct
+                );
 
-                if (characterOut != null)
-                {
+                if (characterOut is not null)
                     return characterOut;
-                }
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Error trying to add character ID to constructed team: {ex}");
-        }
-
-        try
-        {
-            Regex nameRegex = new Regex("^[A-Za-z0-9]{1,32}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            bool isName = nameRegex.Match(characterInput).Success;
-
-            if (isName)
+            catch (Exception ex)
             {
-                return await TryAddCharacterNameToConstructedTeam(teamId, characterInput, customAlias);
+                _logger.LogError(ex, "Error trying to add character ID to constructed team");
             }
         }
-        catch (Exception ex)
+
+        Regex nameRegex = new("^[A-Za-z0-9]{1,32}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        if (nameRegex.Match(characterInput).Success)
         {
-            _logger.LogError($"Error trying to add character name to constructed team: {ex}");
+            try
+            {
+                return await TryAddCharacterNameToConstructedTeamAsync(teamId, characterInput, customAlias, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trying to add character name to constructed team");
+            }
         }
 
         return null;
     }
 
-    private async Task<Character> TryAddCharacterIdToConstructedTeam(int teamId, string characterId, string customAlias)
+    private async Task<CensusCharacter?> TryAddCharacterIdToConstructedTeamAsync
+    (
+        int teamId,
+        ulong characterId,
+        string customAlias,
+        CancellationToken ct = default
+    )
     {
-        using (await _constructedTeamLock.WaitAsync($"{teamId}^{characterId}"))
+        using (await _constructedTeamLock.WaitAsync($"{teamId}^{characterId}", ct))
         {
-            if (await IsCharacterIdOnTeam(teamId, characterId))
-            {
+            if (await IsCharacterIdOnTeamAsync(teamId, characterId, ct))
                 return null;
-            }
 
-            var character = await _characterService.GetCharacterAsync(characterId);
-
-            if (character == null)
-            {
+            CensusCharacter? character = await _characterService.GetByIdAsync(characterId, ct);
+            if (character is null)
                 return null;
-            }
 
             string playerAlias;
             if (string.IsNullOrWhiteSpace(customAlias))
             {
-                playerAlias = Player.GetTrimmedPlayerName(character.Name, character.WorldId);
-
+                playerAlias = Player.GetTrimmedPlayerName(character.Name.First, (int)character.WorldId);
                 if (string.IsNullOrWhiteSpace(playerAlias))
-                {
-                    playerAlias = character.Name;
-                }
+                    playerAlias = character.Name.First;
             }
             else
             {
                 playerAlias = customAlias;
             }
 
-            if (await TryAddCharacterToConstructedTeamDb(teamId, characterId, character.FactionId, playerAlias))
-            {
-                var member = new ConstructedTeamPlayerMembership
-                {
-                    ConstructedTeamId = teamId,
-                    CharacterId = characterId,
-                    FactionId = character.FactionId,
-                    Alias = playerAlias
-                };
+            bool addedToDb = await TryAddCharacterToConstructedTeamDbAsync
+            (
+                teamId,
+                characterId,
+                (int)character.FactionId,
+                playerAlias,
+                ct
+            );
 
-                var memberDetails = ConvertToMemberDetailsModel(character, member);
-
-                var changeMessage = new ConstructedTeamMemberChangeMessage(teamId, character, memberDetails, ConstructedTeamMemberChangeType.Add);
-                _messageService.BroadcastConstructedTeamMemberChangeMessage(changeMessage);
-
-                return character;
-            }
-            else
-            {
+            if (!addedToDb)
                 return null;
-            }
+
+            ConstructedTeamPlayerMembership member = new()
+            {
+                ConstructedTeamId = teamId,
+                CharacterId = characterId,
+                FactionId = (int)character.FactionId,
+                Alias = playerAlias
+            };
+
+            ConstructedTeamMemberDetails memberDetails = ConvertToMemberDetailsModel(character, member);
+
+            ConstructedTeamMemberChangeMessage changeMessage = new(teamId, character, memberDetails, ConstructedTeamMemberChangeType.Add);
+            _messageService.BroadcastConstructedTeamMemberChangeMessage(changeMessage);
+
+            return character;
         }
     }
 
-    private async Task<Character> TryAddCharacterNameToConstructedTeam(int teamId, string characterName, string customAlias)
+    private async Task<CensusCharacter?> TryAddCharacterNameToConstructedTeamAsync
+    (
+        int teamId,
+        string characterName,
+        string customAlias,
+        CancellationToken ct = default
+    )
     {
-        var character = await _characterService.GetCharacterByNameAsync(characterName);
-
-        if (character == null)
-        {
+        CensusCharacter? character = await _characterService.GetByNameAsync(characterName, ct);
+        if (character is null)
             return null;
-        }
 
-        using (await _constructedTeamLock.WaitAsync($"{teamId}^{character.Id}"))
+        using (await _constructedTeamLock.WaitAsync($"{teamId}^{character.CharacterId}", ct))
         {
-            if (await IsCharacterIdOnTeam(teamId, character.Id))
-            {
+            if (await IsCharacterIdOnTeamAsync(teamId, character.CharacterId, ct))
                 return null;
-            }
 
             string playerAlias;
             if (string.IsNullOrWhiteSpace(customAlias))
             {
-                playerAlias = Player.GetTrimmedPlayerName(character.Name, character.WorldId);
+                playerAlias = Player.GetTrimmedPlayerName(character.Name.First, (int)character.WorldId);
 
                 if (string.IsNullOrWhiteSpace(playerAlias))
-                {
                     playerAlias = characterName;
-                }
             }
             else
             {
                 playerAlias = customAlias;
             }
 
-            if (await TryAddCharacterToConstructedTeamDb(teamId, character.Id, character.FactionId, playerAlias))
-            {
-                var member = new ConstructedTeamPlayerMembership
-                {
-                    ConstructedTeamId = teamId,
-                    CharacterId = character.Id,
-                    FactionId = character.FactionId,
-                    Alias = playerAlias
-                };
+            bool addedToDb = await TryAddCharacterToConstructedTeamDbAsync
+            (
+                teamId,
+                character.CharacterId,
+                (int)character.FactionId,
+                playerAlias,
+                ct
+            );
 
-                var memberDetails = ConvertToMemberDetailsModel(character, member);
-
-                var changeMessage = new ConstructedTeamMemberChangeMessage(teamId, character, memberDetails, ConstructedTeamMemberChangeType.Add);
-                _messageService.BroadcastConstructedTeamMemberChangeMessage(changeMessage);
-
-                return character;
-            }
-            else
-            {
+            if (!addedToDb)
                 return null;
-            }
+
+            ConstructedTeamPlayerMembership member = new()
+            {
+                ConstructedTeamId = teamId,
+                CharacterId = character.CharacterId,
+                FactionId = (int)character.FactionId,
+                Alias = playerAlias
+            };
+
+            ConstructedTeamMemberDetails memberDetails = ConvertToMemberDetailsModel(character, member);
+
+            ConstructedTeamMemberChangeMessage changeMessage = new(teamId, character, memberDetails, ConstructedTeamMemberChangeType.Add);
+            _messageService.BroadcastConstructedTeamMemberChangeMessage(changeMessage);
+
+            return character;
         }
     }
 
-    private async Task<bool> TryAddCharacterToConstructedTeamDb(int teamId, string characterId, int factionId, string alias)
+    private async Task<bool> TryAddCharacterToConstructedTeamDbAsync
+    (
+        int teamId,
+        ulong characterId,
+        int factionId,
+        string alias,
+        CancellationToken ct = default
+    )
     {
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
         // Don't allow NSO characters onto teams
-        if (factionId > 3 || factionId <= 0)
-        {
+        if (factionId is > 3 or <= 0)
             return false;
-        }    
 
-        var newEntity = new ConstructedTeamPlayerMembership
+        ConstructedTeamPlayerMembership newEntity = new()
         {
             ConstructedTeamId = teamId,
             CharacterId = characterId,
@@ -725,9 +680,9 @@ public class ConstructedTeamService : IConstructedTeamService
 
         try
         {
-            var storeEntity = await dbContext.ConstructedTeamPlayerMemberships
+            ConstructedTeamPlayerMembership? storeEntity = await dbContext.ConstructedTeamPlayerMemberships
                 .Where(m => m.CharacterId == characterId && m.ConstructedTeamId == teamId)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(cancellationToken: ct);
 
             if (storeEntity != null)
             {
@@ -736,176 +691,182 @@ public class ConstructedTeamService : IConstructedTeamService
 
             dbContext.ConstructedTeamPlayerMemberships.Add(newEntity);
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(ct);
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error adding character ID {characterId} to team ID {teamId} in database: {ex}");
+            _logger.LogError
+            (
+                ex,
+                "Error adding character ID {CharacterId} to team ID {TeamId} in database",
+                characterId,
+                teamId
+            );
 
             return false;
         }
     }
 
-    public async Task<bool> TryRemoveCharacterFromConstructedTeam(int teamId, string characterId)
+    public async Task<bool> TryRemoveCharacterFromConstructedTeamAsync
+    (
+        int teamId,
+        ulong characterId,
+        CancellationToken ct = default
+    )
     {
-        using (await _constructedTeamLock.WaitAsync($"{teamId}^{characterId}"))
+        using (await _constructedTeamLock.WaitAsync($"{teamId}^{characterId}", ct))
         {
-            if (await TryRemoveCharacterFromConstructedTeamDb(teamId, characterId))
-            {
-                var changeMessage = new ConstructedTeamMemberChangeMessage(teamId, characterId, ConstructedTeamMemberChangeType.Remove);
-                _messageService.BroadcastConstructedTeamMemberChangeMessage(changeMessage);
-
-                return true;
-            }
-            else
-            {
+            if (!await TryRemoveCharacterFromConstructedTeamDbAsync(teamId, characterId, ct))
                 return false;
-            }
+
+            ConstructedTeamMemberChangeMessage changeMessage = new(teamId, characterId, ConstructedTeamMemberChangeType.Remove);
+            _messageService.BroadcastConstructedTeamMemberChangeMessage(changeMessage);
+
+            return true;
         }
     }
 
-    private async Task<bool> TryRemoveCharacterFromConstructedTeamDb(int teamId, string characterId)
+    private async Task<bool> TryRemoveCharacterFromConstructedTeamDbAsync
+    (
+        int teamId,
+        ulong characterId,
+        CancellationToken ct = default
+    )
     {
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
         try
         {
-            var isMatchParticipant = await GetIsConstructedTeamMemberMatchParticipantAsync(teamId, characterId);
-
+            bool isMatchParticipant = await GetIsConstructedTeamMemberMatchParticipantAsync(teamId, characterId, ct);
             if (isMatchParticipant)
-            {
                 return false;
-            }
 
-            var storeEntity = await dbContext.ConstructedTeamPlayerMemberships
-                .Where(m => m.CharacterId == characterId && m.ConstructedTeamId == teamId)
-                .FirstOrDefaultAsync();
+            ConstructedTeamPlayerMembership? storeEntity = await dbContext.ConstructedTeamPlayerMemberships
+                .FirstOrDefaultAsync
+                (
+                    m => m.CharacterId == characterId && m.ConstructedTeamId == teamId,
+                    cancellationToken: ct
+                );
 
             if (storeEntity == null)
-            {
                 return false;
-            }
 
             dbContext.ConstructedTeamPlayerMemberships.Remove(storeEntity);
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(ct);
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error removing character ID {characterId} from team ID {teamId} in database: {ex}");
+            _logger.LogError
+            (
+                ex,
+                "Error removing character ID {CharacterId} from team ID {TeamId} in database",
+                characterId,
+                teamId
+            );
 
             return false;
         }
     }
 
-    public async Task<bool> TryUpdateMemberAlias(int teamId, string characterId, string oldAlias, string newAlias)
+    public async Task<bool> TryUpdateMemberAliasAsync
+    (
+        int teamId,
+        ulong characterId,
+        string oldAlias,
+        string newAlias,
+        CancellationToken ct = default
+    )
     {
         if (string.IsNullOrWhiteSpace(newAlias) || !CharacterNameRegex.Match(newAlias).Success || oldAlias == newAlias)
         {
             return false;
         }
 
-        using (await _constructedTeamLock.WaitAsync($"{teamId}^{characterId}"))
+        using (await _constructedTeamLock.WaitAsync($"{teamId}^{characterId}", ct))
         {
-            if (await TryUpdateMemberAliasInDb(teamId, characterId, newAlias))
-            {
-                var changeMessage = new ConstructedTeamMemberChangeMessage(teamId, characterId, ConstructedTeamMemberChangeType.UpdateAlias, oldAlias, newAlias);
-                _messageService.BroadcastConstructedTeamMemberChangeMessage(changeMessage);
-
-                return true;
-            }
-            else
-            {
+            if (!await TryUpdateMemberAliasInDbAsync(teamId, characterId, newAlias, ct))
                 return false;
-            }
+
+            ConstructedTeamMemberChangeMessage changeMessage = new(teamId, characterId, ConstructedTeamMemberChangeType.UpdateAlias, oldAlias, newAlias);
+            _messageService.BroadcastConstructedTeamMemberChangeMessage(changeMessage);
+
+            return true;
         }
     }
 
-    public async Task<bool> TryClearMemberAlias(int teamId, string characterId, string oldAlias)
+    private async Task<bool> TryUpdateMemberAliasInDbAsync
+    (
+        int teamId,
+        ulong characterId,
+        string newAlias,
+        CancellationToken ct
+    )
     {
-        if (string.IsNullOrWhiteSpace(oldAlias))
-        {
-            return false;
-        }
-
-        using (await _constructedTeamLock.WaitAsync($"{teamId}^{characterId}"))
-        {
-            if (await TryUpdateMemberAliasInDb(teamId, characterId, null))
-            {
-                var changeMessage = new ConstructedTeamMemberChangeMessage(teamId, characterId, ConstructedTeamMemberChangeType.UpdateAlias, oldAlias, null);
-                _messageService.BroadcastConstructedTeamMemberChangeMessage(changeMessage);
-
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-    }
-
-    private async Task<bool> TryUpdateMemberAliasInDb(int teamId, string characterId, string newAlias)
-    {
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
         try
         {
-            var storeEntity = await dbContext.ConstructedTeamPlayerMemberships
-                .Where(m => m.CharacterId == characterId && m.ConstructedTeamId == teamId)
-                .FirstOrDefaultAsync();
+            ConstructedTeamPlayerMembership? storeEntity = await dbContext.ConstructedTeamPlayerMemberships
+                .FirstOrDefaultAsync
+                (
+                    m => m.CharacterId == characterId && m.ConstructedTeamId == teamId,
+                    cancellationToken: ct
+                );
 
             if (storeEntity == null)
             {
                 return false;
             }
 
-            var oldAlias = storeEntity.Alias;
-
             storeEntity.Alias = newAlias;
 
             dbContext.ConstructedTeamPlayerMemberships.Update(storeEntity);
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(ct);
 
             return true;
         }
         catch (Exception ex)
         {
-            var newAliasDisplay = string.IsNullOrWhiteSpace(newAlias) ? "null" : newAlias;
+            string newAliasDisplay = string.IsNullOrWhiteSpace(newAlias) ? "null" : newAlias;
 
-            _logger.LogError($"Error updating alias to {newAliasDisplay} for character ID {characterId} on team ID {teamId} in database: {ex}");
+            _logger.LogError
+            (
+                ex,
+                "Error updating alias to {NewAlias} for character ID {CharacterId} on team ID {TeamId} in database",
+                newAliasDisplay,
+                characterId,
+                teamId
+            );
 
             return false;
         }
     }
     #endregion CREATE / EDIT Methods
 
-    public async Task SetUpConstructedTeamsMap()
+    public async Task SetUpConstructedTeamsMapAsync(CancellationToken ct = default)
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var teams = await dbContext.ConstructedTeams.ToListAsync();
+            List<ConstructedTeam> teams = await dbContext.ConstructedTeams.ToListAsync(cancellationToken: ct);
 
-            var newMap = new ConcurrentDictionary<int, ConstructedTeam>();
-
-            foreach (var teamId in _constructedTeamsMap.Keys)
+            foreach (int teamId in _constructedTeamsMap.Keys)
             {
-                if (!teams.Any(t => t.Id == teamId))
-                {
-                    _constructedTeamsMap.TryRemove(teamId, out var removedTeam);
-                }
+                if (teams.All(t => t.Id != teamId))
+                    _constructedTeamsMap.TryRemove(teamId, out _);
             }
 
-            foreach (var team in teams)
+            foreach (ConstructedTeam team in teams)
             {
                 if (_constructedTeamsMap.ContainsKey(team.Id))
                 {
@@ -919,39 +880,64 @@ public class ConstructedTeamService : IConstructedTeamService
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed setting up ConstructedTeamsMap: {ex}");
+            _logger.LogError(ex, "Failed setting up ConstructedTeamsMap");
         }
     }
 
-    public async Task<bool> IsCharacterIdOnTeam(int teamId, string characterId)
+    public async Task<bool> IsCharacterIdOnTeamAsync
+    (
+        int teamId,
+        ulong characterId,
+        CancellationToken ct = default
+    )
     {
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        return await dbContext.ConstructedTeamPlayerMemberships.AnyAsync(m => m.CharacterId == characterId && m.ConstructedTeamId == teamId);
+        return await dbContext.ConstructedTeamPlayerMemberships.AnyAsync
+        (
+            m => m.CharacterId == characterId && m.ConstructedTeamId == teamId,
+            cancellationToken: ct
+        );
     }
 
-    private async Task<ConstructedTeamMemberDetails> SetConstructedTeamMemberIsMatchParticipantAsync(ConstructedTeamMemberDetails memberDetails)
+    private async Task SetConstructedTeamMemberIsMatchParticipantAsync
+    (
+        ConstructedTeamMemberDetails memberDetails,
+        CancellationToken ct = default
+    )
     {
-        memberDetails.IsMatchParticipant = await GetIsConstructedTeamMemberMatchParticipantAsync(memberDetails.ConstructedTeamId, memberDetails.CharacterId);
-
-        return memberDetails;
+        memberDetails.IsMatchParticipant = await GetIsConstructedTeamMemberMatchParticipantAsync
+        (
+            memberDetails.ConstructedTeamId,
+            memberDetails.CharacterId,
+            ct
+        );
     }
 
-    public async Task<bool> GetIsConstructedTeamMemberMatchParticipantAsync(int teamId, string characterId)
+    public async Task<bool> GetIsConstructedTeamMemberMatchParticipantAsync
+    (
+        int teamId,
+        ulong characterId,
+        CancellationToken ct = default
+    )
     {
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        return await dbContext.ScrimMatchParticipatingPlayers.AnyAsync(p => p.IsFromConstructedTeam
-            && p.ConstructedTeamId == teamId
-            && p.CharacterId == characterId);
+        return await dbContext.ScrimMatchParticipatingPlayers.AnyAsync
+        (
+            p => p.IsFromConstructedTeam
+                && p.ConstructedTeamId == teamId
+                && p.CharacterId == characterId,
+            cancellationToken: ct
+        );
     }
 
     public async Task<bool> GetIsConstructedTeamMatchParticipant(int teamId)
     {
-        using var factory = _dbContextHelper.GetFactory();
-        var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
         return await dbContext.ScrimMatchParticipatingPlayers.AnyAsync(p => p.IsFromConstructedTeam
             && p.ConstructedTeamId == teamId);

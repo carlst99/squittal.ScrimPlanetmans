@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Text.RegularExpressions;
 using squittal.ScrimPlanetmans.App.Models;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
+using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.Services.Planetside;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 public class Player : IEquitable<Player>
 {
-    public string Id { get; }
+    public ulong Id { get; }
 
     public TeamDefinition TeamOrdinal { get; set; }
 
@@ -37,9 +37,9 @@ public class Player : IEquitable<Player>
 
     public int PrestigeLevel { get; set; }
 
-    public string OutfitId { get; set; }
-    public string OutfitAlias { get; set; }
-    public string OutfitAliasLower { get; set; }
+    public ulong? OutfitId { get; set; }
+    public string? OutfitAlias { get; set; }
+    public string? OutfitAliasLower { get; set; }
     public bool IsOutfitless { get; set; }
 
     public int? ConstructedTeamId { get; set; }
@@ -68,19 +68,23 @@ public class Player : IEquitable<Player>
 
     private static readonly Regex _factionSufficRegex = new("^[A-z0-9]+(VS|NC|TR)$", RegexOptions.Compiled);
 
-    public Player(Character character)
+    public Player(CensusCharacter character, bool isOnline)
     {
-        Id = character.Id;
-        NameFull = character.Name;
-        IsOnline = character.IsOnline;
+        Id = character.CharacterId;
+        NameFull = character.Name.First;
+        IsOnline = isOnline;
         PrestigeLevel = character.PrestigeLevel;
-        FactionId = character.FactionId;
-        WorldId = character.WorldId;
-        OutfitId = character.OutfitId;
-        OutfitAlias = character.OutfitAlias;
-        OutfitAliasLower = character.OutfitAliasLower;
+        FactionId = (int)character.FactionId;
+        WorldId = (int)character.WorldId;
 
-        // Last because it requires WorldId being set
+        IsOutfitless = character.Outfit is null;
+        if (character.Outfit is not null)
+        {
+            OutfitId = character.Outfit.OutfitId;
+            OutfitAlias = character.Outfit.Alias;
+            OutfitAliasLower = OutfitAlias.ToLower();
+        }
+
         NameTrimmed = GetTrimmedPlayerName(NameFull, WorldId);
     }
 
@@ -139,21 +143,16 @@ public class Player : IEquitable<Player>
         NameTrimmed = GetTrimmedPlayerName(NameFull, WorldId);
     }
 
-    public bool TrySetNameAlias(string alias)
+    public bool TrySetNameAlias(string? alias)
     {
         if (string.IsNullOrWhiteSpace(alias))
-        {
             return false;
-        }
 
         Match match = _nameRegex.Match(alias);
         if (!match.Success)
-        {
             return false;
-        }
 
         NameAlias = alias;
-
         return true;
     }
 

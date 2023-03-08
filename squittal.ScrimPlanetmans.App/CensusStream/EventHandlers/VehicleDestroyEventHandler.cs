@@ -57,13 +57,13 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
     /// <inheritdoc />
     public async Task HandleAsync(IVehicleDestroy payload, CancellationToken ct = new())
     {
-        string attackerId = payload.AttackerCharacterID.ToString();
-        string victimId = payload.CharacterID.ToString();
-        bool involvesBenchedPlayer = false;
-
         // Don't bother tracking players destroying unclaimed vehicles
         if (payload.CharacterID is 0)
             return;
+
+        ulong attackerId = payload.AttackerCharacterID;
+        ulong victimId = payload.CharacterID;
+        bool involvesBenchedPlayer = false;
 
         ScrimActionWeaponInfo weapon;
         Item? weaponItem = await _itemService.GetWeaponItemAsync((int)payload.AttackerWeaponID);
@@ -71,19 +71,16 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
         if (weaponItem != null)
         {
             weapon = new ScrimActionWeaponInfo
-            {
-                Id = weaponItem.Id,
-                ItemCategoryId = weaponItem.ItemCategoryId,
-                Name = weaponItem.Name ?? "Unknown weapon",
-                IsVehicleWeapon = weaponItem.IsVehicleWeapon
-            };
+            (
+                weaponItem.Id,
+                weaponItem.ItemCategoryId,
+                weaponItem.Name ?? "Unknown weapon",
+                weaponItem.IsVehicleWeapon
+            );
         }
         else
         {
-            weapon = new ScrimActionWeaponInfo()
-            {
-                Id = (int)payload.AttackerWeaponID
-            };
+            weapon = new ScrimActionWeaponInfo((int)payload.AttackerWeaponID, null, null, null);
         }
 
         ScrimVehicleDestructionActionEvent destructionEvent = new()

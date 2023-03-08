@@ -548,7 +548,7 @@ else
 
     private bool ShouldProcessPlayer(Player player)
     {
-        if (player.TeamOrdinal != i_teamOrdinal || player.OutfitId != _renderedOutfit.Id || player.IsOutfitless || player.IsFromConstructedTeam)
+        if (player.TeamOrdinal != i_teamOrdinal || player.OutfitId.ToString() != _renderedOutfit.Id || player.IsOutfitless || player.IsFromConstructedTeam)
         {
             return false;
         }

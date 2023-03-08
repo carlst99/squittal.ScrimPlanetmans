@@ -36,7 +36,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
     private readonly Dictionary<TeamDefinition, Team> _ordinalTeamMap = new();
     private readonly List<Player> _allPlayers = new();
-    private readonly ConcurrentDictionary<string, TeamDefinition> _playerTeamMap = new();
+    private readonly ConcurrentDictionary<ulong, TeamDefinition> _playerTeamMap = new();
     private readonly KeyedSemaphoreSlim _characterMatchDataLock = new();
 
     public MaxPlayerPointsTracker MaxPlayerPointsTracker { get; private set; } = new();
@@ -85,9 +85,9 @@ public class ScrimTeamsManager : IScrimTeamsManager
     public Team? GetFirstTeamWithFactionId(int factionId)
         => _ordinalTeamMap.Values.FirstOrDefault(team => factionId == team.FactionId);
 
-    public IEnumerable<string> GetAllPlayerIds()
+    public IEnumerable<ulong> GetAllPlayerIds()
     {
-        List<string> characterIds = new();
+        List<ulong> characterIds = new();
 
         foreach (Team team in _ordinalTeamMap.Values)
             characterIds.AddRange(team.GetAllPlayerIds());
@@ -170,7 +170,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return true;
     }
 
-    public async Task<bool> UpdatePlayerTemporaryAliasAsync(string playerId, string newAlias)
+    public async Task<bool> UpdatePlayerTemporaryAliasAsync(ulong playerId, string newAlias)
     {
         Player? player = GetPlayerFromId(playerId);
         if (player is null)
@@ -199,7 +199,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return true;
     }
 
-    public async Task ClearPlayerDisplayNameAsync(string playerId)
+    public async Task ClearPlayerDisplayNameAsync(ulong playerId)
     {
         Player? player = GetPlayerFromId(playerId);
         if (player is null)
@@ -226,7 +226,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         Regex idRegex = new("[0-9]{19}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         bool isId = idRegex.Match(inputString).Success;
 
-        if (isId && await TryAddCharacterIdToTeamAsync(teamOrdinal, inputString))
+        if (isId && await TryAddCharacterIdToTeamAsync(teamOrdinal, ulong.Parse(inputString)))
             return true;
 
         Regex nameRegex = new("[A-Za-z0-9]{1,32}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -235,19 +235,19 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return isName && await TryAddCharacterNameToTeam(teamOrdinal, inputString);
     }
 
-    public async Task<bool> TryAddCharacterIdToTeamAsync(TeamDefinition teamOrdinal, string characterId)
+    public async Task<bool> TryAddCharacterIdToTeamAsync(TeamDefinition teamOrdinal, ulong characterId)
     {
         if (!IsCharacterAvailable(characterId))
             return false;
 
-        Player? player = await _scrimPlayers.GetPlayerFromCharacterIdAsync(characterId);
+        Player? player = await _scrimPlayers.GetByIdAsync(characterId);
 
         return player is not null && TryAddPlayerToTeam(teamOrdinal, player);
     }
 
     public async Task<bool> TryAddCharacterNameToTeam(TeamDefinition teamOrdinal, string characterName)
     {
-        Player? player = await _scrimPlayers.GetPlayerFromCharacterNameAsync(characterName);
+        Player? player = await _scrimPlayers.GetByNameAsync(characterName);
         if (player is null)
             return false;
 
@@ -283,47 +283,8 @@ public class ScrimTeamsManager : IScrimTeamsManager
     }
 
     #region Add Entities To Teams
-    // Returns whether specified character was added to the specified team
-    public async Task<bool> AddCharacterToTeam(TeamDefinition teamOrdinal, string characterId)
-    {
-        if (!IsCharacterAvailable(characterId))
-        {
-            return false;
-        }
 
-        Player? player = await _scrimPlayers.GetPlayerFromCharacterIdAsync(characterId);
-
-        if (player == null)
-        {
-            return false;
-        }
-
-        Team team = GetTeam(teamOrdinal);
-
-        player.TeamOrdinal = team.TeamOrdinal;
-
-        if (team.TryAddPlayer(player))
-        {
-            _allPlayers.Add(player);
-
-            _playerTeamMap.TryAdd(player.Id, teamOrdinal);
-
-            if (team.FactionId == null)
-            {
-                UpdateTeamFaction(teamOrdinal, player.FactionId);
-            }
-
-            SendTeamPlayerAddedMessage(player);
-
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    public async Task<bool> AddOutfitAliasToTeam(TeamDefinition teamOrdinal, string aliasLower, string alias)
+    public async Task<bool> AddOutfitAliasToTeam(TeamDefinition teamOrdinal, string aliasLower)
     {
         if (!IsOutfitOwnedByTeam(aliasLower, out _))
             return false;
@@ -415,7 +376,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         Team owningTeam = GetTeam(teamOrdinal);
 
-        ConstructedTeam? constructedTeam = await _constructedTeamService.GetConstructedTeam(constructedTeamId, true);
+        ConstructedTeam? constructedTeam = await _constructedTeamService.GetConstructedTeamAsync(constructedTeamId, true);
         if (constructedTeam is null)
             return false;
 
@@ -451,7 +412,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         TeamConstructedTeamChangeMessage loadCompletedMessage = new(teamOrdinal, constructedTeam, factionId, TeamChangeType.ConstructedTeamMembersLoadCompleted);
 
-        IEnumerable<Player>? players = await _constructedTeamService.GetConstructedTeamFactionPlayers(constructedTeamId, factionId);
+        IEnumerable<Player>? players = await _constructedTeamService.GetConstructedTeamFactionPlayersAsync(constructedTeamId, factionId);
 
         if (players == null || !players.Any())
         {
@@ -539,8 +500,8 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         Player? lastPlayer = newPlayers.LastOrDefault();
 
-        Outfit? outfit = outfitTeam.Outfits.Where(o => o.AliasLower == aliasLower)
-            .FirstOrDefault();
+        Outfit? outfit = outfitTeam.Outfits
+            .FirstOrDefault(o => o.AliasLower == aliasLower);
 
         int outfitFactionID = (int)outfit.FactionId;
         int outfitWorldId = (int)outfit.WorldId;
@@ -590,25 +551,17 @@ public class ScrimTeamsManager : IScrimTeamsManager
             return false;
 
         Outfit? outfit = owningTeam.Outfits.FirstOrDefault(o => o.AliasLower == aliasLower);
-        string outfitId = outfit.Id;
+        if (outfit is null)
+            return false;
+
         TeamDefinition teamOrdinal = outfit.TeamOrdinal;
 
         bool success = RemoveOutfitFromTeam(aliasLower);
-
         if (!success)
-        {
             return false;
-        }
 
-        List<Task> TaskList = new();
-
-        await RemoveOutfitMatchDataFromDb(outfitId, teamOrdinal);
-
-        Task updateTeamResultsToDbTask = TryUpdateAllTeamMatchResultsInDb();
-        TaskList.Add(updateTeamResultsToDbTask);
-
-        await Task.WhenAll(TaskList);
-
+        await RemoveOutfitMatchDataFromDb(ulong.Parse(outfit.Id), teamOrdinal);
+        await TryUpdateAllTeamMatchResultsInDb();
         await UpdateMatchParticipatingPlayers();
 
         return true;
@@ -662,7 +615,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return anyPlayersRemoved;
     }
 
-    private async Task RemoveOutfitMatchDataFromDb(string outfitId, TeamDefinition teamOrdinal)
+    private async Task RemoveOutfitMatchDataFromDb(ulong outfitId, TeamDefinition teamOrdinal)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
 
@@ -822,7 +775,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    public async Task<bool> RemoveCharacterFromTeamAndDb(string characterId)
+    public async Task<bool> RemoveCharacterFromTeamAndDb(ulong characterId)
     {
         TeamDefinition? teamOrdinal = GetTeamOrdinalFromPlayerId(characterId);
         if (teamOrdinal is null)
@@ -849,7 +802,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return true;
     }
 
-    private async Task RemoveCharacterMatchDataFromDb(string characterId, TeamDefinition teamOrdinal)
+    private async Task RemoveCharacterMatchDataFromDb(ulong characterId, TeamDefinition teamOrdinal)
     {
         List<Task> TaskList = new();
 
@@ -877,7 +830,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
     }
 
     #region Remove Character Match Events From DB
-    private async Task RemoveCharacterMatchDeathsFromDb(string characterId, TeamDefinition teamOrdinal)
+    private async Task RemoveCharacterMatchDeathsFromDb(ulong characterId, TeamDefinition teamOrdinal)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
         int currentMatchRound = _matchDataService.CurrentMatchRound;
@@ -900,21 +853,19 @@ public class ScrimTeamsManager : IScrimTeamsManager
                             || e.VictimCharacterId == characterId))
                     .ToListAsync();
 
-                if (allDeathEvents == null || !allDeathEvents.Any())
-                {
+                if (allDeathEvents.Count is 0)
                     return;
-                }
 
                 #region Set Up Distinct Interaction Target Lists
                 List<TeamDefinition> distinctVictimTeams = allDeathEvents
-                    .Where(e => e.AttackerCharacterId == characterId)
-                    .Select(e => e.VictimTeamOrdinal)
+                    .Where(e => e.AttackerCharacterId == characterId && e.VictimTeamOrdinal.HasValue)
+                    .Select(e => e.VictimTeamOrdinal!.Value)
                     .Distinct()
                     .ToList();
 
                 List<TeamDefinition> distinctAttackerTeams = allDeathEvents
-                    .Where(e => e.VictimCharacterId == characterId)
-                    .Select(e => e.AttackerTeamOrdinal)
+                    .Where(e => e.VictimCharacterId == characterId && e.AttackerTeamOrdinal.HasValue)
+                    .Select(e => e.AttackerTeamOrdinal!.Value)
                     .Distinct()
                     .ToList();
 
@@ -923,25 +874,25 @@ public class ScrimTeamsManager : IScrimTeamsManager
                 distinctTeams.AddRange(distinctVictimTeams.Where(e => !distinctTeams.Contains(e)).ToList());
 
 
-                List<string> distinctVictimCharacterIds = allDeathEvents
+                List<ulong> distinctVictimCharacterIds = allDeathEvents
                     .Where(e => e.AttackerCharacterId == characterId)
                     .Select(e => e.VictimCharacterId)
                     .Distinct()
                     .ToList();
 
-                List<string> distinctAttackerCharacterIds = allDeathEvents
-                    .Where(e => e.VictimCharacterId == characterId)
-                    .Select(e => e.AttackerCharacterId)
+                List<ulong> distinctAttackerCharacterIds = allDeathEvents
+                    .Where(e => e.VictimCharacterId == characterId && e.AttackerCharacterId.HasValue)
+                    .Select(e => e.AttackerCharacterId!.Value)
                     .Distinct()
                     .ToList();
 
-                List<string> distinctCharacterIds = new();
+                List<ulong> distinctCharacterIds = new();
                 distinctCharacterIds.AddRange(distinctAttackerCharacterIds);
                 distinctCharacterIds.AddRange(distinctVictimCharacterIds.Where(e => !distinctCharacterIds.Contains(e)).ToList());
                 #endregion Set Up Distinct Interaction Target Lists
 
                 Dictionary<TeamDefinition, ScrimEventAggregateRoundTracker> teamUpdates = new();
-                Dictionary<string, ScrimEventAggregateRoundTracker> playerUpdates = new();
+                Dictionary<ulong, ScrimEventAggregateRoundTracker> playerUpdates = new();
 
                 foreach (TeamDefinition team in distinctTeams)
                 {
@@ -949,7 +900,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                     teamUpdates.Add(team, tracker);
                 }
 
-                foreach (string character in distinctCharacterIds)
+                foreach (ulong character in distinctCharacterIds)
                 {
                     ScrimEventAggregateRoundTracker tracker = new();
                     playerUpdates.Add(character, tracker);
@@ -964,10 +915,10 @@ public class ScrimTeamsManager : IScrimTeamsManager
                 {
                     foreach (ScrimDeath deathEvent in allDeathEvents.Where(e => e.ScrimMatchRound == round))
                     {
-                        string? attackerId = deathEvent.AttackerCharacterId;
-                        string? victimId = deathEvent.VictimCharacterId;
-                        TeamDefinition attackerTeamOrdinal = deathEvent.AttackerTeamOrdinal;
-                        TeamDefinition victimTeamOrdinal = deathEvent.VictimTeamOrdinal;
+                        ulong? attackerId = deathEvent.AttackerCharacterId;
+                        ulong? victimId = deathEvent.VictimCharacterId;
+                        TeamDefinition? attackerTeamOrdinal = deathEvent.AttackerTeamOrdinal;
+                        TeamDefinition? victimTeamOrdinal = deathEvent.VictimTeamOrdinal;
                         DeathEventType deathType = deathEvent.DeathType;
                         int points = deathEvent.Points;
                         int isHeadshot = deathEvent.IsHeadshot ? 1 : 0;
@@ -989,11 +940,11 @@ public class ScrimTeamsManager : IScrimTeamsManager
                                 HeadshotDeaths = isHeadshot
                             };
 
-                            teamUpdates[attackerTeamOrdinal].AddToCurrent(attackerUpdate);
-                            playerUpdates[attackerId].AddToCurrent(attackerUpdate);
+                            teamUpdates[attackerTeamOrdinal.Value].AddToCurrent(attackerUpdate);
+                            playerUpdates[attackerId.Value].AddToCurrent(attackerUpdate);
 
-                            teamUpdates[victimTeamOrdinal].AddToCurrent(victimUpdate);
-                            playerUpdates[victimId].AddToCurrent(victimUpdate);
+                            teamUpdates[victimTeamOrdinal.Value].AddToCurrent(victimUpdate);
+                            playerUpdates[victimId.Value].AddToCurrent(victimUpdate);
                         }
                         else if (deathType == DeathEventType.Suicide)
                         {
@@ -1005,8 +956,8 @@ public class ScrimTeamsManager : IScrimTeamsManager
                                 Suicides = 1
                             };
 
-                            teamUpdates[victimTeamOrdinal].AddToCurrent(victimUpdate);
-                            playerUpdates[victimId].AddToCurrent(victimUpdate);
+                            teamUpdates[victimTeamOrdinal.Value].AddToCurrent(victimUpdate);
+                            playerUpdates[victimId.Value].AddToCurrent(victimUpdate);
                         }
                         else if (deathType == DeathEventType.Teamkill)
                         {
@@ -1023,11 +974,11 @@ public class ScrimTeamsManager : IScrimTeamsManager
                                 TeamkillDeaths = 1
                             };
 
-                            teamUpdates[attackerTeamOrdinal].AddToCurrent(attackerUpdate);
-                            playerUpdates[attackerId].AddToCurrent(attackerUpdate);
+                            teamUpdates[attackerTeamOrdinal.Value].AddToCurrent(attackerUpdate);
+                            playerUpdates[attackerId.Value].AddToCurrent(attackerUpdate);
 
-                            teamUpdates[victimTeamOrdinal].AddToCurrent(victimUpdate);
-                            playerUpdates[victimId].AddToCurrent(victimUpdate);
+                            teamUpdates[victimTeamOrdinal.Value].AddToCurrent(victimUpdate);
+                            playerUpdates[victimId.Value].AddToCurrent(victimUpdate);
                         }
                         else
                         {
@@ -1040,7 +991,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                         teamUpdates[team].SaveRoundToHistory(round);
                     }
 
-                    foreach (string character in distinctCharacterIds)
+                    foreach (ulong character in distinctCharacterIds)
                     {
                         playerUpdates[character].SaveRoundToHistory(round);
                     }
@@ -1055,7 +1006,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                     SendTeamStatUpdateMessage(team);
                 }
 
-                foreach (string character in distinctCharacterIds)
+                foreach (ulong character in distinctCharacterIds)
                 {
                     Player? player = GetPlayerFromId(character);
 
@@ -1081,11 +1032,11 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    private async Task RemoveCharacterMatchVehicleDestructionsFromDb(string characterId)
+    private async Task RemoveCharacterMatchVehicleDestructionsFromDb(ulong characterId)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
 
-        using (await _characterMatchDataLock.WaitAsync($"Destructions"))
+        using (await _characterMatchDataLock.WaitAsync("Destructions"))
         {
             try
             {
@@ -1109,7 +1060,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    private async Task RemoveCharacterMatchRevivesFromDb(string characterId, TeamDefinition teamOrdinal)
+    private async Task RemoveCharacterMatchRevivesFromDb(ulong characterId, TeamDefinition teamOrdinal)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
         int currentMatchRound = _matchDataService.CurrentMatchRound;
@@ -1126,27 +1077,27 @@ public class ScrimTeamsManager : IScrimTeamsManager
                 using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
                 PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                List<ScrimRevive>? allReviveEvents = await dbContext.ScrimRevives
-                    .Where(e => e.ScrimMatchId == currentMatchId
-                        && (e.MedicCharacterId == characterId
-                            || e.RevivedCharacterId == characterId))
+                List<ScrimRevive> allReviveEvents = await dbContext.ScrimRevives
+                    .Where
+                    (
+                        e => e.ScrimMatchId == currentMatchId
+                            && (e.MedicCharacterId == characterId || e.RevivedCharacterId == characterId)
+                    )
                     .ToListAsync();
 
-                if (allReviveEvents == null || !allReviveEvents.Any())
-                {
+                if (allReviveEvents.Count is 0)
                     return;
-                }
 
                 #region Set Up Distinct Interaction Target Lists
                 List<TeamDefinition> distinctRevivedTeams = allReviveEvents
-                    .Where(e => e.MedicCharacterId == characterId)
-                    .Select(e => e.RevivedTeamOrdinal)
+                    .Where(e => e.MedicCharacterId == characterId && e.RevivedTeamOrdinal.HasValue)
+                    .Select(e => e.RevivedTeamOrdinal!.Value)
                     .Distinct()
                     .ToList();
 
                 List<TeamDefinition> distinctMedicTeams = allReviveEvents
-                    .Where(e => e.RevivedCharacterId == characterId)
-                    .Select(e => e.MedicTeamOrdinal)
+                    .Where(e => e.RevivedCharacterId == characterId && e.MedicTeamOrdinal.HasValue)
+                    .Select(e => e.MedicTeamOrdinal!.Value)
                     .Distinct()
                     .ToList();
 
@@ -1154,26 +1105,25 @@ public class ScrimTeamsManager : IScrimTeamsManager
                 distinctTeams.AddRange(distinctMedicTeams.Where(e => !distinctTeams.Contains(e)).ToList());
                 distinctTeams.AddRange(distinctRevivedTeams.Where(e => !distinctTeams.Contains(e)).ToList());
 
-
-                List<string> distinctRevivedCharacterIds = allReviveEvents
+                List<ulong> distinctRevivedCharacterIds = allReviveEvents
                     .Where(e => e.MedicCharacterId == characterId)
                     .Select(e => e.RevivedCharacterId)
                     .Distinct()
                     .ToList();
 
-                List<string> distinctMedicCharacterIds = allReviveEvents
+                List<ulong> distinctMedicCharacterIds = allReviveEvents
                     .Where(e => e.RevivedCharacterId == characterId)
                     .Select(e => e.MedicCharacterId)
                     .Distinct()
                     .ToList();
 
-                List<string> distinctCharacterIds = new();
+                List<ulong> distinctCharacterIds = new();
                 distinctCharacterIds.AddRange(distinctMedicCharacterIds);
                 distinctCharacterIds.AddRange(distinctRevivedCharacterIds.Where(e => !distinctCharacterIds.Contains(e)).ToList());
                 #endregion Set Up Distinct Interaction Target Lists
 
                 Dictionary<TeamDefinition, ScrimEventAggregateRoundTracker> teamUpdates = new();
-                Dictionary<string, ScrimEventAggregateRoundTracker> playerUpdates = new();
+                Dictionary<ulong, ScrimEventAggregateRoundTracker> playerUpdates = new();
 
                 foreach (TeamDefinition team in distinctTeams)
                 {
@@ -1181,7 +1131,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                     teamUpdates.Add(team, tracker);
                 }
 
-                foreach (string character in distinctCharacterIds)
+                foreach (ulong character in distinctCharacterIds)
                 {
                     ScrimEventAggregateRoundTracker tracker = new();
                     playerUpdates.Add(character, tracker);
@@ -1196,10 +1146,10 @@ public class ScrimTeamsManager : IScrimTeamsManager
                 {
                     foreach (ScrimRevive reviveEvent in allReviveEvents.Where(e => e.ScrimMatchRound == round))
                     {
-                        string medicId = reviveEvent.MedicCharacterId;
-                        string revivedId = reviveEvent.RevivedCharacterId;
-                        TeamDefinition medicTeamOrdinal = reviveEvent.MedicTeamOrdinal;
-                        TeamDefinition revivedTeamOrdinal = reviveEvent.RevivedTeamOrdinal;
+                        ulong? medicId = reviveEvent.MedicCharacterId;
+                        ulong? revivedId = reviveEvent.RevivedCharacterId;
+                        TeamDefinition? medicTeamOrdinal = reviveEvent.MedicTeamOrdinal;
+                        TeamDefinition? revivedTeamOrdinal = reviveEvent.RevivedTeamOrdinal;
                         int points = reviveEvent.Points;
 
                         ScrimEventAggregate medicUpdate = new()
@@ -1215,11 +1165,11 @@ public class ScrimTeamsManager : IScrimTeamsManager
                             RevivesTaken = 1
                         };
 
-                        teamUpdates[medicTeamOrdinal].AddToCurrent(medicUpdate);
-                        playerUpdates[medicId].AddToCurrent(medicUpdate);
+                        teamUpdates[medicTeamOrdinal.Value].AddToCurrent(medicUpdate);
+                        playerUpdates[medicId.Value].AddToCurrent(medicUpdate);
 
-                        teamUpdates[revivedTeamOrdinal].AddToCurrent(revivedUpdate);
-                        playerUpdates[revivedId].AddToCurrent(revivedUpdate);
+                        teamUpdates[revivedTeamOrdinal.Value].AddToCurrent(revivedUpdate);
+                        playerUpdates[revivedId.Value].AddToCurrent(revivedUpdate);
                     }
 
                     foreach (TeamDefinition team in distinctTeams)
@@ -1227,7 +1177,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                         teamUpdates[team].SaveRoundToHistory(round);
                     }
 
-                    foreach (string character in distinctCharacterIds)
+                    foreach (ulong character in distinctCharacterIds)
                     {
                         playerUpdates[character].SaveRoundToHistory(round);
                     }
@@ -1242,7 +1192,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                     SendTeamStatUpdateMessage(team);
                 }
 
-                foreach (string character in distinctCharacterIds)
+                foreach (ulong character in distinctCharacterIds)
                 {
                     Player? player = GetPlayerFromId(character);
 
@@ -1267,7 +1217,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    private async Task RemoveCharacterMatchDamageAssistsFromDb(string characterId, TeamDefinition teamOrdinal)
+    private async Task RemoveCharacterMatchDamageAssistsFromDb(ulong characterId, TeamDefinition teamOrdinal)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
         int currentMatchRound = _matchDataService.CurrentMatchRound;
@@ -1290,7 +1240,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                             || e.VictimCharacterId == characterId))
                     .ToListAsync();
 
-                if (allDamageAssistEvents == null || !allDamageAssistEvents.Any())
+                if (allDamageAssistEvents.Count is 0)
                 {
                     return;
                 }
@@ -1313,25 +1263,25 @@ public class ScrimTeamsManager : IScrimTeamsManager
                 distinctTeams.AddRange(distinctVictimTeams.Where(e => !distinctTeams.Contains(e)).ToList());
 
 
-                List<string> distinctVictimCharacterIds = allDamageAssistEvents
-                    .Where(e => e.AttackerCharacterId == characterId)
-                    .Select(e => e.VictimCharacterId)
+                List<ulong> distinctVictimCharacterIds = allDamageAssistEvents
+                    .Where(e => e.AttackerCharacterId == characterId && e.VictimCharacterId.HasValue)
+                    .Select(e => e.VictimCharacterId!.Value)
                     .Distinct()
                     .ToList();
 
-                List<string> distinctAttackerCharacterIds = allDamageAssistEvents
-                    .Where(e => e.VictimCharacterId == characterId)
-                    .Select(e => e.AttackerCharacterId)
+                List<ulong> distinctAttackerCharacterIds = allDamageAssistEvents
+                    .Where(e => e.VictimCharacterId == characterId && e.AttackerCharacterId.HasValue)
+                    .Select(e => e.AttackerCharacterId!.Value)
                     .Distinct()
                     .ToList();
 
-                List<string> distinctCharacterIds = new();
+                List<ulong> distinctCharacterIds = new();
                 distinctCharacterIds.AddRange(distinctAttackerCharacterIds);
                 distinctCharacterIds.AddRange(distinctVictimCharacterIds.Where(e => !distinctCharacterIds.Contains(e)).ToList());
                 #endregion Set Up Distinct Interaction Target Lists
 
                 Dictionary<TeamDefinition, ScrimEventAggregateRoundTracker> teamUpdates = new();
-                Dictionary<string, ScrimEventAggregateRoundTracker> playerUpdates = new();
+                Dictionary<ulong, ScrimEventAggregateRoundTracker> playerUpdates = new();
 
                 foreach (TeamDefinition team in distinctTeams)
                 {
@@ -1339,7 +1289,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                     teamUpdates.Add(team, tracker);
                 }
 
-                foreach (string character in distinctCharacterIds)
+                foreach (ulong character in distinctCharacterIds)
                 {
                     ScrimEventAggregateRoundTracker tracker = new();
                     playerUpdates.Add(character, tracker);
@@ -1354,8 +1304,8 @@ public class ScrimTeamsManager : IScrimTeamsManager
                 {
                     foreach (ScrimDamageAssist damageAssistEvent in allDamageAssistEvents.Where(e => e.ScrimMatchRound == round))
                     {
-                        string attackerId = damageAssistEvent.AttackerCharacterId;
-                        string victimId = damageAssistEvent.VictimCharacterId;
+                        ulong? attackerId = damageAssistEvent.AttackerCharacterId;
+                        ulong? victimId = damageAssistEvent.VictimCharacterId;
 
                         TeamDefinition attackerTeamOrdinal = damageAssistEvent.AttackerTeamOrdinal;
                         TeamDefinition victimTeamOrdinal = damageAssistEvent.VictimTeamOrdinal;
@@ -1404,10 +1354,10 @@ public class ScrimTeamsManager : IScrimTeamsManager
                         }
 
                         teamUpdates[attackerTeamOrdinal].AddToCurrent(attackerUpdate);
-                        playerUpdates[attackerId].AddToCurrent(attackerUpdate);
+                        playerUpdates[attackerId.Value].AddToCurrent(attackerUpdate);
 
                         teamUpdates[victimTeamOrdinal].AddToCurrent(victimUpdate);
-                        playerUpdates[victimId].AddToCurrent(victimUpdate);
+                        playerUpdates[victimId.Value].AddToCurrent(victimUpdate);
                     }
 
                     foreach (TeamDefinition team in distinctTeams)
@@ -1415,7 +1365,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                         teamUpdates[team].SaveRoundToHistory(round);
                     }
 
-                    foreach (string character in distinctCharacterIds)
+                    foreach (ulong character in distinctCharacterIds)
                     {
                         playerUpdates[character].SaveRoundToHistory(round);
                     }
@@ -1430,7 +1380,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                     SendTeamStatUpdateMessage(team);
                 }
 
-                foreach (string character in distinctCharacterIds)
+                foreach (ulong character in distinctCharacterIds)
                 {
                     Player? player = GetPlayerFromId(character);
 
@@ -1451,12 +1401,11 @@ public class ScrimTeamsManager : IScrimTeamsManager
             catch (Exception ex)
             {
                 _logger.LogError(ex.ToString());
-                return;
             }
         }
     }
 
-    private async Task RemoveCharacterMatchGrenadeAssistsFromDb(string characterId, TeamDefinition teamOrdinal)
+    private async Task RemoveCharacterMatchGrenadeAssistsFromDb(ulong characterId, TeamDefinition teamOrdinal)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
         int currentMatchRound = _matchDataService.CurrentMatchRound;
@@ -1502,25 +1451,25 @@ public class ScrimTeamsManager : IScrimTeamsManager
                 distinctTeams.AddRange(distinctVictimTeams.Where(e => !distinctTeams.Contains(e)).ToList());
 
 
-                List<string> distinctVictimCharacterIds = allGrenadeAssistEvents
-                    .Where(e => e.AttackerCharacterId == characterId)
-                    .Select(e => e.VictimCharacterId)
+                List<ulong> distinctVictimCharacterIds = allGrenadeAssistEvents
+                    .Where(e => e.AttackerCharacterId == characterId && e.VictimCharacterId.HasValue)
+                    .Select(e => e.VictimCharacterId!.Value)
                     .Distinct()
                     .ToList();
 
-                List<string> distinctAttackerCharacterIds = allGrenadeAssistEvents
-                    .Where(e => e.VictimCharacterId == characterId)
-                    .Select(e => e.AttackerCharacterId)
+                List<ulong> distinctAttackerCharacterIds = allGrenadeAssistEvents
+                    .Where(e => e.VictimCharacterId == characterId && e.AttackerCharacterId.HasValue)
+                    .Select(e => e.AttackerCharacterId!.Value)
                     .Distinct()
                     .ToList();
 
-                List<string> distinctCharacterIds = new();
+                List<ulong> distinctCharacterIds = new();
                 distinctCharacterIds.AddRange(distinctAttackerCharacterIds);
                 distinctCharacterIds.AddRange(distinctVictimCharacterIds.Where(e => !distinctCharacterIds.Contains(e)).ToList());
                 #endregion Set Up Distinct Interaction Target Lists
 
                 Dictionary<TeamDefinition, ScrimEventAggregateRoundTracker> teamUpdates = new();
-                Dictionary<string, ScrimEventAggregateRoundTracker> playerUpdates = new();
+                Dictionary<ulong, ScrimEventAggregateRoundTracker> playerUpdates = new();
 
                 foreach (TeamDefinition team in distinctTeams)
                 {
@@ -1528,7 +1477,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                     teamUpdates.Add(team, tracker);
                 }
 
-                foreach (string character in distinctCharacterIds)
+                foreach (ulong character in distinctCharacterIds)
                 {
                     ScrimEventAggregateRoundTracker tracker = new();
                     playerUpdates.Add(character, tracker);
@@ -1543,8 +1492,8 @@ public class ScrimTeamsManager : IScrimTeamsManager
                 {
                     foreach (ScrimGrenadeAssist grenadeAssistEvent in allGrenadeAssistEvents.Where(e => e.ScrimMatchRound == round))
                     {
-                        string attackerId = grenadeAssistEvent.AttackerCharacterId;
-                        string victimId = grenadeAssistEvent.VictimCharacterId;
+                        ulong? attackerId = grenadeAssistEvent.AttackerCharacterId;
+                        ulong? victimId = grenadeAssistEvent.VictimCharacterId;
 
                         TeamDefinition attackerTeamOrdinal = grenadeAssistEvent.AttackerTeamOrdinal;
                         TeamDefinition victimTeamOrdinal = grenadeAssistEvent.VictimTeamOrdinal;
@@ -1590,16 +1539,16 @@ public class ScrimTeamsManager : IScrimTeamsManager
                         }
 
                         teamUpdates[attackerTeamOrdinal].AddToCurrent(attackerUpdate);
-                        playerUpdates[attackerId].AddToCurrent(attackerUpdate);
+                        playerUpdates[attackerId.Value].AddToCurrent(attackerUpdate);
 
                         teamUpdates[victimTeamOrdinal].AddToCurrent(victimUpdate);
-                        playerUpdates[victimId].AddToCurrent(victimUpdate);
+                        playerUpdates[victimId.Value].AddToCurrent(victimUpdate);
                     }
 
                     foreach (TeamDefinition team in distinctTeams)
                         teamUpdates[team].SaveRoundToHistory(round);
 
-                    foreach (string character in distinctCharacterIds)
+                    foreach (ulong character in distinctCharacterIds)
                     {
                         playerUpdates[character].SaveRoundToHistory(round);
                     }
@@ -1614,7 +1563,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                     SendTeamStatUpdateMessage(team);
                 }
 
-                foreach (string character in distinctCharacterIds)
+                foreach (ulong character in distinctCharacterIds)
                 {
                     Player? player = GetPlayerFromId(character);
 
@@ -1639,7 +1588,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    private async Task RemoveCharacterMatchSpotAssistsFromDb(string characterId, TeamDefinition teamOrdinal)
+    private async Task RemoveCharacterMatchSpotAssistsFromDb(ulong characterId, TeamDefinition teamOrdinal)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
         int currentMatchRound = _matchDataService.CurrentMatchRound;
@@ -1686,25 +1635,25 @@ public class ScrimTeamsManager : IScrimTeamsManager
                 distinctTeams.AddRange(distinctVictimTeams.Where(e => !distinctTeams.Contains(e)).ToList());
 
 
-                List<string> distinctVictimCharacterIds = allSpotAssistEvents
-                    .Where(e => e.SpotterCharacterId == characterId)
-                    .Select(e => e.VictimCharacterId)
+                List<ulong> distinctVictimCharacterIds = allSpotAssistEvents
+                    .Where(e => e.SpotterCharacterId == characterId && e.VictimCharacterId.HasValue)
+                    .Select(e => e.VictimCharacterId!.Value)
                     .Distinct()
                     .ToList();
 
-                List<string> distinctSpotterCharacterIds = allSpotAssistEvents
-                    .Where(e => e.VictimCharacterId == characterId)
-                    .Select(e => e.SpotterCharacterId)
+                List<ulong> distinctSpotterCharacterIds = allSpotAssistEvents
+                    .Where(e => e.VictimCharacterId == characterId && e.SpotterCharacterId.HasValue)
+                    .Select(e => e.SpotterCharacterId!.Value)
                     .Distinct()
                     .ToList();
 
-                List<string> distinctCharacterIds = new();
+                List<ulong> distinctCharacterIds = new();
                 distinctCharacterIds.AddRange(distinctSpotterCharacterIds);
                 distinctCharacterIds.AddRange(distinctVictimCharacterIds.Where(e => !distinctCharacterIds.Contains(e)).ToList());
                 #endregion Set Up Distinct Interaction Target Lists
 
                 Dictionary<TeamDefinition, ScrimEventAggregateRoundTracker> teamUpdates = new();
-                Dictionary<string, ScrimEventAggregateRoundTracker> playerUpdates = new();
+                Dictionary<ulong, ScrimEventAggregateRoundTracker> playerUpdates = new();
 
                 foreach (TeamDefinition team in distinctTeams)
                 {
@@ -1712,7 +1661,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                     teamUpdates.Add(team, tracker);
                 }
 
-                foreach (string character in distinctCharacterIds)
+                foreach (ulong character in distinctCharacterIds)
                 {
                     ScrimEventAggregateRoundTracker tracker = new();
                     playerUpdates.Add(character, tracker);
@@ -1727,8 +1676,8 @@ public class ScrimTeamsManager : IScrimTeamsManager
                 {
                     foreach (ScrimSpotAssist spotAssistEvent in allSpotAssistEvents.Where(e => e.ScrimMatchRound == round))
                     {
-                        string spotterId = spotAssistEvent.SpotterCharacterId;
-                        string victimId = spotAssistEvent.VictimCharacterId;
+                        ulong? spotterId = spotAssistEvent.SpotterCharacterId;
+                        ulong? victimId = spotAssistEvent.VictimCharacterId;
                         TeamDefinition spotterTeamOrdinal = spotAssistEvent.SpotterTeamOrdinal;
                         TeamDefinition victimTeamOrdinal = spotAssistEvent.VictimTeamOrdinal;
                         int points = spotAssistEvent.Points;
@@ -1747,10 +1696,10 @@ public class ScrimTeamsManager : IScrimTeamsManager
                         };
 
                         teamUpdates[spotterTeamOrdinal].AddToCurrent(spotterUpdate);
-                        playerUpdates[spotterId].AddToCurrent(spotterUpdate);
+                        playerUpdates[spotterId.Value].AddToCurrent(spotterUpdate);
 
                         teamUpdates[victimTeamOrdinal].AddToCurrent(victimUpdate);
-                        playerUpdates[victimId].AddToCurrent(victimUpdate);
+                        playerUpdates[victimId.Value].AddToCurrent(victimUpdate);
                     }
 
                     foreach (TeamDefinition team in distinctTeams)
@@ -1758,7 +1707,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                         teamUpdates[team].SaveRoundToHistory(round);
                     }
 
-                    foreach (string character in distinctCharacterIds)
+                    foreach (ulong character in distinctCharacterIds)
                     {
                         playerUpdates[character].SaveRoundToHistory(round);
                     }
@@ -1773,7 +1722,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                     SendTeamStatUpdateMessage(team);
                 }
 
-                foreach (string character in distinctCharacterIds)
+                foreach (ulong character in distinctCharacterIds)
                 {
                     Player? player = GetPlayerFromId(character);
 
@@ -1800,7 +1749,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
     }
     #endregion Remove Character Match Events From DB
 
-    public bool RemoveCharacterFromTeam(string characterId)
+    public bool RemoveCharacterFromTeam(ulong characterId)
     {
         Player? player = GetPlayerFromId(characterId);
 
@@ -1844,7 +1793,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                 }
             }
 
-            if (characterId == MaxPlayerPointsTracker.GetOwningCharacterId())
+            if (characterId == MaxPlayerPointsTracker.OwningCharacterId)
             {
                 // TODO: Update Match Max Player Points
             }
@@ -1885,7 +1834,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         {
             _allPlayers.RemoveAll(p => p.Id == player.Id);
 
-            _playerTeamMap.TryRemove(player.Id, out TeamDefinition ordinalOut);
+            _playerTeamMap.TryRemove(player.Id, out _);
 
             if (!team.Players.Any())
             {
@@ -1909,7 +1858,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
             using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
             PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            List<string> allMatchParticipatingPlayerIds = await dbContext.ScrimMatchParticipatingPlayers
+            List<ulong> allMatchParticipatingPlayerIds = await dbContext.ScrimMatchParticipatingPlayers
                 .Where(e => e.ScrimMatchId == matchId)
                 .Select(e => e.CharacterId)
                 .ToListAsync();
@@ -1921,7 +1870,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
             List<Task> TaskList = new();
 
-            foreach (string playerId in allMatchParticipatingPlayerIds)
+            foreach (ulong playerId in allMatchParticipatingPlayerIds)
             {
                 Player? player = GetPlayerFromId(playerId);
 
@@ -2103,7 +2052,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         OverlayMessageData overlayMessageData = new()
         {
             RedrawPointGraph = true,
-            MatchMaxPlayerPoints = MaxPlayerPointsTracker.GetMaxPoints()
+            MatchMaxPlayerPoints = MaxPlayerPointsTracker.MaxPoints
         };
 
         team.ResetMatchData();
@@ -2216,7 +2165,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         OverlayMessageData overlayMessageData = new()
         {
             RedrawPointGraph = maxPointsChanged,
-            MatchMaxPlayerPoints = MaxPlayerPointsTracker.GetMaxPoints()
+            MatchMaxPlayerPoints = MaxPlayerPointsTracker.MaxPoints
         };
 
         SendTeamStatUpdateMessage(team, overlayMessageData);
@@ -2436,7 +2385,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
     }
 
     #region Match Entity Availability Methods
-    public bool IsCharacterAvailable(string characterId)
+    public bool IsCharacterAvailable(ulong characterId)
     {
         foreach (Team team in _ordinalTeamMap.Values)
         {
@@ -2446,21 +2395,6 @@ public class ScrimTeamsManager : IScrimTeamsManager
             }
         }
 
-        return true;
-    }
-
-    public bool IsCharacterAvailable(string characterId, out Team owningTeam)
-    {
-        foreach (Team team in _ordinalTeamMap.Values)
-        {
-            if (team.ContainsPlayer(characterId))
-            {
-                owningTeam = team;
-                return false;
-            }
-        }
-
-        owningTeam = null;
         return true;
     }
 
@@ -2527,7 +2461,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
     #endregion Match Entity Availability Methods
 
-    public Player? GetPlayerFromId(string characterId)
+    public Player? GetPlayerFromId(ulong characterId)
     {
         TeamDefinition? teamOrdinal = GetTeamOrdinalFromPlayerId(characterId);
         if (teamOrdinal == null)
@@ -2538,7 +2472,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return player;
     }
 
-    public TeamDefinition? GetTeamOrdinalFromPlayerId(string characterId)
+    public TeamDefinition? GetTeamOrdinalFromPlayerId(ulong characterId)
         => _playerTeamMap.TryGetValue(characterId, out TeamDefinition teamOrdinal)
             ? teamOrdinal
             : null;
@@ -2551,17 +2485,6 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return firstPlayer.TeamOrdinal == secondPlayer.TeamOrdinal;
     }
 
-    public bool DoPlayersShareTeam(string firstId, string secondId, out TeamDefinition? firstOrdinal, out TeamDefinition? secondOrdinal)
-    {
-        firstOrdinal = GetTeamOrdinalFromPlayerId(firstId);
-        secondOrdinal = GetTeamOrdinalFromPlayerId(secondId);
-
-        if (firstOrdinal == null || secondOrdinal == null)
-            return false;
-
-        return firstOrdinal == secondOrdinal;
-    }
-
     private int TeamOutfitCount(TeamDefinition teamOrdinal)
         => GetTeam(teamOrdinal).Outfits.Count;
 
@@ -2569,7 +2492,8 @@ public class ScrimTeamsManager : IScrimTeamsManager
         => GetTeam(teamOrdinal).ConstructedTeamsMatchInfo.Count;
 
     #region Team/Player Stats Handling
-    public async Task UpdatePlayerStats(string characterId, ScrimEventAggregate updates)
+
+    public async Task UpdatePlayerStats(ulong characterId, ScrimEventAggregate updates)
     {
         Player? player = GetPlayerFromId(characterId);
         if (player is null)
@@ -2585,7 +2509,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         OverlayMessageData overlayMessageData = new()
         {
             RedrawPointGraph = maxPointsChanged,
-            MatchMaxPlayerPoints = MaxPlayerPointsTracker.GetMaxPoints()
+            MatchMaxPlayerPoints = MaxPlayerPointsTracker.MaxPoints
         };
 
         await SetPlayerParticipatingStatus(characterId, true);
@@ -2636,18 +2560,6 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
 
         return roundControls;
-    }
-
-    public int GetCurrentMatchRoundWeightedCapturesCount()
-    {
-        int totalControls = 0;
-
-        foreach (TeamDefinition teamOrdinal in _ordinalTeamMap.Keys)
-        {
-            totalControls += GetCurrentMatchRoundTeamBaseControlsCount(teamOrdinal);
-        }
-
-        return totalControls;
     }
 
     public int GetCurrentMatchRoundTeamWeightedCapturesCount(TeamDefinition teamOrdinal)
@@ -2915,17 +2827,22 @@ public class ScrimTeamsManager : IScrimTeamsManager
     #endregion Point Adjustments
 
     #region Player Status Updates
-    public void SetPlayerOnlineStatus(string characterId, bool isOnline)
+
+    public void SetPlayerOnlineStatus(ulong characterId, bool isOnline)
     {
         Player? player = GetPlayerFromId(characterId);
-        player.IsOnline = isOnline;
+        if (player is null)
+            return;
 
+        player.IsOnline = isOnline;
         SendPlayerStatUpdateMessage(player);
     }
 
-    public async Task SetPlayerParticipatingStatus(string characterId, bool isParticipating)
+    public async Task SetPlayerParticipatingStatus(ulong characterId, bool isParticipating)
     {
         Player? player = GetPlayerFromId(characterId);
+        if (player is null)
+            return;
 
         bool wasAlreadyParticipating = player.IsParticipating;
 
@@ -2951,27 +2868,30 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    public void SetPlayerBenchedStatus(string characterId, bool isBenched)
+    public void SetPlayerBenchedStatus(ulong characterId, bool isBenched)
     {
         Player? player = GetPlayerFromId(characterId);
-        player.IsBenched = isBenched;
-        player.IsActive = (!isBenched && player.IsParticipating);
-
-        SendPlayerStatUpdateMessage(player);
-    }
-
-    public void SetPlayerLoadoutId(string characterId, int? loadoutId)
-    {
-        if (loadoutId == null || loadoutId <= 0)
-        {
+        if (player is null)
             return;
-        }
 
-        Player? player = GetPlayerFromId(characterId);
-        player.LoadoutId = loadoutId;
-
+        player.IsBenched = isBenched;
+        player.IsActive = !isBenched && player.IsParticipating;
         SendPlayerStatUpdateMessage(player);
     }
+
+    public void SetPlayerLoadoutId(ulong characterId, int? loadoutId)
+    {
+        if (loadoutId is null or <= 0)
+            return;
+
+        Player? player = GetPlayerFromId(characterId);
+        if (player is null)
+            return;
+
+        player.LoadoutId = loadoutId;
+        SendPlayerStatUpdateMessage(player);
+    }
+
     #endregion
 
     #region Messaging

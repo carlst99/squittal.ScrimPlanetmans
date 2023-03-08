@@ -15,10 +15,10 @@ public class ScrimRevive
     public DateTime Timestamp { get; set; }
 
     [Required]
-    public string MedicCharacterId { get; set; }
+    public required ulong MedicCharacterId { get; set; }
 
     [Required]
-    public string RevivedCharacterId { get; set; }
+    public required ulong RevivedCharacterId { get; set; }
 
     [Required]
     public int ScrimMatchRound { get; set; }
@@ -26,8 +26,8 @@ public class ScrimRevive
     public ScrimActionType ActionType { get; set; }
 
     // Technically, different teams can have players from the same faction
-    public TeamDefinition MedicTeamOrdinal { get; set; }
-    public TeamDefinition RevivedTeamOrdinal { get; set; }
+    public TeamDefinition? MedicTeamOrdinal { get; set; }
+    public TeamDefinition? RevivedTeamOrdinal { get; set; }
 
     public int? MedicLoadoutId { get; set; }
     public int? RevivedLoadoutId { get; set; }

@@ -33,7 +33,7 @@ public class ScrimReviveActionEventMessage : ScrimActionEventMessage
         var actionDisplay = GetEnumValueName(reviveEvent.ActionType);
 
         Player player;
-        string otherCharacterId;
+        ulong otherCharacterId;
 
         if (reviveEvent.MedicPlayer != null)
         {

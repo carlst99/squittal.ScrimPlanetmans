@@ -15,10 +15,10 @@ public class ScrimDamageAssist
     public DateTime Timestamp { get; set; }
 
     [Required]
-    public string AttackerCharacterId { get; set; }
+    public ulong? AttackerCharacterId { get; set; }
 
     [Required]
-    public string VictimCharacterId { get; set; }
+    public ulong? VictimCharacterId { get; set; }
 
     [Required]
     public int ScrimMatchRound { get; set; }

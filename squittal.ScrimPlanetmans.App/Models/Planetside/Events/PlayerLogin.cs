@@ -6,7 +6,8 @@ namespace squittal.ScrimPlanetmans.App.Models.Planetside.Events;
 public class PlayerLogin
 {
     [Required]
-    public string CharacterId { get; set; }
+    public ulong CharacterId { get; set; }
+
     [Required]
     public DateTime Timestamp { get; set; }
 

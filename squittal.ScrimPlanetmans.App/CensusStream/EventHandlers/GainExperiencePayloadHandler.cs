@@ -57,11 +57,7 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
             Timestamp = payload.Timestamp.UtcDateTime,
             ZoneId = (int)payload.ZoneID.CombinedId,
             ExperienceType = experienceType,
-            ExperienceGainInfo = new ScrimActionExperienceGainInfo
-            {
-                Id = experienceId,
-                Amount = (int)payload.Amount
-            },
+            ExperienceGainInfo = new ScrimActionExperienceGainInfo(experienceId, (int)payload.Amount),
             LoadoutId = (int)payload.LoadoutID
         };
 
@@ -118,34 +114,30 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         CancellationToken ct
     )
     {
-        ScrimReviveActionEvent reviveEvent = new(baseEvent);
+        // Not much value in a revive that we only have one end of
+        if (payload.CharacterID is 0 || payload.OtherID is 0)
+            return;
 
-        string? medicId = payload.CharacterID is 0 ? null : payload.CharacterID.ToString();
-        string? revivedId = payload.OtherID is 0 ? null : payload.OtherID.ToString();
+        ulong medicId = payload.CharacterID;
+        ulong revivedId = payload.OtherID;
         bool involvesBenchedPlayer = false;
 
-        if (medicId is not null)
-        {
-            reviveEvent.MedicCharacterId = medicId;
-            Player? medicPlayer = _teamsManager.GetPlayerFromId(medicId);
-            reviveEvent.MedicPlayer = medicPlayer;
+        ScrimReviveActionEvent reviveEvent = new(baseEvent, medicId, revivedId);
 
-            if (medicPlayer is not null)
-            {
-                _teamsManager.SetPlayerLoadoutId(medicId, reviveEvent.LoadoutId);
-                involvesBenchedPlayer = involvesBenchedPlayer || medicPlayer.IsBenched;
-            }
+        Player? medicPlayer = _teamsManager.GetPlayerFromId(medicId);
+        reviveEvent.MedicPlayer = medicPlayer;
+
+        if (medicPlayer is not null)
+        {
+            _teamsManager.SetPlayerLoadoutId(medicId, reviveEvent.LoadoutId);
+            involvesBenchedPlayer = involvesBenchedPlayer || medicPlayer.IsBenched;
         }
 
-        if (revivedId is not null)
-        {
-            reviveEvent.RevivedCharacterId = revivedId;
-            Player? revivedPlayer = _teamsManager.GetPlayerFromId(revivedId);
-            reviveEvent.RevivedPlayer = revivedPlayer;
+        Player? revivedPlayer = _teamsManager.GetPlayerFromId(revivedId);
+        reviveEvent.RevivedPlayer = revivedPlayer;
 
-            if (revivedPlayer is not null)
-                involvesBenchedPlayer = involvesBenchedPlayer || revivedPlayer.IsBenched;
-        }
+        if (revivedPlayer is not null)
+            involvesBenchedPlayer = involvesBenchedPlayer || revivedPlayer.IsBenched;
 
         reviveEvent.ActionType = GetReviveScrimActionType(reviveEvent);
 
@@ -166,12 +158,12 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
                     {
                         ScrimMatchId = currentMatchId,
                         Timestamp = reviveEvent.Timestamp,
-                        MedicCharacterId = reviveEvent.MedicPlayer.Id,
-                        RevivedCharacterId = reviveEvent.RevivedPlayer.Id,
+                        MedicCharacterId = medicId,
+                        RevivedCharacterId = revivedId,
                         ScrimMatchRound = currentRound,
                         ActionType = reviveEvent.ActionType,
-                        MedicTeamOrdinal = reviveEvent.MedicPlayer.TeamOrdinal,
-                        RevivedTeamOrdinal = reviveEvent.RevivedPlayer.TeamOrdinal,
+                        MedicTeamOrdinal = reviveEvent.MedicPlayer?.TeamOrdinal,
+                        RevivedTeamOrdinal = reviveEvent.RevivedPlayer?.TeamOrdinal,
                         MedicLoadoutId = reviveEvent.MedicPlayer?.LoadoutId,
                         RevivedLoadoutId = reviveEvent.RevivedPlayer?.LoadoutId,
                         ExperienceGainId = reviveEvent.ExperienceGainInfo.Id,
@@ -193,11 +185,8 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
     private static ScrimActionType GetReviveScrimActionType(ScrimReviveActionEvent reviveEvent)
     {
         // Determine if this is involves a non-tracked player
-        if ((reviveEvent.MedicPlayer == null && !string.IsNullOrWhiteSpace(reviveEvent.MedicCharacterId))
-            || (reviveEvent.RevivedPlayer == null && !string.IsNullOrWhiteSpace(reviveEvent.RevivedCharacterId)))
-        {
+        if (reviveEvent.MedicPlayer is null || reviveEvent.RevivedPlayer is null)
             return ScrimActionType.OutsideInterference;
-        }
 
         bool isRevivedMax = false;
 
@@ -216,38 +205,42 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         CancellationToken ct
     )
     {
-        ScrimAssistActionEvent assistEvent = new(baseEvent);
+        // Sanity check
+        if (payload.CharacterID is 0)
+            return;
 
-        string? attackerId = payload.CharacterID is 0 ? null : payload.CharacterID.ToString();
-        string? victimId = payload.OtherID is 0 ? null : payload.OtherID.ToString();
-
+        ulong attackerId = payload.CharacterID;
+        ulong? victimId = payload.OtherID is 0 ? null : payload.OtherID;
         bool involvesBenchedPlayer = false;
 
-        if (attackerId is not null)
-        {
-            assistEvent.AttackerCharacterId = attackerId;
-            Player? attackerPlayer = _teamsManager.GetPlayerFromId(attackerId);
-            assistEvent.AttackerPlayer = attackerPlayer;
-
-            if (attackerPlayer is not null)
-            {
-                _teamsManager.SetPlayerLoadoutId(attackerId, assistEvent.LoadoutId);
-                involvesBenchedPlayer = involvesBenchedPlayer || attackerPlayer.IsBenched;
-            }
-        }
-
+        Player? attackerPlayer = _teamsManager.GetPlayerFromId(attackerId);
+        Player? victimPlayer = null;
         if (victimId is not null)
-        {
-            assistEvent.VictimCharacterId = victimId;
-            Player? victimPlayer = _teamsManager.GetPlayerFromId(victimId);
-            assistEvent.VictimPlayer = victimPlayer;
+            victimPlayer = _teamsManager.GetPlayerFromId(victimId.Value);
 
-            if (victimPlayer is not null)
-                involvesBenchedPlayer = involvesBenchedPlayer || victimPlayer.IsBenched;
+        // No point broadcasting an assist event for two characters we're not tracking
+        if (attackerPlayer is null && victimPlayer is null)
+            return;
+
+        ScrimAssistActionEvent assistEvent = new
+        (
+            baseEvent,
+            attackerId,
+            attackerPlayer,
+            victimId,
+            victimPlayer
+        );
+
+        if (attackerPlayer is not null)
+        {
+            _teamsManager.SetPlayerLoadoutId(attackerId, assistEvent.LoadoutId);
+            involvesBenchedPlayer = involvesBenchedPlayer || attackerPlayer.IsBenched;
         }
+
+        if (victimPlayer is not null)
+            involvesBenchedPlayer = involvesBenchedPlayer || victimPlayer.IsBenched;
 
         assistEvent.ActionType = GetAssistScrimActionType(assistEvent);
-
         if (assistEvent.ActionType != ScrimActionType.OutsideInterference)
         {
             if (_eventFilter.IsScoringEnabled && !involvesBenchedPlayer)
@@ -306,11 +299,8 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
     private static ScrimActionType GetAssistScrimActionType(ScrimAssistActionEvent assistEvent)
     {
         // Determine if this is involves a non-tracked player
-        if ((assistEvent.AttackerPlayer == null && !string.IsNullOrWhiteSpace(assistEvent.AttackerCharacterId))
-            || (assistEvent.VictimPlayer == null && !string.IsNullOrWhiteSpace(assistEvent.VictimCharacterId)))
-        {
+        if (assistEvent.AttackerPlayer is null || assistEvent.VictimPlayer is null)
             return ScrimActionType.OutsideInterference;
-        }
 
         bool isTeamkillAssist = assistEvent.AttackerPlayer != null
             && assistEvent.VictimPlayer != null
@@ -350,8 +340,8 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         {
             ScrimMatchId = matchId,
             Timestamp = assistEvent.Timestamp,
-            AttackerCharacterId = assistEvent.AttackerPlayer.Id,
-            VictimCharacterId = assistEvent.VictimPlayer.Id,
+            AttackerCharacterId = assistEvent.AttackerPlayer?.Id,
+            VictimCharacterId = assistEvent.VictimPlayer?.Id,
             ScrimMatchRound = matchRound,
             ActionType = assistEvent.ActionType,
             AttackerTeamOrdinal = assistEvent.AttackerPlayer.TeamOrdinal,
@@ -382,8 +372,8 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         {
             ScrimMatchId = matchId,
             Timestamp = assistEvent.Timestamp,
-            AttackerCharacterId = assistEvent.AttackerPlayer.Id,
-            VictimCharacterId = assistEvent.VictimPlayer.Id,
+            AttackerCharacterId = assistEvent.AttackerPlayer?.Id,
+            VictimCharacterId = assistEvent.VictimPlayer?.Id,
             ScrimMatchRound = matchRound,
             ActionType = assistEvent.ActionType,
             AttackerTeamOrdinal = assistEvent.AttackerPlayer.TeamOrdinal,
@@ -414,8 +404,8 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         {
             ScrimMatchId = matchId,
             Timestamp = assistEvent.Timestamp,
-            SpotterCharacterId = assistEvent.AttackerPlayer.Id,
-            VictimCharacterId = assistEvent.VictimPlayer.Id,
+            SpotterCharacterId = assistEvent.AttackerPlayer?.Id,
+            VictimCharacterId = assistEvent.VictimPlayer?.Id,
             ScrimMatchRound = matchRound,
             ActionType = assistEvent.ActionType,
             SpotterTeamOrdinal = assistEvent.AttackerPlayer.TeamOrdinal,
@@ -440,21 +430,22 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         CancellationToken ct
     )
     {
-        ScrimObjectiveTickActionEvent controlEvent = new(baseEvent);
-
-        string? playerId = payload.CharacterID is 0 ? null : payload.CharacterID.ToString();
-
-        if (playerId is null)
+        // Sanity check
+        if (payload.CharacterID is 0)
             return;
 
-        controlEvent.PlayerCharacterId = playerId;
+        ulong playerId = payload.CharacterID;
         Player? player = _teamsManager.GetPlayerFromId(playerId);
-        controlEvent.Player = player;
 
-        _teamsManager.SetPlayerLoadoutId(playerId, controlEvent.LoadoutId);
+        ScrimObjectiveTickActionEvent controlEvent = new(baseEvent, playerId)
+        {
+            Player = player
+        };
+
+        if (player is not null)
+            _teamsManager.SetPlayerLoadoutId(playerId, controlEvent.LoadoutId);
 
         controlEvent.ActionType = GetObjectiveTickScrimActionType(controlEvent);
-
         if (controlEvent.ActionType != ScrimActionType.Unknown)
         {
             if (_eventFilter.IsScoringEnabled && player?.IsBenched is false)

@@ -44,7 +44,7 @@ public class ScrimDeathActionEventMessage : ScrimActionEventMessage
     private string GetOutsideInterferenceInfo(ScrimDeathActionEvent deathEvent)
     {
         Player player;
-        string otherCharacterId;
+        ulong otherCharacterId;
 
         var weaponName = deathEvent.Weapon != null ? deathEvent.Weapon.Name : "Unknown weapon";
         var actionDisplay = GetEnumValueName(deathEvent.ActionType);

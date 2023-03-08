@@ -31,20 +31,18 @@ public class PlayerLogEventHandler : IPayloadHandler<IPlayerLogin>, IPayloadHand
     /// <inheritdoc />
     public Task HandleAsync(IPlayerLogin payload, CancellationToken ct = default)
     {
-        string characterId = payload.CharacterID.ToString();
-        Player? player = _teamsManager.GetPlayerFromId(characterId);
+        Player? player = _teamsManager.GetPlayerFromId(payload.CharacterID);
 
         // TODO: use ScrimActionLoginEvent instead of PlayerLogin
 
         PlayerLogin dataModel = new()
         {
-            CharacterId = characterId,
+            CharacterId = payload.CharacterID,
             Timestamp = payload.Timestamp.UtcDateTime,
             WorldId = (int)payload.WorldID
         };
 
         _scorer.HandlePlayerLogin(dataModel);
-
         if (player is not null)
             _messageService.BroadcastPlayerLoginMessage(new PlayerLoginMessage(player, dataModel));
 
@@ -54,20 +52,18 @@ public class PlayerLogEventHandler : IPayloadHandler<IPlayerLogin>, IPayloadHand
     /// <inheritdoc />
     public Task HandleAsync(IPlayerLogout payload, CancellationToken ct = default)
     {
-        string characterId = payload.CharacterID.ToString();
-        Player? player = _teamsManager.GetPlayerFromId(characterId);
+        Player? player = _teamsManager.GetPlayerFromId(payload.CharacterID);
 
         // TODO: use ScrimActionLogoutEvent instead of PlayerLogout
 
         PlayerLogout dataModel = new()
         {
-            CharacterId = characterId,
+            CharacterId = payload.CharacterID,
             Timestamp = payload.Timestamp.UtcDateTime,
             WorldId = (int)payload.WorldID
         };
 
         _scorer.HandlePlayerLogout(dataModel);
-
         if (player is not null)
             _messageService.BroadcastPlayerLogoutMessage(new PlayerLogoutMessage(player, dataModel));
 

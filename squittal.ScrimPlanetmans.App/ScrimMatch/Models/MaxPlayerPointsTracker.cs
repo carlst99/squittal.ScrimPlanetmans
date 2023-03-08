@@ -4,34 +4,29 @@ namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 public class MaxPlayerPointsTracker
 {
-    private int _points = 0;
-    public string _owningCharacterId;
+    private readonly AutoResetEvent _autoEvent = new(true);
 
-    private readonly AutoResetEvent _autoEvent = new AutoResetEvent(true);
+    public int MaxPoints { get; private set; }
+    public ulong? OwningCharacterId { get; private set; }
 
-    public bool TryUpdateMaxPoints(int points, string characterId)
+    public bool TryUpdateMaxPoints(int points, ulong characterId)
     {
-        if (string.IsNullOrWhiteSpace(characterId))
-        {
-            return false;
-        }
-
         _autoEvent.WaitOne();
 
-        if (string.IsNullOrWhiteSpace(_owningCharacterId))
+        if (OwningCharacterId is null)
         {
-            _points = points;
-            _owningCharacterId = characterId;
+            MaxPoints = points;
+            OwningCharacterId = characterId;
 
             _autoEvent.Set();
 
             return true;
         }
 
-        if (points > _points)
+        if (points > MaxPoints)
         {
-            _points = points;
-            _owningCharacterId = characterId;
+            MaxPoints = points;
+            OwningCharacterId = characterId;
 
             _autoEvent.Set();
 
@@ -40,15 +35,5 @@ public class MaxPlayerPointsTracker
 
         _autoEvent.Set();
         return false;
-    }
-
-    public int GetMaxPoints()
-    {
-        return _points;
-    }
-
-    public string GetOwningCharacterId()
-    {
-        return _owningCharacterId;
     }
 }

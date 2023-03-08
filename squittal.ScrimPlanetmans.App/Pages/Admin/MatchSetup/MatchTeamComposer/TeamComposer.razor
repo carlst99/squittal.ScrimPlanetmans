@@ -371,7 +371,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var storeConstructedTeams = await ConstructedTeamsService.GetConstructedTeams();
+        var storeConstructedTeams = await ConstructedTeamsService.GetConstructedTeamsAsync();
         _availableConstructedTeams.AddRange(storeConstructedTeams);
     }
 
@@ -450,7 +450,7 @@
                     _validOutfitAliasHistory.Add(newAliasLower);
                     _inputAlias.Alias = string.Empty;
 
-                    var success = await TeamsManager.AddOutfitAliasToTeam(i_teamOrdinal, newAliasLower, newAlias);
+                    var success = await TeamsManager.AddOutfitAliasToTeam(i_teamOrdinal, newAliasLower);
 
                     _teamOutfitsLoading.Remove(newAliasLower);
                 }
@@ -605,7 +605,7 @@
 
             try
             {
-                var newTeam = await ConstructedTeamsService.GetConstructedTeam(newSelection.ConstructedTeamId, true);
+                var newTeam = await ConstructedTeamsService.GetConstructedTeamAsync(newSelection.ConstructedTeamId, true);
 
                 if (newTeam != null)
                 {

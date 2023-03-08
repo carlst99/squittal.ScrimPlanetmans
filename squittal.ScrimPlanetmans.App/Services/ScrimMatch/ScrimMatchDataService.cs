@@ -226,7 +226,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
         }
     }
 
-    public async Task<bool> TryRemoveMatchParticipatingPlayer(string characterId)
+    public async Task<bool> TryRemoveMatchParticipatingPlayer(ulong characterId)
     {
         var matchId = CurrentMatchId;
 

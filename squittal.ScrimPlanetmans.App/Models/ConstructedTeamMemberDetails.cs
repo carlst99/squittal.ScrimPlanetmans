@@ -2,23 +2,18 @@
 
 public class ConstructedTeamMemberDetails
 {
-    public string CharacterId { get; set; }
-    public int ConstructedTeamId { get; set; }
-    public int FactionId { get; set; }
+    public required ulong CharacterId { get; init; }
+    public required int ConstructedTeamId { get; init; }
+    public required int FactionId { get; init; }
+    public required string NameFull { get; init; }
+    public string? NameAlias { get; set; }
+    public int WorldId { get; init; }
+    public int PrestigeLevel { get; init; }
+    public bool IsMatchParticipant { get; set; }
 
-    public string NameFull { get; set; }
-    public string NameAlias { get; set; }
+    public bool IsDeleteAllowed => !IsMatchParticipant;
 
-    public string NameDisplay
-    {
-        get
-        {
-            return string.IsNullOrWhiteSpace(NameAlias) ? NameFull : NameAlias;
-        }
-    }
-
-    public int? WorldId { get; set; }
-    public int? PrestigeLevel { get; set; }
-    public bool IsMatchParticipant { get; set; } = false;
-    public bool IsDeleteAllowed { get => !IsMatchParticipant; }
+    public string NameDisplay => string.IsNullOrWhiteSpace(NameAlias)
+        ? NameFull
+        : NameAlias;
 }

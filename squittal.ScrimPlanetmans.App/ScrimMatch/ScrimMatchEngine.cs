@@ -317,14 +317,11 @@ public class ScrimMatchEngine : IScrimMatchEngine
 
     public void SubmitPlayersList()
     {
-        foreach (string id in _teamsManager.GetAllPlayerIds())
-        {
-            if (ulong.TryParse(id, out ulong parsed))
-                _eventFilter.AddCharacter(parsed);
-        }
+        foreach (ulong id in _teamsManager.GetAllPlayerIds())
+            _eventFilter.AddCharacter(id);
     }
 
-    private async Task OnMatchTimerTick(object sender, ScrimMessageEventArgs<MatchTimerTickMessage> e)
+    private async Task OnMatchTimerTick(object? sender, ScrimMessageEventArgs<MatchTimerTickMessage> e)
     {
         var message = e.Message;
 

@@ -1,6 +1,8 @@
 ﻿@using System.Collections.Concurrent;
+@using DbgCensus.Core.Objects
 @using squittal.ScrimPlanetmans.App.Data.Models
 @using squittal.ScrimPlanetmans.App.Models
+@using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.Forms
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.Pages.Shared;
@@ -141,7 +143,7 @@
             InvokeAsyncStateHasChanged();
 
             //var characters = await ConstructedTeamsService.GetConstructedTeamFactionCharacters(_renderedTeamId, _renderedFactionId);
-            var characters = await ConstructedTeamsService.GetConstructedTeamFactionMemberDetails(_renderedTeamId, _renderedFactionId);
+            var characters = await ConstructedTeamsService.GetConstructedTeamFactionMemberDetailsAsync(_renderedTeamId, _renderedFactionId);
 
             await InvokeAsync(() =>
             {
@@ -183,7 +185,7 @@
 
         if (changeType == ConstructedTeamMemberChangeType.Add)
         {
-            if (message.Character.FactionId != _renderedFactionId)
+            if (message.Character?.FactionId != (FactionDefinition)_renderedFactionId)
             {
                 return;
             }
@@ -295,14 +297,17 @@
         });
     }
 
-    private Character GetPlaceholderCharacter(ConstructedTeamPlayerMembership membership)
+    private CensusCharacter GetPlaceholderCharacter(ConstructedTeamPlayerMembership membership)
     {
-        return new Character
-        {
-            Name = string.Empty,
-            Id = membership.CharacterId,
-            FactionId = membership.FactionId
-        };
+        return new CensusCharacter
+        (
+            membership.CharacterId,
+            new CensusCharacter.CharacterName(string.Empty),
+            (FactionDefinition)membership.FactionId,
+            0,
+            WorldDefinition.Jaeger,
+            null
+        );
     }
     #endregion CharacterProcessing
 
@@ -313,10 +318,7 @@
 
     private void InvokeAsyncStateHasChanged()
     {
-        InvokeAsync(() =>
-        {
-            StateHasChanged();
-        });
+        InvokeAsync(StateHasChanged);
     }
 
 }

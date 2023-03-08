@@ -10,16 +10,16 @@ namespace squittal.ScrimPlanetmans.App.Data.Models;
 public class ScrimDeath
 {
     [Required]
-    public string ScrimMatchId { get; set; }
+    public required string ScrimMatchId { get; init; }
 
     [Required]
     public DateTime Timestamp { get; set; }
 
     [Required]
-    public string? AttackerCharacterId { get; set; }
+    public ulong? AttackerCharacterId { get; set; }
 
     [Required]
-    public string? VictimCharacterId { get; set; }
+    public required ulong VictimCharacterId { get; set; }
 
     [Required]
     public int ScrimMatchRound { get; set; }
@@ -27,20 +27,20 @@ public class ScrimDeath
     public ScrimActionType ActionType { get; set; }
     public DeathEventType DeathType { get; set; }
 
-    public TeamDefinition AttackerTeamOrdinal { get; set; }
-    public TeamDefinition VictimTeamOrdinal { get; set; }
+    public TeamDefinition? AttackerTeamOrdinal { get; set; }
+    public TeamDefinition? VictimTeamOrdinal { get; set; }
 
-    public string AttackerNameFull { get; set; }
-    public int AttackerFactionId { get; set; }
+    public string? AttackerNameFull { get; set; }
+    public int? AttackerFactionId { get; set; }
     public int? AttackerLoadoutId { get; set; }
-    public string AttackerOutfitId { get; set; }
-    public string AttackerOutfitAlias { get; set; }
-    public bool AttackerIsOutfitless { get; set; }
+    public ulong? AttackerOutfitId { get; set; }
+    public string? AttackerOutfitAlias { get; set; }
+    public bool? AttackerIsOutfitless { get; set; }
 
-    public string VictimNameFull { get; set; }
-    public int VictimFactionId { get; set; }
-    public int? VictimLoadoutId { get; set; }
-    public string? VictimOutfitId { get; set; }
+    public required string VictimNameFull { get; init; }
+    public required int VictimFactionId { get; init; }
+    public required int VictimLoadoutId { get; init; }
+    public ulong? VictimOutfitId { get; set; }
     public string? VictimOutfitAlias { get; set; }
     public bool VictimIsOutfitless { get; set; }
 

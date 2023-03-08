@@ -54,9 +54,21 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
     /// <inheritdoc />
     public async Task HandleAsync(IDeath payload, CancellationToken ct = default)
     {
+        // Sanity check
+        if (payload.CharacterID is 0)
+            return;
+
         bool involvesBenchedPlayer = false;
-        string attackerId = payload.AttackerCharacterID.ToString();
-        string victimId = payload.CharacterID.ToString();
+        ulong attackerId = payload.AttackerCharacterID;
+        ulong victimId = payload.CharacterID;
+        bool isSuicide = attackerId is 0 || attackerId == victimId;
+
+        Player? victimPlayer = _teamsManager.GetPlayerFromId(victimId);
+        Player? attackerPlayer = _teamsManager.GetPlayerFromId(attackerId);
+
+        // No point broadcasting a death event for a victim we're not tracking
+        if (victimPlayer is null)
+            return;
 
         ScrimActionWeaponInfo weapon;
         Item? weaponItem = await _itemService.GetWeaponItemAsync((int)payload.AttackerWeaponID);
@@ -64,23 +76,26 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
         if (weaponItem is not null)
         {
             weapon = new ScrimActionWeaponInfo
-            {
-                Id = weaponItem.Id,
-                ItemCategoryId = weaponItem.ItemCategoryId,
-                Name = weaponItem.Name ?? "Unknown weapon",
-                IsVehicleWeapon = weaponItem.IsVehicleWeapon
-            };
+            (
+                weaponItem.Id,
+                weaponItem.ItemCategoryId,
+                weaponItem.Name ?? "Unknown weapon",
+                weaponItem.IsVehicleWeapon
+            );
         }
         else
         {
-            weapon = new ScrimActionWeaponInfo
-            {
-                Id = (int)payload.AttackerWeaponID
-            };
+            weapon = new ScrimActionWeaponInfo((int)payload.AttackerWeaponID, null, null, null);
         }
 
         ScrimDeathActionEvent deathEvent = new()
         {
+            VictimCharacterId = victimId,
+            AttackerCharacterId = isSuicide ? victimId : attackerId,
+            VictimPlayer = victimPlayer,
+            AttackerPlayer = isSuicide ? victimPlayer : attackerPlayer,
+            VictimLoadoutId = (int)payload.CharacterLoadoutID,
+            AttackerLoadoutId = (int)(isSuicide ? payload.CharacterLoadoutID : payload.AttackerLoadoutID),
             Timestamp = payload.Timestamp.UtcDateTime,
             ZoneId = (int)payload.ZoneID.CombinedId,
             IsHeadshot = payload.IsHeadshot,
@@ -89,61 +104,32 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
 
         try
         {
-            if (payload.AttackerCharacterID is not 0)
+            _teamsManager.SetPlayerLoadoutId(victimId, (int)payload.CharacterLoadoutID);
+            involvesBenchedPlayer = involvesBenchedPlayer || victimPlayer.IsBenched;
+
+            if (attackerPlayer is not null)
             {
-                deathEvent.AttackerCharacterId = attackerId;
-                deathEvent.AttackerLoadoutId = (int)payload.AttackerLoadoutID;
-
-                Player? attackerPlayer = _teamsManager.GetPlayerFromId(attackerId);
-                deathEvent.AttackerPlayer = attackerPlayer;
-
-                if (attackerPlayer is not null)
-                {
-                    _teamsManager.SetPlayerLoadoutId(attackerId, deathEvent.AttackerLoadoutId);
-                    involvesBenchedPlayer = involvesBenchedPlayer || attackerPlayer.IsBenched;
-                }
-            }
-
-            if (payload.CharacterID is not 0)
-            {
-                deathEvent.VictimCharacterId = victimId;
-                deathEvent.VictimLoadoutId = (int)payload.CharacterLoadoutID;
-
-                Player? victimPlayer = _teamsManager.GetPlayerFromId(victimId);
-                deathEvent.VictimPlayer = victimPlayer;
-
-                if (victimPlayer is not null)
-                {
-                    _teamsManager.SetPlayerLoadoutId(victimId, deathEvent.VictimLoadoutId);
-                    involvesBenchedPlayer = involvesBenchedPlayer || victimPlayer.IsBenched;
-                }
+                _teamsManager.SetPlayerLoadoutId(attackerId, (int)payload.AttackerLoadoutID);
+                involvesBenchedPlayer = involvesBenchedPlayer || attackerPlayer.IsBenched;
             }
 
             deathEvent.ActionType = GetDeathScrimActionType(deathEvent);
-
             if (deathEvent.ActionType != ScrimActionType.OutsideInterference)
             {
                 deathEvent.DeathType = GetDeathEventType(deathEvent.ActionType);
 
-                if (deathEvent.DeathType == DeathEventType.Suicide)
-                {
-                    deathEvent.AttackerPlayer = deathEvent.VictimPlayer;
-                    deathEvent.AttackerCharacterId = deathEvent.VictimCharacterId;
-                    deathEvent.AttackerLoadoutId = deathEvent.VictimLoadoutId;
-                }
-
                 if (_eventFilter.IsScoringEnabled && !involvesBenchedPlayer)
                 {
-                    var scoringResult = await _scorer.ScoreDeathEventAsync(deathEvent, ct);
+                    ScrimEventScoringResult scoringResult = await _scorer.ScoreDeathEventAsync(deathEvent, ct);
                     deathEvent.Points = scoringResult.Points;
                     deathEvent.IsBanned = scoringResult.IsBanned;
 
-                    var currentMatchId = _scrimMatchService.CurrentMatchId;
-                    var currentRound = _scrimMatchService.CurrentMatchRound;
+                    string currentMatchId = _scrimMatchService.CurrentMatchId;
+                    int currentRound = _scrimMatchService.CurrentMatchRound;
 
                     if (_eventFilter.IsEventStoringEnabled && !string.IsNullOrWhiteSpace(currentMatchId))
                     {
-                        var dataModel = new ScrimDeath
+                        ScrimDeath dataModel = new()
                         {
                             ScrimMatchId = currentMatchId,
                             Timestamp = deathEvent.Timestamp,
@@ -154,23 +140,23 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
                             DeathType = deathEvent.DeathType,
                             ZoneId = (int)deathEvent.ZoneId,
                             WorldId = (int)payload.WorldID,
-                            AttackerTeamOrdinal = deathEvent.AttackerPlayer.TeamOrdinal,
-                            AttackerFactionId = deathEvent.AttackerPlayer.FactionId,
-                            AttackerNameFull = deathEvent.AttackerPlayer.NameFull,
-                            AttackerLoadoutId = deathEvent.AttackerPlayer.LoadoutId,
-                            AttackerOutfitId = deathEvent.AttackerPlayer.IsOutfitless ? null : deathEvent.AttackerPlayer.OutfitId,
-                            AttackerOutfitAlias = deathEvent.AttackerPlayer.IsOutfitless ? null : deathEvent.AttackerPlayer.OutfitAlias,
-                            AttackerIsOutfitless = deathEvent.AttackerPlayer.IsOutfitless,
+                            AttackerTeamOrdinal = deathEvent.AttackerPlayer?.TeamOrdinal,
+                            AttackerFactionId = deathEvent.AttackerPlayer?.FactionId,
+                            AttackerNameFull = deathEvent.AttackerPlayer?.NameFull,
+                            AttackerLoadoutId = deathEvent.AttackerPlayer?.LoadoutId,
+                            AttackerOutfitId = deathEvent.AttackerPlayer?.OutfitId,
+                            AttackerOutfitAlias = deathEvent.AttackerPlayer?.OutfitAlias,
+                            AttackerIsOutfitless = deathEvent.AttackerPlayer?.IsOutfitless,
                             VictimTeamOrdinal = deathEvent.VictimPlayer.TeamOrdinal,
                             VictimFactionId = deathEvent.VictimPlayer.FactionId,
                             VictimNameFull = deathEvent.VictimPlayer.NameFull,
-                            VictimLoadoutId = deathEvent.VictimPlayer.LoadoutId,
+                            VictimLoadoutId = deathEvent.VictimLoadoutId,
                             VictimOutfitId = deathEvent.VictimPlayer.IsOutfitless ? null : deathEvent.VictimPlayer.OutfitId,
                             VictimOutfitAlias = deathEvent.VictimPlayer.IsOutfitless ? null : deathEvent.VictimPlayer.OutfitAlias,
                             VictimIsOutfitless = deathEvent.VictimPlayer.IsOutfitless,
-                            WeaponId = deathEvent.Weapon?.Id,
-                            WeaponItemCategoryId = deathEvent.Weapon?.ItemCategoryId,
-                            IsVehicleWeapon = deathEvent.Weapon?.IsVehicleWeapon,
+                            WeaponId = deathEvent.Weapon.Id,
+                            WeaponItemCategoryId = deathEvent.Weapon.ItemCategoryId,
+                            IsVehicleWeapon = deathEvent.Weapon.IsVehicleWeapon,
                             AttackerVehicleId = deathEvent.AttackerVehicleId,
                             IsHeadshot = deathEvent.IsHeadshot,
                             Points = deathEvent.Points,
@@ -197,15 +183,12 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
     private ScrimActionType GetDeathScrimActionType(ScrimDeathActionEvent death)
     {
         // Determine if this is involves a non-tracked player
-        if ((death.AttackerPlayer == null && !string.IsNullOrWhiteSpace(death.AttackerCharacterId))
-            || (death.VictimPlayer == null && !string.IsNullOrWhiteSpace(death.VictimCharacterId)))
-        {
+        if (death.AttackerPlayer is null)
             return ScrimActionType.OutsideInterference;
-        }
 
         bool attackerIsVehicle = death.Weapon is { IsVehicleWeapon: true };
-        bool attackerIsMax = death.AttackerLoadoutId != null && ProfileService.IsMaxLoadoutId(death.AttackerLoadoutId);
-        bool victimIsMax = death.VictimLoadoutId != null && ProfileService.IsMaxLoadoutId(death.VictimLoadoutId);
+        bool attackerIsMax = ProfileService.IsMaxLoadoutId(death.AttackerLoadoutId);
+        bool victimIsMax = ProfileService.IsMaxLoadoutId(death.VictimLoadoutId);
         bool sameTeam = _teamsManager.DoPlayersShareTeam(death.AttackerPlayer, death.VictimPlayer);
         bool samePlayer = (death.AttackerPlayer == death.VictimPlayer || death.AttackerPlayer == null);
 

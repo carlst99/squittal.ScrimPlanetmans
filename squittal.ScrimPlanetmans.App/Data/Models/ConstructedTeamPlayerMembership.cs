@@ -8,7 +8,7 @@ public class ConstructedTeamPlayerMembership
     public int ConstructedTeamId { get; set; }
 
     [Required]
-    public string CharacterId { get; set; }
+    public required ulong CharacterId { get; set; }
 
     public int FactionId { get; set; }
 
