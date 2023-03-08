@@ -1,24 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using DbgCensus.EventStream.Abstractions.Objects.Events;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 public static class ExperienceEventsBuilder
 {
-    public static int[] ReviveIds =
+    private static readonly int[] ReviveIds =
     {
         7,      // Revive (75xp)
         53      // Squad Revive (100xp)
     };
 
-    public static int[] SpawnIds =
+    private static readonly int[] SpawnIds =
     {
         56,     // Squad Spawn (10xp)
         223    // Sunderer Spawn Bonus (5xp) - DOESN'T RETURN WHO SPAWNED
     };
 
-    public static int[] PointControlIds =
+    private static readonly int[] PointControlIds =
     {
         15,     // Control Point - Defend (100xp) (killing someone on/from point?)
         16,     // Control Point - Attack (100xp) (killing someone on/from point?)
@@ -27,7 +28,7 @@ public static class ExperienceEventsBuilder
         557     // Objective Pulse Capture (100xp)
     };
 
-    public static int[] DamageAssistIds =
+    private static readonly int[] DamageAssistIds =
     {
         2,      // Kill Player Assist (100xp)
         //335,    // Savior Kill (Non MAX) (25xp)
@@ -35,7 +36,7 @@ public static class ExperienceEventsBuilder
         372     // Kill Player High Priority Assist (300xp)
     };
 
-    public static int[] UtilityAssistIds =
+    private static readonly int[] UtilityAssistIds =
     {
         /*
         5,      // Heal Assis (5xp)
@@ -54,7 +55,7 @@ public static class ExperienceEventsBuilder
         54      // Squad Spot Kill (30xp)
     };
 
-    public static int[] GrenadeAssistIds =
+    private static readonly int[] GrenadeAssistIds =
     {
         550,    // Concussion Grenade Assist (50xp)
         551,    // Concussion Grenade Squad Assist (75xp)
@@ -64,27 +65,27 @@ public static class ExperienceEventsBuilder
         555     // Flashbang Squad Assist (75xp)
     };
 
-    public static int[] HealSupportAssistIds =
+    private static readonly int[] HealSupportAssistIds =
     {
         5,      // Heal Assist (5xp)
         438,    // Shield Repair (10xp)
         439     // Squad Shield Repair (15xp)
     };
 
-    public static int[] SpotAssistIds =
+    private static readonly int[] SpotAssistIds =
     {
         36,     // Spot Kill (20xp)
         54      // Squad Spot Kill (30xp)
     };
 
-    public static int[] ProtectAlliesAssistIds =
+    private static readonly int[] ProtectAlliesAssistIds =
     {
         335,    // Savior Kill (Non MAX) (25xp)
         1393,   // Hardlight Cover - Blocking Exp (placeholder until code is done) (50xp)
         1394    // Draw Fire Award (25xp)
     };
 
-    public static int[] BannedIds =
+    private static readonly int[] BannedIds =
     {
         293,    // Motion Detect (10xp)
         294,    // Squad Motion Spot (15xp)
@@ -97,12 +98,12 @@ public static class ExperienceEventsBuilder
 
     public static IEnumerable<int> GetAllExperienceIds()
     {
-        var xpIdCount = ReviveIds.Length
+        int xpIdCount = ReviveIds.Length
             + PointControlIds.Length
             + DamageAssistIds.Length
             + UtilityAssistIds.Length;
 
-        var allIds = new int[xpIdCount];
+        int[] allIds = new int[xpIdCount];
 
         int insertIndex = 0;
 
@@ -111,11 +112,11 @@ public static class ExperienceEventsBuilder
         insertIndex += ReviveIds.Length;
 
         Array.Copy(PointControlIds, 0, allIds, insertIndex, PointControlIds.Length);
-            
+
         insertIndex += PointControlIds.Length;
 
         Array.Copy(DamageAssistIds, 0, allIds, insertIndex, DamageAssistIds.Length);
-            
+
         insertIndex += DamageAssistIds.Length;
 
         Array.Copy(UtilityAssistIds, 0, allIds, insertIndex, UtilityAssistIds.Length);
@@ -124,53 +125,35 @@ public static class ExperienceEventsBuilder
     }
 
     public static IEnumerable<string> GetExperienceEvents()
-    {
-        var events = new List<string>();
-
-        var allIds = GetAllExperienceIds();
-
-        events = allIds.Select(id => $"GainExperience_experience_id_{id.ToString()}").ToList();
-
-        return events;
-    }
+        => GetAllExperienceIds()
+            .Select(EventNames.GetExperienceEventName);
 
     public static ExperienceType GetExperienceTypeFromId(int experienceId)
     {
         if (ReviveIds.Contains(experienceId))
-        {
             return ExperienceType.Revive;
-        }
-        else if (PointControlIds.Contains(experienceId))
-        {
+
+        if (PointControlIds.Contains(experienceId))
             return ExperienceType.PointControl;
-        }
-        else if (DamageAssistIds.Contains(experienceId))
-        {
+
+        if (DamageAssistIds.Contains(experienceId))
             return ExperienceType.DamageAssist;
-        }
-        else if (GrenadeAssistIds.Contains(experienceId))
-        {
+
+        if (GrenadeAssistIds.Contains(experienceId))
             return ExperienceType.GrenadeAssist;
-        }
-        else if (HealSupportAssistIds.Contains(experienceId))
-        {
+
+        if (HealSupportAssistIds.Contains(experienceId))
             return ExperienceType.HealSupportAssist;
-        }
-        else if (SpotAssistIds.Contains(experienceId))
-        {
+
+        if (SpotAssistIds.Contains(experienceId))
             return ExperienceType.SpotAssist;
-        }
-        else if (ProtectAlliesAssistIds.Contains(experienceId))
-        {
+
+        if (ProtectAlliesAssistIds.Contains(experienceId))
             return ExperienceType.ProtectAlliesAssist;
-        }
-        else if (UtilityAssistIds.Contains(experienceId))
-        {
+
+        if (UtilityAssistIds.Contains(experienceId))
             return ExperienceType.UtilityAssist;
-        }
-        else
-        {
-            return ExperienceType.Unknown;
-        }
+
+        return ExperienceType.Unknown;
     }
 }
