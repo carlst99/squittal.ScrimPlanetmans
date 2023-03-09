@@ -116,9 +116,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Data\SQL\CensusBackups\dbo.FacilityType.Table.sql">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="Data\SQL\CensusBackups\dbo.Faction.Table.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

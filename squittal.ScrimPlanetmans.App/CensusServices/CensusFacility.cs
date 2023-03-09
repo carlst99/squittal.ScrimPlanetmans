@@ -24,27 +24,10 @@ public class CensusFacility
         return await query.GetBatchAsync<CensusMapRegionModel>();
     }
 
-    public async Task<IEnumerable<CensusFacilityTypeModel>> GetAllFacilityTypes()
-    {
-        var query = _queryFactory.Create("facility_type");
-
-        query.ShowFields("facility_type_id", "description");
-
-        query.SetLimit(100);
-
-        return await query.GetBatchAsync<CensusFacilityTypeModel>();
-    }
-
     public async Task<int> GetMapRegionsCount()
     {
         var results = await GetAllMapRegions();
 
-        return results.Count();
-    }
-
-    public async Task<int> GetFacilityTypesCount()
-    {
-        var results = await GetAllFacilityTypes();
         return results.Count();
     }
 }

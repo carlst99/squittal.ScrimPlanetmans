@@ -19,7 +19,6 @@ public class PlanetmansDbContext : DbContext
 
     #region Census DbSets
     public DbSet<Faction> Factions { get; set; }
-    public DbSet<FacilityType> FacilityTypes { get; set; }
     public DbSet<Item> Items { get; set; }
     public DbSet<ItemCategory> ItemCategories { get; set; }
     public DbSet<Loadout> Loadouts { get; set; }
@@ -89,7 +88,6 @@ public class PlanetmansDbContext : DbContext
 
         #region Census Configuration
         builder.ApplyConfiguration(new FactionConfiguration());
-        builder.ApplyConfiguration(new FacilityTypeConfiguration());
         builder.ApplyConfiguration(new ItemConfiguration());
         builder.ApplyConfiguration(new ItemCategoryConfiguration());
         builder.ApplyConfiguration(new LoadoutConfiguration());

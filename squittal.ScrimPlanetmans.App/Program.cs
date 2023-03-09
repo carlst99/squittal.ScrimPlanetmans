@@ -125,7 +125,6 @@ public class Program
         services.AddSingleton<IItemService, ItemService>();
         services.AddSingleton<IItemCategoryService, ItemCategoryService>();
         services.AddSingleton<IFacilityService, FacilityService>();
-        services.AddTransient<IFacilityTypeService, FacilityTypeService>();
         services.AddTransient<IVehicleService, VehicleService>();
         services.AddSingleton<IWorldService, WorldService>();
         services.AddSingleton<IOutfitService, OutfitService>();
