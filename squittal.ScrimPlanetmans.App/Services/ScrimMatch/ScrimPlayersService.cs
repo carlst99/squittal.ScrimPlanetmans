@@ -5,19 +5,18 @@ using System.Threading.Tasks;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
-using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 
 public class ScrimPlayersService : IScrimPlayersService
 {
-    private readonly IOutfitService _outfits;
+    private readonly ICensusOutfitService _outfitService;
     private readonly ICensusCharacterService _characterService;
 
-    public ScrimPlayersService(IOutfitService outfits, ICensusCharacterService characterService)
+    public ScrimPlayersService(ICensusOutfitService outfitService, ICensusCharacterService characterService)
     {
-        _outfits = outfits;
+        _outfitService = outfitService;
         _characterService = characterService;
     }
 
@@ -73,24 +72,31 @@ public class ScrimPlayersService : IScrimPlayersService
 
     public async Task<IEnumerable<Player>?> GetPlayersFromOutfitAliasAsync(string alias, CancellationToken ct = default)
     {
-        IEnumerable<CensusCharacter>? censusMembers = await _outfits.GetOutfitMembersByAliasAsync(alias);
-        if (censusMembers is null)
+        CensusOutfit? outfit = await _outfitService.GetByAliasAsync(alias, ct);
+        if (outfit is null)
             return null;
 
-        // ReSharper disable twice PossibleMultipleEnumeration
-
-        IReadOnlyList<CensusCharactersOnlineStatus>? onlineStatus = await _characterService.GetOnlineStatusAsync
+        IReadOnlyList<CensusCharacter>? characters = await _characterService.GetByIdAsync
         (
-            censusMembers.Select(m => m.CharacterId),
+            outfit.Members.Select(m => m.CharacterId),
             ct
         );
 
-        return censusMembers.Select
+        if (characters is null)
+            return null;
+
+        IReadOnlyList<CensusCharactersOnlineStatus>? onlineStatus = await _characterService.GetOnlineStatusAsync
         (
-            m => new Player
+            outfit.Members.Select(m => m.CharacterId),
+            ct
+        );
+
+        return characters.Select
+        (
+            c => new Player
             (
-                m,
-                onlineStatus?.FirstOrDefault(x => x.CharacterId == m.CharacterId)?.OnlineStatus ?? false
+                c,
+                onlineStatus?.FirstOrDefault(x => x.CharacterId == c.CharacterId)?.OnlineStatus ?? false
             )
         );
     }

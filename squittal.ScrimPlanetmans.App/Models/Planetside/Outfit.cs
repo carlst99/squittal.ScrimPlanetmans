@@ -1,27 +1,23 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
-using squittal.ScrimPlanetmans.App.Models.CensusRest;
-
-namespace squittal.ScrimPlanetmans.App.Models.Planetside;
+﻿namespace squittal.ScrimPlanetmans.App.Models.Planetside;
 
 public class Outfit
 {
-    [Required]
-    public string Id { get; set; }
+    public ulong Id { get; }
+    public string Name { get; }
+    public string Alias { get; }
+    public string AliasLower { get; }
 
-    public string Name { get; set; }
-    public string Alias { get; set; }
-    public string AliasLower { get; set; }
-    public DateTime CreatedDate { get; set; }
-    public string LeaderCharacterId { get; set; }
     public int MemberCount { get; set; }
-    public int MembersOnlineCount { get; set; } = 0;
+    public int MembersOnlineCount { get; set; }
     public int? FactionId { get; set; }
     public int? WorldId { get; set; }
+    public TeamDefinition? TeamOrdinal { get; set; }
 
-    public TeamDefinition TeamOrdinal { get; set; }
-
-    public Faction Faction { get; set; }
-    public World World { get; set; }
-    public CensusCharacter LeaderCharacter { get; set; }
+    public Outfit(ulong id, string name, string alias)
+    {
+        Id = id;
+        Name = name;
+        Alias = alias;
+        AliasLower = alias.ToLower();
+    }
 }

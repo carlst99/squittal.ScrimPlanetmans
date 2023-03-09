@@ -443,7 +443,7 @@
 
             try
             {
-                newOutfit = await OutfitService.GetOutfitByAliasAsync(newAliasLower);
+                newOutfit = await OutfitService.GetByAliasAsync(newAliasLower);
 
                 if (newOutfit != null && newOutfit.MemberCount > 0)
                 {

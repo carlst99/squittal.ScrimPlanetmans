@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Threading;
 using System.Threading.Tasks;
-using DaybreakGames.Census.Exceptions;
-using Microsoft.Extensions.Logging;
+using DbgCensus.Core.Objects;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
-using squittal.ScrimPlanetmans.App.CensusServices;
-using squittal.ScrimPlanetmans.App.CensusServices.Models;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
@@ -15,126 +10,44 @@ namespace squittal.ScrimPlanetmans.App.Services.Planetside;
 
 public class OutfitService : IOutfitService
 {
-    private readonly CensusOutfit _censusOutfit;
+    private readonly ICensusOutfitService _outfitService;
     private readonly ICensusCharacterService _characterService;
-    private readonly ILogger<OutfitService> _logger;
 
-    public OutfitService(CensusOutfit censusOutfit, ICensusCharacterService characterService, ILogger<OutfitService> logger)
+    public OutfitService
+    (
+        ICensusOutfitService outfitService,
+        ICensusCharacterService characterService
+    )
     {
-        _censusOutfit = censusOutfit;
+        _outfitService = outfitService;
         _characterService = characterService;
-        _logger = logger;
     }
 
-    public async Task<Outfit?> GetOutfitAsync(string outfitId)
-        => await GetOutfitInternalAsync(outfitId);
-
-    public async Task<Outfit?> GetOutfitByAliasAsync(string alias)
+    public async Task<Outfit?> GetByAliasAsync(string alias, CancellationToken ct = default)
     {
-        CensusOutfitModel? outfit = await _censusOutfit.GetOutfitByAliasAsync(alias);
+        CensusOutfit? outfit = await _outfitService.GetByAliasAsync(alias, ct);
         if (outfit is null)
             return null;
 
-        Outfit censusEntity = ConvertToDbModel(outfit);
+        Outfit convertedEntity = ConvertToDbModel(outfit);
+        await ResolveOutfitDetailsAsync(convertedEntity, outfit.LeaderCharacterId);
 
-        if (censusEntity.MemberCount == 0)
-            return censusEntity;
-
-        return await ResolveOutfitDetailsAsync(censusEntity, null);
+        return convertedEntity;
     }
 
-    public async Task<IEnumerable<CensusCharacter>?> GetOutfitMembersByAliasAsync(string alias)
-    {
-        IEnumerable<CensusOutfitMemberCharacterModel>? members = await _censusOutfit.GetOutfitMembersByAliasAsync(alias);
-
-        return members?.Where(m => m is { CharacterId: { }, Name: { } })
-            .Select(ConvertToDbModel);
-    }
-
-    private async Task<Outfit?> GetOutfitInternalAsync(string outfitId, Character? member = null)
-    {
-        Outfit? outfit = await GetKnownOutfitAsync(outfitId);
-        if (outfit is null)
-            return null;
-
-        // These are null if outfit was retrieved from the census API
-        if (outfit.WorldId == null || outfit.FactionId == null)
-            outfit = await ResolveOutfitDetailsAsync(outfit, member);
-
-        return outfit;
-    }
-
-    // Returns the specified outfit from the database, if it exists. Otherwise,
-    // queries for it in the DBG census.
-    private async Task<Outfit?> GetKnownOutfitAsync(string outfitId)
-    {
-        try
+    private static Outfit ConvertToDbModel(CensusOutfit censusOutfit)
+        => new(censusOutfit.OutfitId, censusOutfit.Name, censusOutfit.Alias)
         {
-            return await GetCensusOutfitAsync(outfitId);
-        }
-        catch (CensusConnectionException)
-        {
-            return null;
-        }
-    }
-
-    private async Task<Outfit?> GetCensusOutfitAsync(string outfitId)
-    {
-        try
-        {
-            CensusOutfitModel? censusOutfit = await _censusOutfit.GetOutfitAsync(outfitId);
-            return censusOutfit is null
-                ? null
-                : ConvertToDbModel(censusOutfit);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get outfit by ID from Census");
-            return null;
-        }
-    }
-
-    public static Outfit ConvertToDbModel(CensusOutfitModel censusOutfit)
-    {
-        return new Outfit
-        {
-            Id = censusOutfit.OutfitId,
-            Alias = censusOutfit.Alias,
-            AliasLower = censusOutfit.AliasLower,
-            Name = censusOutfit.Name,
-            LeaderCharacterId = censusOutfit.LeaderCharacterId,
-            CreatedDate = censusOutfit.TimeCreated,
-            MemberCount = censusOutfit.MemberCount
+            MemberCount = censusOutfit.Members.Count
         };
-    }
 
-    private async Task<Outfit> ResolveOutfitDetailsAsync(Outfit outfit, Character? member)
+    private async Task ResolveOutfitDetailsAsync(Outfit outfit, ulong leaderCharacterId)
     {
-        if (member != null)
-        {
-            outfit.WorldId = member.WorldId;
-            outfit.FactionId = member.FactionId;
-        }
-        else
-        {
-            CensusCharacter? leader = await _characterService.GetByIdAsync(outfit.LeaderCharacterId);
-            outfit.WorldId = leader?.WorldId;
-            outfit.FactionId = leader?.FactionId;
-        }
+        CensusCharacter? leader = await _characterService.GetByIdAsync(leaderCharacterId);
+        if (leader is null || leader.FactionId is FactionDefinition.NSO)
+            return;
 
-        return outfit;
-    }
-
-    public static CensusCharacter ConvertToDbModel(CensusOutfitMemberCharacterModel member)
-    {
-        return new CensusCharacter
-        (
-            member.CharacterId,
-            member.Name,
-            member.FactionId,
-            PrestigeLevel = member.PrestigeLevel,
-            member.WorldId,
-            new CensusCharacter.CharacterOutfit(member.OutfitId, member.OutfitAlias)
-        );
+        outfit.WorldId = (int)leader.WorldId;
+        outfit.FactionId = (int)leader.FactionId;
     }
 }

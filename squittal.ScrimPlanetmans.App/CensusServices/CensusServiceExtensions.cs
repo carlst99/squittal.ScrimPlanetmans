@@ -11,7 +11,6 @@ public static class CensusServiceExtensions
         services.AddSingleton<CensusItem>();
         services.AddSingleton<CensusItemCategory>();
         services.AddSingleton<CensusLoadout>();
-        services.AddSingleton<CensusOutfit>();
         services.AddSingleton<CensusProfile>();
         services.AddSingleton<CensusVehicle>();
         services.AddSingleton<CensusWorld>();

@@ -11,6 +11,7 @@ using squittal.ScrimPlanetmans.App.Models.CensusRest;
 
 namespace squittal.ScrimPlanetmans.App.Services.CensusRest;
 
+/// <inheritdoc cref="ICensusCharacterService" />
 public class CensusCharacterService : BaseCensusService, ICensusCharacterService
 {
     private readonly IMemoryCache _cache;
@@ -28,9 +29,9 @@ public class CensusCharacterService : BaseCensusService, ICensusCharacterService
     /// <inheritdoc />
     public async Task<CensusCharacter?> GetByIdAsync(ulong characterId, CancellationToken ct = default)
     {
-        object cacheKey = (typeof(CensusCharacter), characterId);
+        object cacheKey = GetCharacterCacheKey(characterId);
 
-        if (_cache.TryGetValue(cacheKey, out CensusCharacter? character))
+        if (_cache.TryGetValue(cacheKey, out CensusCharacter? character) && character is not null)
             return character;
 
         IQueryBuilder query = CreateDefaultCharacterQuery()
@@ -103,6 +104,7 @@ public class CensusCharacterService : BaseCensusService, ICensusCharacterService
         return status?.OnlineStatus;
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<CensusCharactersOnlineStatus>?> GetOnlineStatusAsync
     (
         IEnumerable<ulong> characterIds,

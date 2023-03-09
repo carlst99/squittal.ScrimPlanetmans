@@ -290,7 +290,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
             return false;
 
         /* Add Outfit to Team */
-        Outfit? outfit = await _outfitService.GetOutfitByAliasAsync(aliasLower);
+        Outfit? outfit = await _outfitService.GetByAliasAsync(aliasLower);
         if (outfit == null)
             return false;
 
@@ -554,13 +554,14 @@ public class ScrimTeamsManager : IScrimTeamsManager
         if (outfit is null)
             return false;
 
-        TeamDefinition teamOrdinal = outfit.TeamOrdinal;
+        TeamDefinition? teamOrdinal = outfit.TeamOrdinal;
 
         bool success = RemoveOutfitFromTeam(aliasLower);
         if (!success)
             return false;
 
-        await RemoveOutfitMatchDataFromDb(ulong.Parse(outfit.Id), teamOrdinal);
+        if (teamOrdinal.HasValue)
+            await RemoveOutfitMatchDataFromDb(outfit.Id, teamOrdinal.Value);
         await TryUpdateAllTeamMatchResultsInDb();
         await UpdateMatchParticipatingPlayers();
 

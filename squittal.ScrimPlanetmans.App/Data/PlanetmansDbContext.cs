@@ -94,8 +94,6 @@ public class PlanetmansDbContext : DbContext
         builder.ApplyConfiguration(new ItemCategoryConfiguration());
         builder.ApplyConfiguration(new LoadoutConfiguration());
         builder.ApplyConfiguration(new MapRegionConfiguration());
-        //builder.ApplyConfiguration(new OutfitConfiguration());
-        //builder.ApplyConfiguration(new OutfitMemberConfiguration());
         builder.ApplyConfiguration(new ProfileConfiguration());
         builder.ApplyConfiguration(new VehicleConfiguration());
         builder.ApplyConfiguration(new WorldConfiguration());

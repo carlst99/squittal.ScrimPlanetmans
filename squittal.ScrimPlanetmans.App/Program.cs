@@ -111,7 +111,8 @@ public class Program
             .Configure<CensusQueryOptions>(o => o.LanguageCode = CensusLanguage.English);
 
         services.AddCensusRestServices()
-            .AddTransient<ICensusCharacterService, CensusCharacterService>();
+            .AddTransient<ICensusCharacterService, CensusCharacterService>()
+            .AddTransient<ICensusOutfitService, CensusOutfitService>();
 
         services.AddCensusServices
         (

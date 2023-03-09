@@ -1,5 +1,6 @@
 ﻿@using squittal.ScrimPlanetmans.App.Pages.Shared;
 @using System.Collections.Concurrent;
+@using System.Diagnostics.CodeAnalysis
 @using squittal.ScrimPlanetmans.App.CensusStream.Interfaces
 @using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.Models.Planetside
@@ -148,8 +149,8 @@ else
     private TeamDefinition _renderedTeamOrdinal { get; set; }
 
     [Parameter]
-    public Outfit i_outfit { get; set; } = new Outfit();
-    private Outfit _renderedOutfit { get; set; } = new Outfit();
+    public required Outfit i_outfit { get; set; }
+    private Outfit? _renderedOutfit { get; set; }
 
     [Parameter]
     public bool i_showRemovals { get; set; } = false;
@@ -215,6 +216,7 @@ else
 
     protected override void OnParametersSet()
     {
+        _renderedOutfit ??= i_outfit;
         var paramsChanged = false;
 
         if (i_showRemovals != _renderedShowRemovals)
@@ -304,13 +306,12 @@ else
         {
             _isLoadingMembers = true;
 
-            var alias = _renderedOutfit.Alias;
-
+            string alias = _renderedOutfit?.Alias ?? i_outfit.Alias;
             string message;
 
             try
             {
-                var success = await TeamsManager.RefreshOutfitPlayers(_renderedOutfit.AliasLower);
+                var success = await TeamsManager.RefreshOutfitPlayers(_renderedOutfit?.AliasLower ?? i_outfit.AliasLower);
 
                 _isLoadingMembers = false;
 
@@ -359,7 +360,7 @@ else
         MessageService.BroadcastSimpleMessage(message);
     }
 
-    private void ReceiveTeamPlayerChangeEvent(object sender, ScrimMessageEventArgs<TeamPlayerChangeMessage> e)
+    private void ReceiveTeamPlayerChangeEvent(object? sender, ScrimMessageEventArgs<TeamPlayerChangeMessage> e)
     {
         var message = e.Message;
 
@@ -375,12 +376,12 @@ else
         ProcessPlayerChangesQueue();
     }
 
-    private void ReceiveTeamOutfitChangeEvent(object sender, ScrimMessageEventArgs<TeamOutfitChangeMessage> e)
+    private void ReceiveTeamOutfitChangeEvent(object? sender, ScrimMessageEventArgs<TeamOutfitChangeMessage> e)
     {
         var outfit = e.Message.Outfit;
         var changeType = e.Message.ChangeType;
 
-        if (outfit.Id != _renderedOutfit.Id)
+        if (outfit.Id != _renderedOutfit?.Id)
         {
             return;
         }
@@ -403,7 +404,7 @@ else
         }
     }
 
-    private void ReceivePlayerStatUpdateEvent(object sender, ScrimMessageEventArgs<PlayerStatUpdateMessage> e)
+    private void ReceivePlayerStatUpdateEvent(object? sender, ScrimMessageEventArgs<PlayerStatUpdateMessage> e)
     {
         var player = e.Message.Player;
 
@@ -432,7 +433,7 @@ else
         ProcessPlayerChangesQueue();
     }
 
-    private void ReceivePlayerLoginEvent(object sender, ScrimMessageEventArgs<PlayerLoginMessage> e)
+    private void ReceivePlayerLoginEvent(object? sender, ScrimMessageEventArgs<PlayerLoginMessage> e)
     {
         var player = e.Message.Player;
 
@@ -457,7 +458,7 @@ else
         ProcessPlayerChangesQueue();
     }
 
-    private void ReceivePlayerLogoutEvent(object sender, ScrimMessageEventArgs<PlayerLogoutMessage> e)
+    private void ReceivePlayerLogoutEvent(object? sender, ScrimMessageEventArgs<PlayerLogoutMessage> e)
     {
         var player = e.Message.Player;
 
@@ -492,7 +493,7 @@ else
             {
                 var changes = 0;
 
-                while (_playerChangesQueue.TryDequeue(out TeamPlayerChangeMessage changeMessage))
+                while (_playerChangesQueue.TryDequeue(out TeamPlayerChangeMessage? changeMessage))
                 {
                     var player = changeMessage.Player;
                     var changeType = changeMessage.ChangeType;
@@ -525,12 +526,8 @@ else
                     }
                 }
 
-                var oldMembersOnlineCount = _renderedOutfit.MembersOnlineCount;
-                var oldPlayersCount = _renderedPlayersCount;
-
-                _renderedPlayersCount = _renderedPlayers.Count();
-
-                changes += oldMembersOnlineCount != _renderedOutfit.MembersOnlineCount ? 1 : 0;
+                int oldPlayersCount = _renderedPlayersCount;
+                _renderedPlayersCount = _renderedPlayers.Count;
                 changes += oldPlayersCount != _renderedPlayersCount ? 1 : 0;
 
                 var oldExtendPlayers = _extendPlayers;
@@ -548,7 +545,7 @@ else
 
     private bool ShouldProcessPlayer(Player player)
     {
-        if (player.TeamOrdinal != i_teamOrdinal || player.OutfitId.ToString() != _renderedOutfit.Id || player.IsOutfitless || player.IsFromConstructedTeam)
+        if (player.TeamOrdinal != i_teamOrdinal || player.OutfitId != _renderedOutfit?.Id || player.IsOutfitless || player.IsFromConstructedTeam)
         {
             return false;
         }
