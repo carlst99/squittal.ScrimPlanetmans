@@ -236,7 +236,7 @@
                                         <span style="text-overflow: ellipsis; overflow: hidden; max-width: 200px;">@member.NameDisplay</span>
                                         <span style="font-size: 0.7rem;  color: var(--sq-black);"> [@(member.Id)]</span> @*opacity: 0.8;*@
                                     </td>
-                                    <Test_PlayerStatsRow EventAggregate=@member.EventAggregate PlayerId=@member.Id />
+                                    <Test_PlayerStatsRow EventAggregate=@member.EventAggregate PlayerId=@member.Id.ToString() />
                                 </tr>
 
                                 @if (_currentRound > 0 && _isRunning)
@@ -244,7 +244,7 @@
                                     <tr style="background-color: transparent;">
                                         <td></td>
                                         <td>CurrentRound</td>
-                                        <Test_PlayerStatsRow EventAggregate=@member.EventAggregateTracker.RoundStats PlayerId=@member.Id />
+                                        <Test_PlayerStatsRow EventAggregate=@member.EventAggregateTracker.RoundStats PlayerId=@member.Id.ToString() />
                                     </tr>
                                 }
 
@@ -253,7 +253,7 @@
                                     <tr style="background-color: transparent;">
                                         <td></td>
                                         <td>Round @round</td>
-                                        <Test_PlayerStatsRow EventAggregate=@member.EventAggregateTracker.RoundHistory[round] PlayerId=@member.Id />
+                                        <Test_PlayerStatsRow EventAggregate=@member.EventAggregateTracker.RoundHistory[round] PlayerId=@member.Id.ToString() />
                                     </tr>
                                 }
                             }
@@ -361,7 +361,7 @@
                                     <span style="text-overflow: ellipsis; overflow: hidden; max-width: 200px;">@player.NameDisplay</span>
                                     <span style="font-size: 0.7rem;  color: var(--sq-black);"> [@(player.Id)]</span>
                                 </td>
-                                <Test_PlayerStatsRow EventAggregate=@player.EventAggregate PlayerId=@player.Id />
+                                <Test_PlayerStatsRow EventAggregate=@player.EventAggregate PlayerId=@player.Id.ToString() />
                             </tr>
 
                             @if (_currentRound > 0 && _isRunning)
@@ -369,7 +369,7 @@
                                 <tr style="background-color: transparent;">
                                     <td></td>
                                     <td>CurrentRound</td>
-                                    <Test_PlayerStatsRow EventAggregate=@player.EventAggregateTracker.RoundStats PlayerId=@player.Id />
+                                    <Test_PlayerStatsRow EventAggregate=@player.EventAggregateTracker.RoundStats PlayerId=@player.Id.ToString() />
                                 </tr>
                             }
 
@@ -378,7 +378,7 @@
                                 <tr style="background-color: transparent;">
                                     <td></td>
                                     <td>Round @round</td>
-                                    <Test_PlayerStatsRow EventAggregate=@player.EventAggregateTracker.RoundHistory[round] PlayerId=@player.Id />
+                                    <Test_PlayerStatsRow EventAggregate=@player.EventAggregateTracker.RoundHistory[round] PlayerId=@player.Id.ToString() />
                                 </tr>
                             }
                         }

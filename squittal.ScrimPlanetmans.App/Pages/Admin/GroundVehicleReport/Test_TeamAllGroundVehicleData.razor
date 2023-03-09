@@ -214,13 +214,13 @@
                                         <span style="text-overflow: ellipsis; overflow: hidden; max-width: 200px;">@member.NameDisplay</span>
                                         <span style="font-size: 0.7rem;  color: var(--sq-black);"> [@(member.Id)]</span> @*opacity: 0.8;*@
                                     </td>
-                                    <Test_PlayerGroundVehicleStatsRow EventAggregate=@member.EventAggregate PlayerId=@member.Id />
+                                    <Test_PlayerGroundVehicleStatsRow EventAggregate=@member.EventAggregate PlayerId=@member.Id.ToString() />
                                 </tr>
 
                                 <tr>
                                     <td></td>
                                     <td>CurrentRound</td>
-                                    <Test_PlayerGroundVehicleStatsRow EventAggregate=@member.EventAggregateTracker.RoundStats PlayerId=@member.Id />
+                                    <Test_PlayerGroundVehicleStatsRow EventAggregate=@member.EventAggregateTracker.RoundStats PlayerId=@member.Id.ToString() />
                                 </tr>
 
                                 @foreach (var round in member.EventAggregateTracker.RoundHistory.Keys.ToList())
@@ -228,7 +228,7 @@
                                     <tr>
                                         <td></td>
                                         <td>Round @round</td>
-                                        <Test_PlayerGroundVehicleStatsRow EventAggregate=@member.EventAggregateTracker.RoundHistory[round] PlayerId=@member.Id />
+                                        <Test_PlayerGroundVehicleStatsRow EventAggregate=@member.EventAggregateTracker.RoundHistory[round] PlayerId=@member.Id.ToString() />
                                     </tr>
                                 }
                             }
@@ -335,13 +335,13 @@
                                     <span style="text-overflow: ellipsis; overflow: hidden; max-width: 200px;">@player.NameDisplay</span>
                                     <span style="font-size: 0.7rem;  color: var(--sq-black);"> [@(player.Id)]</span>
                                 </td>
-                                <Test_PlayerGroundVehicleStatsRow EventAggregate=@player.EventAggregate PlayerId=@player.Id />
+                                <Test_PlayerGroundVehicleStatsRow EventAggregate=@player.EventAggregate PlayerId=@player.Id.ToString() />
                             </tr>
 
                             <tr>
                                 <td></td>
                                 <td>CurrentRound</td>
-                                <Test_PlayerGroundVehicleStatsRow EventAggregate=@player.EventAggregateTracker.RoundStats PlayerId=@player.Id />
+                                <Test_PlayerGroundVehicleStatsRow EventAggregate=@player.EventAggregateTracker.RoundStats PlayerId=@player.Id.ToString() />
                             </tr>
 
                             @foreach (var round in player.EventAggregateTracker.RoundHistory.Keys.ToList())
@@ -349,7 +349,7 @@
                                 <tr>
                                     <td></td>
                                     <td>Round @round</td>
-                                    <Test_PlayerGroundVehicleStatsRow EventAggregate=@player.EventAggregateTracker.RoundHistory[round] PlayerId=@player.Id />
+                                    <Test_PlayerGroundVehicleStatsRow EventAggregate=@player.EventAggregateTracker.RoundHistory[round] PlayerId=@player.Id.ToString() />
                                 </tr>
                             }
                         }

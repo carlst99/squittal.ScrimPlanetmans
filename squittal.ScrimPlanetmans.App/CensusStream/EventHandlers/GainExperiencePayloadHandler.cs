@@ -262,7 +262,6 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
                                 assistEvent,
                                 currentMatchId,
                                 currentRound,
-                                (int)payload.WorldID,
                                 ct
                             );
                             break;
@@ -273,7 +272,6 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
                                 assistEvent,
                                 currentMatchId,
                                 currentRound,
-                                (int)payload.WorldID,
                                 ct
                             );
                             break;
@@ -284,7 +282,6 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
                                 assistEvent,
                                 currentMatchId,
                                 currentRound,
-                                (int)payload.WorldID,
                                 ct
                             );
                             break;
@@ -332,7 +329,6 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         ScrimAssistActionEvent assistEvent,
         string matchId,
         int matchRound,
-        int worldId,
         CancellationToken ct
     )
     {
@@ -344,14 +340,8 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
             VictimCharacterId = assistEvent.VictimPlayer?.Id,
             ScrimMatchRound = matchRound,
             ActionType = assistEvent.ActionType,
-            AttackerTeamOrdinal = assistEvent.AttackerPlayer.TeamOrdinal,
-            VictimTeamOrdinal = assistEvent.VictimPlayer.TeamOrdinal,
-            AttackerLoadoutId = assistEvent.AttackerPlayer?.LoadoutId,
-            VictimLoadoutId = assistEvent.VictimPlayer?.LoadoutId,
-            ExperienceGainId = assistEvent.ExperienceGainInfo.Id,
-            ExperienceGainAmount = assistEvent.ExperienceGainInfo.Amount,
-            ZoneId = assistEvent.ZoneId,
-            WorldId = worldId,
+            AttackerTeamOrdinal = assistEvent.AttackerPlayer?.TeamOrdinal,
+            VictimTeamOrdinal = assistEvent.VictimPlayer?.TeamOrdinal,
             Points = assistEvent.Points,
         };
 
@@ -364,7 +354,6 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         ScrimAssistActionEvent assistEvent,
         string matchId,
         int matchRound,
-        int worldId,
         CancellationToken ct
     )
     {
@@ -376,14 +365,8 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
             VictimCharacterId = assistEvent.VictimPlayer?.Id,
             ScrimMatchRound = matchRound,
             ActionType = assistEvent.ActionType,
-            AttackerTeamOrdinal = assistEvent.AttackerPlayer.TeamOrdinal,
-            VictimTeamOrdinal = assistEvent.VictimPlayer.TeamOrdinal,
-            AttackerLoadoutId = assistEvent.AttackerPlayer?.LoadoutId,
-            VictimLoadoutId = assistEvent.VictimPlayer?.LoadoutId,
-            ExperienceGainId = assistEvent.ExperienceGainInfo.Id,
-            ExperienceGainAmount = assistEvent.ExperienceGainInfo.Amount,
-            ZoneId = assistEvent.ZoneId,
-            WorldId = worldId,
+            AttackerTeamOrdinal = assistEvent.AttackerPlayer?.TeamOrdinal,
+            VictimTeamOrdinal = assistEvent.VictimPlayer?.TeamOrdinal,
             Points = assistEvent.Points,
         };
 
@@ -396,7 +379,6 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         ScrimAssistActionEvent assistEvent,
         string matchId,
         int matchRound,
-        int worldId,
         CancellationToken ct
     )
     {
@@ -408,14 +390,8 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
             VictimCharacterId = assistEvent.VictimPlayer?.Id,
             ScrimMatchRound = matchRound,
             ActionType = assistEvent.ActionType,
-            SpotterTeamOrdinal = assistEvent.AttackerPlayer.TeamOrdinal,
-            VictimTeamOrdinal = assistEvent.VictimPlayer.TeamOrdinal,
-            SpotterLoadoutId = assistEvent.AttackerPlayer?.LoadoutId,
-            VictimLoadoutId = assistEvent.VictimPlayer?.LoadoutId,
-            ExperienceGainId = assistEvent.ExperienceGainInfo.Id,
-            ExperienceGainAmount = assistEvent.ExperienceGainInfo.Amount,
-            ZoneId = assistEvent.ZoneId,
-            WorldId = worldId,
+            SpotterTeamOrdinal = assistEvent.AttackerPlayer?.TeamOrdinal,
+            VictimTeamOrdinal = assistEvent.VictimPlayer?.TeamOrdinal,
             Points = assistEvent.Points,
         };
 

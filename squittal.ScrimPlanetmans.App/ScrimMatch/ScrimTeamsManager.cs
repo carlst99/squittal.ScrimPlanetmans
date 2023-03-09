@@ -1248,14 +1248,14 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
                 #region Set Up Distinct Interaction Target Lists
                 List<TeamDefinition> distinctVictimTeams = allDamageAssistEvents
-                    .Where(e => e.AttackerCharacterId == characterId)
-                    .Select(e => e.VictimTeamOrdinal)
+                    .Where(e => e.AttackerCharacterId == characterId && e.VictimTeamOrdinal.HasValue)
+                    .Select(e => e.VictimTeamOrdinal!.Value)
                     .Distinct()
                     .ToList();
 
                 List<TeamDefinition> distinctAttackerTeams = allDamageAssistEvents
-                    .Where(e => e.VictimCharacterId == characterId)
-                    .Select(e => e.AttackerTeamOrdinal)
+                    .Where(e => e.VictimCharacterId == characterId && e.AttackerTeamOrdinal.HasValue)
+                    .Select(e => e.AttackerTeamOrdinal!.Value)
                     .Distinct()
                     .ToList();
 
@@ -1308,12 +1308,10 @@ public class ScrimTeamsManager : IScrimTeamsManager
                         ulong? attackerId = damageAssistEvent.AttackerCharacterId;
                         ulong? victimId = damageAssistEvent.VictimCharacterId;
 
-                        TeamDefinition attackerTeamOrdinal = damageAssistEvent.AttackerTeamOrdinal;
-                        TeamDefinition victimTeamOrdinal = damageAssistEvent.VictimTeamOrdinal;
+                        TeamDefinition? attackerTeamOrdinal = damageAssistEvent.AttackerTeamOrdinal;
+                        TeamDefinition? victimTeamOrdinal = damageAssistEvent.VictimTeamOrdinal;
 
                         int points = damageAssistEvent.Points;
-
-                        bool characterIsVictim = (victimId == characterId);
 
                         ScrimEventAggregate attackerUpdate;
                         ScrimEventAggregate victimUpdate;
@@ -1354,10 +1352,10 @@ public class ScrimTeamsManager : IScrimTeamsManager
                             continue;
                         }
 
-                        teamUpdates[attackerTeamOrdinal].AddToCurrent(attackerUpdate);
+                        teamUpdates[attackerTeamOrdinal.Value].AddToCurrent(attackerUpdate);
                         playerUpdates[attackerId.Value].AddToCurrent(attackerUpdate);
 
-                        teamUpdates[victimTeamOrdinal].AddToCurrent(victimUpdate);
+                        teamUpdates[victimTeamOrdinal.Value].AddToCurrent(victimUpdate);
                         playerUpdates[victimId.Value].AddToCurrent(victimUpdate);
                     }
 
@@ -1429,21 +1427,21 @@ public class ScrimTeamsManager : IScrimTeamsManager
                             || e.VictimCharacterId == characterId))
                     .ToListAsync();
 
-                if (allGrenadeAssistEvents == null || !allGrenadeAssistEvents.Any())
+                if (allGrenadeAssistEvents.Count is 0)
                 {
                     return;
                 }
 
                 #region Set Up Distinct Interaction Target Lists
                 List<TeamDefinition> distinctVictimTeams = allGrenadeAssistEvents
-                    .Where(e => e.AttackerCharacterId == characterId)
-                    .Select(e => e.VictimTeamOrdinal)
+                    .Where(e => e.AttackerCharacterId == characterId && e.VictimTeamOrdinal.HasValue)
+                    .Select(e => e.VictimTeamOrdinal!.Value)
                     .Distinct()
                     .ToList();
 
                 List<TeamDefinition> distinctAttackerTeams = allGrenadeAssistEvents
-                    .Where(e => e.VictimCharacterId == characterId)
-                    .Select(e => e.AttackerTeamOrdinal)
+                    .Where(e => e.VictimCharacterId == characterId && e.AttackerTeamOrdinal.HasValue)
+                    .Select(e => e.AttackerTeamOrdinal!.Value)
                     .Distinct()
                     .ToList();
 
@@ -1496,8 +1494,8 @@ public class ScrimTeamsManager : IScrimTeamsManager
                         ulong? attackerId = grenadeAssistEvent.AttackerCharacterId;
                         ulong? victimId = grenadeAssistEvent.VictimCharacterId;
 
-                        TeamDefinition attackerTeamOrdinal = grenadeAssistEvent.AttackerTeamOrdinal;
-                        TeamDefinition victimTeamOrdinal = grenadeAssistEvent.VictimTeamOrdinal;
+                        TeamDefinition? attackerTeamOrdinal = grenadeAssistEvent.AttackerTeamOrdinal;
+                        TeamDefinition? victimTeamOrdinal = grenadeAssistEvent.VictimTeamOrdinal;
 
                         int points = grenadeAssistEvent.Points;
                         ScrimEventAggregate attackerUpdate;
@@ -1539,10 +1537,10 @@ public class ScrimTeamsManager : IScrimTeamsManager
                             continue;
                         }
 
-                        teamUpdates[attackerTeamOrdinal].AddToCurrent(attackerUpdate);
+                        teamUpdates[attackerTeamOrdinal.Value].AddToCurrent(attackerUpdate);
                         playerUpdates[attackerId.Value].AddToCurrent(attackerUpdate);
 
-                        teamUpdates[victimTeamOrdinal].AddToCurrent(victimUpdate);
+                        teamUpdates[victimTeamOrdinal.Value].AddToCurrent(victimUpdate);
                         playerUpdates[victimId.Value].AddToCurrent(victimUpdate);
                     }
 
@@ -1620,14 +1618,14 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
                 #region Set Up Distinct Interaction Target Lists
                 List<TeamDefinition> distinctVictimTeams = allSpotAssistEvents
-                    .Where(e => e.SpotterCharacterId == characterId)
-                    .Select(e => e.VictimTeamOrdinal)
+                    .Where(e => e.SpotterCharacterId == characterId && e.VictimTeamOrdinal.HasValue)
+                    .Select(e => e.VictimTeamOrdinal!.Value)
                     .Distinct()
                     .ToList();
 
                 List<TeamDefinition> distinctSpotterTeams = allSpotAssistEvents
-                    .Where(e => e.VictimCharacterId == characterId)
-                    .Select(e => e.SpotterTeamOrdinal)
+                    .Where(e => e.VictimCharacterId == characterId && e.SpotterTeamOrdinal.HasValue)
+                    .Select(e => e.SpotterTeamOrdinal!.Value)
                     .Distinct()
                     .ToList();
 
@@ -1679,8 +1677,8 @@ public class ScrimTeamsManager : IScrimTeamsManager
                     {
                         ulong? spotterId = spotAssistEvent.SpotterCharacterId;
                         ulong? victimId = spotAssistEvent.VictimCharacterId;
-                        TeamDefinition spotterTeamOrdinal = spotAssistEvent.SpotterTeamOrdinal;
-                        TeamDefinition victimTeamOrdinal = spotAssistEvent.VictimTeamOrdinal;
+                        TeamDefinition? spotterTeamOrdinal = spotAssistEvent.SpotterTeamOrdinal;
+                        TeamDefinition? victimTeamOrdinal = spotAssistEvent.VictimTeamOrdinal;
                         int points = spotAssistEvent.Points;
 
                         ScrimEventAggregate spotterUpdate = new()
@@ -1696,10 +1694,10 @@ public class ScrimTeamsManager : IScrimTeamsManager
                             SpotAssistedDeaths = 1
                         };
 
-                        teamUpdates[spotterTeamOrdinal].AddToCurrent(spotterUpdate);
+                        teamUpdates[spotterTeamOrdinal.Value].AddToCurrent(spotterUpdate);
                         playerUpdates[spotterId.Value].AddToCurrent(spotterUpdate);
 
-                        teamUpdates[victimTeamOrdinal].AddToCurrent(victimUpdate);
+                        teamUpdates[victimTeamOrdinal.Value].AddToCurrent(victimUpdate);
                         playerUpdates[victimId.Value].AddToCurrent(victimUpdate);
                     }
 

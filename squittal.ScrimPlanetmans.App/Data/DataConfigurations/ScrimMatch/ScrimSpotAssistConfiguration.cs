@@ -18,13 +18,6 @@ public class ScrimSpotAssistConfiguration : IEntityTypeConfiguration<ScrimSpotAs
             e.VictimCharacterId
         });
 
-        builder.Property(e => e.ExperienceGainAmount).HasDefaultValue(0);
         builder.Property(e => e.Points).HasDefaultValue(0);
-
-        builder.Ignore(e => e.ScrimMatch);
-        builder.Ignore(e => e.SpotterParticipatingPlayer);
-        builder.Ignore(e => e.VictimParticipatingPlayer);
-        builder.Ignore(e => e.World);
-        builder.Ignore(e => e.Zone);
     }
 }
