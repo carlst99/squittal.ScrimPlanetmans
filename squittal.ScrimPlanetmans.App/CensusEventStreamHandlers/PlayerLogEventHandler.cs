@@ -8,7 +8,7 @@ using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
-namespace squittal.ScrimPlanetmans.App.CensusStream.EventHandlers;
+namespace squittal.ScrimPlanetmans.App.CensusEventStreamHandlers;
 
 public class PlayerLogEventHandler : IPayloadHandler<IPlayerLogin>, IPayloadHandler<IPlayerLogout>
 {

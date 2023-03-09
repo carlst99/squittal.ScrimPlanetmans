@@ -1,6 +1,6 @@
 ﻿using System;
 using DbgCensus.Core.Objects;
-using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 using squittal.ScrimPlanetmans.App.Logging;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;

@@ -1,6 +1,6 @@
 ﻿using DbgCensus.EventStream.Abstractions.Objects.Events;
 
-namespace squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+namespace squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 
 /// <summary>
 /// Represents a service for tracking the health of an event stream connection.

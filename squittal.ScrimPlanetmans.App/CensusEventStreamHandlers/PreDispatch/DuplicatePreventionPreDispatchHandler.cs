@@ -7,7 +7,7 @@ using DbgCensus.EventStream.Abstractions.Objects;
 using DbgCensus.EventStream.EventHandlers.Abstractions;
 using Microsoft.Extensions.Logging;
 
-namespace squittal.ScrimPlanetmans.App.CensusStream.EventHandlers.PreDispatch;
+namespace squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.PreDispatch;
 
 public sealed class DuplicatePreventionPreDispatchHandler : IPreDispatchHandler, IDisposable
 {

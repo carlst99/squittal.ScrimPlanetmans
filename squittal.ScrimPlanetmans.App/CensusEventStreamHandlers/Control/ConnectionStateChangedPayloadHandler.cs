@@ -9,10 +9,10 @@ using DbgCensus.EventStream.EventHandlers.Abstractions;
 using DbgCensus.EventStream.EventHandlers.Abstractions.Objects;
 using DbgCensus.EventStream.Objects.Commands;
 using Microsoft.Extensions.Logging;
-using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.App.CensusStream.EventHandlers.Control;
+namespace squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.Control;
 
 public class ConnectionStateChangedPayloadHandler : IPayloadHandler<IConnectionStateChanged>
 {

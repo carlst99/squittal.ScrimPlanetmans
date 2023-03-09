@@ -4,7 +4,7 @@ using DbgCensus.EventStream.EventHandlers.Abstractions;
 using DbgCensus.EventStream.EventHandlers.Abstractions.Objects;
 using Microsoft.Extensions.Logging;
 
-namespace squittal.ScrimPlanetmans.App.CensusStream.EventHandlers.Control;
+namespace squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.Control;
 
 public class UnknownPayloadHandler : IPayloadHandler<IUnknownPayload>
 {

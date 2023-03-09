@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
 using DbgCensus.EventStream.EventHandlers.Abstractions;
 using Microsoft.Extensions.Logging;
-using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
@@ -14,7 +14,7 @@ using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 using squittal.ScrimPlanetmans.App.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
-namespace squittal.ScrimPlanetmans.App.CensusStream.EventHandlers;
+namespace squittal.ScrimPlanetmans.App.CensusEventStreamHandlers;
 
 public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
 {

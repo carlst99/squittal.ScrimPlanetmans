@@ -4,9 +4,9 @@ using System.Threading.Tasks;
 using DbgCensus.EventStream.Abstractions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 
-namespace squittal.ScrimPlanetmans.App.CensusStream;
+namespace squittal.ScrimPlanetmans.App.Workers;
 
 public class EventStreamWorker : BackgroundService
 {

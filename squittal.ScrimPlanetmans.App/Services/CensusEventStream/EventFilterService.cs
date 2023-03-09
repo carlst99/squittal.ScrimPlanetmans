@@ -5,9 +5,9 @@ using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
 using DbgCensus.EventStream.Abstractions.Objects.Events.Worlds;
 using Microsoft.Extensions.Logging;
 using Microsoft.SqlServer.Management.Dmf;
-using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 
-namespace squittal.ScrimPlanetmans.App.CensusStream;
+namespace squittal.ScrimPlanetmans.App.Services.CensusEventStream;
 
 /// <inheritdoc />
 public class EventFilterService : IEventFilterService

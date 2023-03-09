@@ -5,9 +5,9 @@ using DbgCensus.Core.Objects;
 using DbgCensus.EventStream.Abstractions.Objects.Events;
 using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
 using Microsoft.Extensions.Logging;
-using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 
-namespace squittal.ScrimPlanetmans.App.CensusStream;
+namespace squittal.ScrimPlanetmans.App.Services.CensusEventStream;
 
 /// <inheritdoc />
 public class EventStreamHealthService : IEventStreamHealthService

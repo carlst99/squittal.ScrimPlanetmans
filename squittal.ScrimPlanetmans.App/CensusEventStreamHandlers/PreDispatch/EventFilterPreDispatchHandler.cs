@@ -4,9 +4,9 @@ using DbgCensus.EventStream.Abstractions.Objects;
 using DbgCensus.EventStream.Abstractions.Objects.Events;
 using DbgCensus.EventStream.EventHandlers.Abstractions;
 using DbgCensus.EventStream.EventHandlers.Abstractions.Objects;
-using squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 
-namespace squittal.ScrimPlanetmans.App.CensusStream.EventHandlers.PreDispatch;
+namespace squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.PreDispatch;
 
 /// <summary>
 /// A pre-dispatch handler to filter out unwanted payloads.

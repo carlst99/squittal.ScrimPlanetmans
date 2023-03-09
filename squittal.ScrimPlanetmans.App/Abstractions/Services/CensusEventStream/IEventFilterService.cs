@@ -1,7 +1,7 @@
 ﻿using DbgCensus.Core.Objects;
 using DbgCensus.EventStream.Abstractions.Objects.Events;
 
-namespace squittal.ScrimPlanetmans.App.CensusStream.Interfaces;
+namespace squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 
 public interface IEventFilterService
 {
