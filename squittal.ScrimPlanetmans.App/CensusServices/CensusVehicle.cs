@@ -25,28 +25,10 @@ public class CensusVehicle
         return await query.GetBatchAsync<CensusVehicleModel>();
     }
 
-    public async Task<IEnumerable<CensusVehicleFactionModel>> GetAllVehicleFactions()
-    {
-        var query = _queryFactory.Create("vehicle_faction");
-        query.SetLanguage("en");
-
-        query.ShowFields("vehicle_id", "faction_id");
-
-        return await query.GetBatchAsync<CensusVehicleFactionModel>();
-    }
-
     public async Task<int> GetVehiclesCount()
     {
         var results = await GetAllVehicles();
 
         return results.Count();
     }
-
-    public async Task<int> GetVehicleFactionsCount()
-    {
-        var results = await GetAllVehicleFactions();
-
-        return results.Count();
-    }
-
 }
