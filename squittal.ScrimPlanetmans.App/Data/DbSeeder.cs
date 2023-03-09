@@ -17,8 +17,6 @@ public class DbSeeder : IDbSeeder
     private readonly IItemService _itemService;
     private readonly IItemCategoryService _itemCategoryService;
     private readonly IZoneService _zoneService;
-    private readonly IProfileService _profileService;
-    private readonly ILoadoutService _loadoutService;
     private readonly IScrimRulesetManager _rulesetManager;
     private readonly IFacilityService _facilityService;
     private readonly IFacilityTypeService _facilityTypeService;
@@ -34,8 +32,6 @@ public class DbSeeder : IDbSeeder
         IItemService itemService,
         IItemCategoryService itemCategoryService,
         IZoneService zoneService,
-        IProfileService profileService,
-        ILoadoutService loadoutService,
         IScrimRulesetManager rulesetManager,
         IFacilityService facilityService,
         IFacilityTypeService facilityTypeService,
@@ -50,8 +46,6 @@ public class DbSeeder : IDbSeeder
         _itemService = itemService;
         _itemCategoryService = itemCategoryService;
         _zoneService = zoneService;
-        _profileService = profileService;
-        _loadoutService = loadoutService;
         _rulesetManager = rulesetManager;
         _facilityService = facilityService;
         _facilityTypeService = facilityTypeService;
@@ -79,12 +73,6 @@ public class DbSeeder : IDbSeeder
 
             Task zoneTask = _zoneService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(zoneTask);
-
-            Task profileTask = _profileService.RefreshStoreAsync(true, true, cancellationToken);
-            TaskList.Add(profileTask);
-
-            Task loadoutsTask = _loadoutService.RefreshStoreAsync(true, true, cancellationToken);
-            TaskList.Add(loadoutsTask);
 
             Task scrimActionTask = _rulesetManager.SeedScrimActionModels();
             TaskList.Add(scrimActionTask);

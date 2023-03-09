@@ -5,14 +5,15 @@ using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
 using DbgCensus.EventStream.EventHandlers.Abstractions;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Models;
+using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
-using squittal.ScrimPlanetmans.App.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
@@ -28,6 +29,7 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly IScrimMatchScorer _scorer;
     private readonly IScrimMatchDataService _scrimMatchService;
+    private readonly ILoadoutService _loadoutService;
     private readonly PlanetmansDbContext _dbContext;
 
     public VehicleDestroyEventHandler
@@ -40,6 +42,7 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
         IScrimMessageBroadcastService messageService,
         IScrimMatchScorer scorer,
         IScrimMatchDataService scrimMatchService,
+        ILoadoutService loadoutService,
         PlanetmansDbContext dbContext
     )
     {
@@ -51,6 +54,7 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
         _messageService = messageService;
         _scorer = scorer;
         _scrimMatchService = scrimMatchService;
+        _loadoutService = loadoutService;
         _dbContext = dbContext;
     }
 
@@ -127,7 +131,7 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
                 involvesBenchedPlayer = involvesBenchedPlayer || victimPlayer.IsBenched;
 
             destructionEvent.DeathType = GetVehicleDestructionDeathType(destructionEvent);
-            destructionEvent.ActionType = GetVehicleDestructionScrimActionType(destructionEvent);
+            destructionEvent.ActionType = await GetVehicleDestructionScrimActionType(destructionEvent, ct);
 
             if (destructionEvent.ActionType is not ScrimActionType.OutsideInterference)
             {
@@ -191,7 +195,11 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
             : DeathEventType.Kill;
     }
 
-    private ScrimActionType GetVehicleDestructionScrimActionType(ScrimVehicleDestructionActionEvent destruction)
+    private async Task<ScrimActionType> GetVehicleDestructionScrimActionType
+    (
+        ScrimVehicleDestructionActionEvent destruction,
+        CancellationToken ct
+    )
     {
         // TODO: determine what a bailed-then-crashed undamaged vehicle looks like
         // Determine if this is involves a non-tracked player
@@ -201,7 +209,12 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
         if (destruction.VictimVehicle is null)
             return ScrimActionType.Unknown;
 
-        bool attackerIsMax = ProfileService.IsMaxLoadoutId(destruction.AttackerLoadoutId);
+        bool attackerIsMax = await _loadoutService.IsLoadoutOfProfileTypeAsync
+        (
+            (uint)destruction.AttackerLoadoutId,
+            CensusProfileType.MAX,
+            ct
+        );
         bool attackerIsVehicle = destruction.Weapon is { IsVehicleWeapon: true }
             || destruction.AttackerVehicle?.Type is not VehicleType.Unknown;
 

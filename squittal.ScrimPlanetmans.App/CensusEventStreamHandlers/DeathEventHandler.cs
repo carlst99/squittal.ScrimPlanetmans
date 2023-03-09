@@ -5,14 +5,15 @@ using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
 using DbgCensus.EventStream.EventHandlers.Abstractions;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Models;
+using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
-using squittal.ScrimPlanetmans.App.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
@@ -27,6 +28,7 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly IScrimMatchScorer _scorer;
     private readonly IScrimMatchDataService _scrimMatchService;
+    private readonly ILoadoutService _loadoutService;
     private readonly PlanetmansDbContext _dbContext;
 
     public DeathEventHandler
@@ -38,6 +40,7 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
         IScrimMessageBroadcastService messageService,
         IScrimMatchScorer scorer,
         IScrimMatchDataService scrimMatchService,
+        ILoadoutService loadoutService,
         PlanetmansDbContext dbContext
     )
     {
@@ -48,6 +51,7 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
         _messageService = messageService;
         _scorer = scorer;
         _scrimMatchService = scrimMatchService;
+        _loadoutService = loadoutService;
         _dbContext = dbContext;
     }
 
@@ -113,7 +117,7 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
                 involvesBenchedPlayer = involvesBenchedPlayer || attackerPlayer.IsBenched;
             }
 
-            deathEvent.ActionType = GetDeathScrimActionType(deathEvent);
+            deathEvent.ActionType = await GetDeathScrimActionType(deathEvent, ct);
             if (deathEvent.ActionType != ScrimActionType.OutsideInterference)
             {
                 deathEvent.DeathType = GetDeathEventType(deathEvent.ActionType);
@@ -160,15 +164,25 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
         }
     }
 
-    private ScrimActionType GetDeathScrimActionType(ScrimDeathActionEvent death)
+    private async Task<ScrimActionType> GetDeathScrimActionType(ScrimDeathActionEvent death, CancellationToken ct)
     {
         // Determine if this is involves a non-tracked player
         if (death.AttackerPlayer is null)
             return ScrimActionType.OutsideInterference;
 
         bool attackerIsVehicle = death.Weapon is { IsVehicleWeapon: true };
-        bool attackerIsMax = ProfileService.IsMaxLoadoutId(death.AttackerLoadoutId);
-        bool victimIsMax = ProfileService.IsMaxLoadoutId(death.VictimLoadoutId);
+        bool attackerIsMax = await _loadoutService.IsLoadoutOfProfileTypeAsync
+        (
+            (uint)death.AttackerLoadoutId,
+            CensusProfileType.MAX,
+            ct
+        );
+        bool victimIsMax = await _loadoutService.IsLoadoutOfProfileTypeAsync
+        (
+            (uint)death.VictimLoadoutId,
+            CensusProfileType.MAX,
+            ct
+        );
         bool sameTeam = _teamsManager.DoPlayersShareTeam(death.AttackerPlayer, death.VictimPlayer);
         bool samePlayer = (death.AttackerPlayer == death.VictimPlayer || death.AttackerPlayer == null);
 

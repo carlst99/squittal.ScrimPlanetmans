@@ -13,6 +13,7 @@ using Serilog;
 using Serilog.Events;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers;
 using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.Control;
 using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.PreDispatch;
@@ -113,7 +114,9 @@ public class Program
 
         services.AddCensusRestServices()
             .AddTransient<ICensusCharacterService, CensusCharacterService>()
-            .AddTransient<ICensusOutfitService, CensusOutfitService>();
+            .AddTransient<ICensusLoadoutService, CensusLoadoutService>()
+            .AddTransient<ICensusOutfitService, CensusOutfitService>()
+            .AddTransient<ICensusProfileService, CensusProfileService>();
 
         services.AddCensusServices
         (
@@ -121,6 +124,8 @@ public class Program
         );
         services.AddCensusHelpers();
 
+        // Register Census helper services
+        services.AddTransient<ILoadoutService, LoadoutService>();
         services.AddSingleton<IZoneService, ZoneService>();
         services.AddSingleton<IItemService, ItemService>();
         services.AddSingleton<IItemCategoryService, ItemCategoryService>();
@@ -128,8 +133,6 @@ public class Program
         services.AddTransient<IVehicleService, VehicleService>();
         services.AddSingleton<IWorldService, WorldService>();
         services.AddSingleton<IOutfitService, OutfitService>();
-        services.AddSingleton<IProfileService, ProfileService>();
-        services.AddTransient<ILoadoutService, LoadoutService>();
 
         // Register Census EventStream Services
         builder.Services.Configure<EventStreamOptions>(builder.Configuration.GetSection(nameof(EventStreamOptions)));

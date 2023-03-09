@@ -5,13 +5,14 @@ using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
 using DbgCensus.EventStream.EventHandlers.Abstractions;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Models;
+using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
-using squittal.ScrimPlanetmans.App.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.CensusEventStreamHandlers;
@@ -24,6 +25,7 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly IScrimMatchScorer _scorer;
     private readonly IScrimMatchDataService _scrimMatchService;
+    private readonly ILoadoutService _loadoutService;
     private readonly PlanetmansDbContext _dbContext;
 
     public GainExperiencePayloadHandler
@@ -34,6 +36,7 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         IScrimMessageBroadcastService messageService,
         IScrimMatchScorer scorer,
         IScrimMatchDataService scrimMatchService,
+        ILoadoutService loadoutService,
         PlanetmansDbContext dbContext
     )
     {
@@ -43,6 +46,7 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         _messageService = messageService;
         _scorer = scorer;
         _scrimMatchService = scrimMatchService;
+        _loadoutService = loadoutService;
         _dbContext = dbContext;
     }
 
@@ -139,7 +143,7 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         if (revivedPlayer is not null)
             involvesBenchedPlayer = involvesBenchedPlayer || revivedPlayer.IsBenched;
 
-        reviveEvent.ActionType = GetReviveScrimActionType(reviveEvent);
+        reviveEvent.ActionType = await GetReviveScrimActionType(reviveEvent, ct);
 
         if (reviveEvent.ActionType != ScrimActionType.OutsideInterference)
         {
@@ -182,7 +186,11 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         _messageService.BroadcastScrimReviveActionEventMessage(new ScrimReviveActionEventMessage(reviveEvent));
     }
 
-    private static ScrimActionType GetReviveScrimActionType(ScrimReviveActionEvent reviveEvent)
+    private async Task<ScrimActionType> GetReviveScrimActionType
+    (
+        ScrimReviveActionEvent reviveEvent,
+        CancellationToken ct
+    )
     {
         // Determine if this is involves a non-tracked player
         if (reviveEvent.MedicPlayer is null || reviveEvent.RevivedPlayer is null)
@@ -190,8 +198,15 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
 
         bool isRevivedMax = false;
 
-        if (reviveEvent.RevivedPlayer is not null)
-            isRevivedMax = ProfileService.IsMaxLoadoutId(reviveEvent.RevivedPlayer.LoadoutId);
+        if (reviveEvent.RevivedPlayer is { LoadoutId: { } loadoutId })
+        {
+            isRevivedMax = await _loadoutService.IsLoadoutOfProfileTypeAsync
+            (
+                (uint)loadoutId,
+                CensusProfileType.MAX,
+                ct
+            );
+        }
 
         return isRevivedMax
             ? ScrimActionType.ReviveMax

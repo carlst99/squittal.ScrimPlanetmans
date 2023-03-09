@@ -14,8 +14,6 @@ public class DatabaseMaintenanceService
     private readonly IFacilityService _facilityService;
     private readonly IItemService _itemService;
     private readonly IItemCategoryService _itemCategoryService;
-    private readonly IProfileService _profileService;
-    private readonly ILoadoutService _loadoutService;
     private readonly IZoneService _zoneService;
     private readonly IWorldService _worldService;
     private readonly IVehicleService _vehicleService;
@@ -41,8 +39,6 @@ public class DatabaseMaintenanceService
         IFacilityService facilityService,
         IItemService itemService,
         IItemCategoryService itemCategoryService,
-        IProfileService profileService,
-        ILoadoutService loadoutService,
         IZoneService zoneService,
         IWorldService worldService,
         IVehicleService vehicleService,
@@ -53,8 +49,6 @@ public class DatabaseMaintenanceService
         _facilityTypeService = facilityTypeService;
         _itemService = itemService;
         _itemCategoryService = itemCategoryService;
-        _profileService = profileService;
-        _loadoutService = loadoutService;
         _zoneService = zoneService;
         _worldService = worldService;
         _vehicleService = vehicleService;
@@ -64,8 +58,6 @@ public class DatabaseMaintenanceService
         _facilityTypes = new CensusStoreDataComparisonRow("Facility Types", _facilityTypeService);
         _items = new CensusStoreDataComparisonRow("Items", _itemService);
         _itemCategories = new CensusStoreDataComparisonRow("Item Categories", _itemCategoryService);
-        _profiles = new CensusStoreDataComparisonRow("Profiles", _profileService);
-        _loadouts = new CensusStoreDataComparisonRow("Loadouts", _loadoutService);
         _zones = new CensusStoreDataComparisonRow("Zones", _zoneService);
         _worlds = new CensusStoreDataComparisonRow("Worlds", _worldService);
         _vehicles = new CensusStoreDataComparisonRow("Vehicles", _vehicleService);

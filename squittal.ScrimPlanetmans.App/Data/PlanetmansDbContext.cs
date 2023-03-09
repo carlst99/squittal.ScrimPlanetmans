@@ -20,11 +20,9 @@ public class PlanetmansDbContext : DbContext
     #region Census DbSets
     public DbSet<Item> Items { get; set; }
     public DbSet<ItemCategory> ItemCategories { get; set; }
-    public DbSet<Loadout> Loadouts { get; set; }
     public DbSet<MapRegion> MapRegions { get; set; }
     //public DbSet<Outfit> Outfits { get; set; }
     //public DbSet<OutfitMember> OutfitMembers { get; set; }
-    public DbSet<Profile> Profiles { get; set; }
     public DbSet<Vehicle> Vehicles { get; set; }
     public DbSet<World> Worlds { get; set; }
     public DbSet<Zone> Zones { get; set; }
@@ -88,9 +86,7 @@ public class PlanetmansDbContext : DbContext
         #region Census Configuration
         builder.ApplyConfiguration(new ItemConfiguration());
         builder.ApplyConfiguration(new ItemCategoryConfiguration());
-        builder.ApplyConfiguration(new LoadoutConfiguration());
         builder.ApplyConfiguration(new MapRegionConfiguration());
-        builder.ApplyConfiguration(new ProfileConfiguration());
         builder.ApplyConfiguration(new VehicleConfiguration());
         builder.ApplyConfiguration(new WorldConfiguration());
         builder.ApplyConfiguration(new ZoneConfiguration());

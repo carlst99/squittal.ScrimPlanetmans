@@ -10,8 +10,6 @@ public static class CensusServiceExtensions
         services.AddSingleton<CensusFacility>();
         services.AddSingleton<CensusItem>();
         services.AddSingleton<CensusItemCategory>();
-        services.AddSingleton<CensusLoadout>();
-        services.AddSingleton<CensusProfile>();
         services.AddSingleton<CensusVehicle>();
         services.AddSingleton<CensusWorld>();
         services.AddSingleton<CensusZone>();
