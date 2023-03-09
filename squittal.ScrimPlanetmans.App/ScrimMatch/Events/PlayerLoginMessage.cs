@@ -1,4 +1,4 @@
-﻿using squittal.ScrimPlanetmans.App.Models.Planetside.Events;
+﻿using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
@@ -6,10 +6,10 @@ namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 public class PlayerLoginMessage
 {
     public Player Player { get; }
-    public PlayerLogin Login { get; }
+    public IPlayerLogin Login { get; }
     public string Info { get; }
 
-    public PlayerLoginMessage(Player player, PlayerLogin login)
+    public PlayerLoginMessage(Player player, IPlayerLogin login)
     {
         Player = player;
         Login = login;

@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
 using DbgCensus.EventStream.EventHandlers.Abstractions;
-using squittal.ScrimPlanetmans.App.Models.Planetside.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
@@ -33,18 +32,11 @@ public class PlayerLogEventHandler : IPayloadHandler<IPlayerLogin>, IPayloadHand
     {
         Player? player = _teamsManager.GetPlayerFromId(payload.CharacterID);
 
-        // TODO: use ScrimActionLoginEvent instead of PlayerLogin
+        // TODO: use ScrimActionLoginEvent instead of payload
 
-        PlayerLogin dataModel = new()
-        {
-            CharacterId = payload.CharacterID,
-            Timestamp = payload.Timestamp.UtcDateTime,
-            WorldId = (int)payload.WorldID
-        };
-
-        _scorer.HandlePlayerLogin(dataModel);
+        _scorer.HandlePlayerLogin(payload);
         if (player is not null)
-            _messageService.BroadcastPlayerLoginMessage(new PlayerLoginMessage(player, dataModel));
+            _messageService.BroadcastPlayerLoginMessage(new PlayerLoginMessage(player, payload));
 
         return Task.CompletedTask;
     }
@@ -54,18 +46,11 @@ public class PlayerLogEventHandler : IPayloadHandler<IPlayerLogin>, IPayloadHand
     {
         Player? player = _teamsManager.GetPlayerFromId(payload.CharacterID);
 
-        // TODO: use ScrimActionLogoutEvent instead of PlayerLogout
+        // TODO: use ScrimActionLogoutEvent instead of payload
 
-        PlayerLogout dataModel = new()
-        {
-            CharacterId = payload.CharacterID,
-            Timestamp = payload.Timestamp.UtcDateTime,
-            WorldId = (int)payload.WorldID
-        };
-
-        _scorer.HandlePlayerLogout(dataModel);
+        _scorer.HandlePlayerLogout(payload);
         if (player is not null)
-            _messageService.BroadcastPlayerLogoutMessage(new PlayerLogoutMessage(player, dataModel));
+            _messageService.BroadcastPlayerLogoutMessage(new PlayerLogoutMessage(player, payload));
 
         return Task.CompletedTask;
     }

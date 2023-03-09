@@ -1,9 +1,9 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
 using squittal.ScrimPlanetmans.App.Models;
-using squittal.ScrimPlanetmans.App.Models.Planetside.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
@@ -12,21 +12,24 @@ using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch;
 
-public class ScrimMatchScorer : IScrimMatchScorer
+public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
 {
     private readonly IScrimRulesetManager _rulesets;
     private readonly IScrimTeamsManager _teamsManager;
     private readonly IScrimMessageBroadcastService _messageService;
-    private readonly ILogger<ScrimMatchEngine> _logger;
 
     private Ruleset.Models.Ruleset? _activeRuleset;
 
-    public ScrimMatchScorer(IScrimRulesetManager rulesets, IScrimTeamsManager teamsManager, IScrimMessageBroadcastService messageService, ILogger<ScrimMatchEngine> logger)
+    public ScrimMatchScorer
+    (
+        IScrimRulesetManager rulesets,
+        IScrimTeamsManager teamsManager,
+        IScrimMessageBroadcastService messageService
+    )
     {
         _rulesets = rulesets;
         _teamsManager = teamsManager;
         _messageService = messageService;
-        _logger = logger;
 
         _messageService.RaiseActiveRulesetChangeEvent += OnActiveRulesetChangeEvent;
         _messageService.RaiseRulesetRuleChangeEvent += OnRulesetRuleChangeEvent;
@@ -53,25 +56,36 @@ public class ScrimMatchScorer : IScrimMatchScorer
     }
 
     #region Death Events
-    public async Task<ScrimEventScoringResult> ScoreDeathEventAsync(ScrimDeathActionEvent death, CancellationToken ct = default)
+
+    public async Task<ScrimEventScoringResult> ScoreDeathEventAsync
+    (
+        ScrimDeathActionEvent death,
+        CancellationToken ct = default
+    )
     {
         return death.DeathType switch
         {
-            DeathEventType.Kill => await ScoreKill(death),
+            DeathEventType.Kill => await ScoreKillAsync(death),
             DeathEventType.Suicide => await ScoreSuicide(death),
-            DeathEventType.Teamkill => await ScoreTeamkill(death),
+            DeathEventType.Teamkill => await ScoreTeamkillAsync(death),
             _ => new ScrimEventScoringResult(ScrimEventScorePointsSource.Default, 0, false)
         };
     }
 
-    private async Task<ScrimEventScoringResult> ScoreKill(ScrimDeathActionEvent death)
+    private async Task<ScrimEventScoringResult> ScoreKillAsync(ScrimDeathActionEvent death)
     {
-        var scoringResult = GetDeathOrDestructionEventPoints(death.ActionType, death.Weapon?.ItemCategoryId, death.Weapon?.Id, death.AttackerLoadoutId);
-        var points = scoringResult.Points;
+        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints
+        (
+            death.ActionType,
+            death.Weapon.ItemCategoryId,
+            death.Weapon.Id,
+            death.AttackerLoadoutId
+        );
 
-        var isHeadshot = (death.IsHeadshot ? 1 : 0);
+        int points = scoringResult.Points;
+        int isHeadshot = death.IsHeadshot ? 1 : 0;
 
-        var attackerUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate attackerUpdate = new()
         {
             Points = points,
             NetScore = points,
@@ -79,7 +93,7 @@ public class ScrimMatchScorer : IScrimMatchScorer
             Headshots = isHeadshot
         };
 
-        var victimUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate victimUpdate = new()
         {
             NetScore = -points,
             Deaths = 1,
@@ -87,18 +101,24 @@ public class ScrimMatchScorer : IScrimMatchScorer
         };
 
         // Player Stats update automatically updates the appropriate team's stats
-        await _teamsManager.UpdatePlayerStats(death.AttackerPlayer.Id, attackerUpdate);
-        await _teamsManager.UpdatePlayerStats(death.VictimPlayer.Id, victimUpdate);
+        await _teamsManager.UpdatePlayerStats(death.AttackerCharacterId, attackerUpdate);
+        await _teamsManager.UpdatePlayerStats(death.VictimCharacterId, victimUpdate);
 
         return scoringResult;
     }
 
     private async Task<ScrimEventScoringResult> ScoreSuicide(ScrimDeathActionEvent death)
     {
-        var scoringResult = GetDeathOrDestructionEventPoints(death.ActionType, death.Weapon?.ItemCategoryId, death.Weapon?.Id, death.AttackerLoadoutId);
-        var points = scoringResult.Points;
+        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints
+        (
+            death.ActionType,
+            death.Weapon.ItemCategoryId,
+            death.Weapon.Id,
+            death.AttackerLoadoutId
+        );
+        int points = scoringResult.Points;
 
-        var victimUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate victimUpdate = new()
         {
             Points = points,
             NetScore = points,
@@ -112,27 +132,27 @@ public class ScrimMatchScorer : IScrimMatchScorer
         return scoringResult;
     }
 
-    private async Task<ScrimEventScoringResult> ScoreTeamkill(ScrimDeathActionEvent death)
+    private async Task<ScrimEventScoringResult> ScoreTeamkillAsync(ScrimDeathActionEvent death)
     {
-        var scoringResult = GetDeathOrDestructionEventPoints(death.ActionType, death.Weapon?.ItemCategoryId, death.Weapon?.Id, death.AttackerLoadoutId);
-        var points = scoringResult.Points;
+        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints(death.ActionType, death.Weapon?.ItemCategoryId, death.Weapon?.Id, death.AttackerLoadoutId);
+        int points = scoringResult.Points;
 
-        var attackerUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate attackerUpdate = new()
         {
             Points = points,
             NetScore = points,
             Teamkills = 1
         };
 
-        var victimUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate victimUpdate = new()
         {
             Deaths = 1,
             TeamkillDeaths = 1
         };
 
         // Player Stats update automatically updates the appropriate team's stats
-        await _teamsManager.UpdatePlayerStats(death.AttackerPlayer.Id, attackerUpdate);
-        await _teamsManager.UpdatePlayerStats(death.VictimPlayer.Id, victimUpdate);
+        await _teamsManager.UpdatePlayerStats(death.AttackerCharacterId, attackerUpdate);
+        await _teamsManager.UpdatePlayerStats(death.VictimCharacterId, victimUpdate);
 
         return scoringResult;
     }
@@ -152,10 +172,10 @@ public class ScrimMatchScorer : IScrimMatchScorer
 
     private async Task<ScrimEventScoringResult> ScoreVehicleDestruction(ScrimVehicleDestructionActionEvent destruction)
     {
-        var scoringResult = GetDeathOrDestructionEventPoints(destruction.ActionType, destruction.Weapon?.ItemCategoryId, destruction.Weapon?.Id, destruction.AttackerLoadoutId);
-        var points = scoringResult.Points;
+        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints(destruction.ActionType, destruction.Weapon?.ItemCategoryId, destruction.Weapon?.Id, destruction.AttackerLoadoutId);
+        int points = scoringResult.Points;
 
-        var attackerUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate attackerUpdate = new()
         {
             Points = points,
             NetScore = points,
@@ -163,7 +183,7 @@ public class ScrimMatchScorer : IScrimMatchScorer
 
         attackerUpdate.Add(GetVehicleDestroyedEventAggregate(destruction.VictimVehicle.Type));
 
-        var victimUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate victimUpdate = new()
         {
             NetScore = -points,
         };
@@ -184,10 +204,10 @@ public class ScrimMatchScorer : IScrimMatchScorer
 
     private async Task<ScrimEventScoringResult> ScoreVehicleSuicideDestruction(ScrimVehicleDestructionActionEvent destruction)
     {
-        var scoringResult = GetDeathOrDestructionEventPoints(destruction.ActionType, destruction.Weapon?.ItemCategoryId, destruction.Weapon?.Id, destruction.AttackerLoadoutId);
-        var points = scoringResult.Points;
+        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints(destruction.ActionType, destruction.Weapon?.ItemCategoryId, destruction.Weapon?.Id, destruction.AttackerLoadoutId);
+        int points = scoringResult.Points;
 
-        var victimUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate victimUpdate = new()
         {
             Points = points,
             NetScore = points,
@@ -203,16 +223,16 @@ public class ScrimMatchScorer : IScrimMatchScorer
 
     private async Task<ScrimEventScoringResult> ScoreVehicleTeamDestruction(ScrimVehicleDestructionActionEvent destruction)
     {
-        var scoringResult = GetDeathOrDestructionEventPoints(destruction.ActionType, destruction.Weapon?.ItemCategoryId, destruction.Weapon?.Id, destruction.AttackerLoadoutId);
-        var points = scoringResult.Points;
+        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints(destruction.ActionType, destruction.Weapon?.ItemCategoryId, destruction.Weapon?.Id, destruction.AttackerLoadoutId);
+        int points = scoringResult.Points;
 
-        var attackerUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate attackerUpdate = new()
         {
             Points = points,
             NetScore = points,
         };
 
-        var victimUpdate = GetVehicleLostEventAggregate(destruction.VictimVehicle.Type);
+        ScrimEventAggregate victimUpdate = GetVehicleLostEventAggregate(destruction.VictimVehicle.Type);
 
         // Player Stats update automatically updates the appropriate team's stats
         await _teamsManager.UpdatePlayerStats(destruction.AttackerPlayer.Id, attackerUpdate);
@@ -269,18 +289,18 @@ public class ScrimMatchScorer : IScrimMatchScorer
     #region Experience Events
     public async Task<ScrimEventScoringResult> ScoreReviveEventAsync(ScrimReviveActionEvent revive, CancellationToken ct = default)
     {
-        var actionType = revive.ActionType;
-        var scoringResult = GetActionRulePoints(actionType);
-        var points = scoringResult.Points;
+        ScrimActionType actionType = revive.ActionType;
+        ScrimEventScoringResult scoringResult = GetActionRulePoints(actionType);
+        int points = scoringResult.Points;
 
-        var medicUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate medicUpdate = new()
         {
             Points = points,
             NetScore = points,
             RevivesGiven = 1
         };
 
-        var revivedUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate revivedUpdate = new()
         {
             RevivesTaken = 1
         };
@@ -294,17 +314,17 @@ public class ScrimMatchScorer : IScrimMatchScorer
 
     public async Task<ScrimEventScoringResult> ScoreAssistEventAsync(ScrimAssistActionEvent assist, CancellationToken ct = default)
     {
-        var actionType = assist.ActionType;
-        var scoringResult = GetActionRulePoints(actionType);
-        var points = scoringResult.Points;
+        ScrimActionType actionType = assist.ActionType;
+        ScrimEventScoringResult scoringResult = GetActionRulePoints(actionType);
+        int points = scoringResult.Points;
 
-        var attackerUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate attackerUpdate = new()
         {
             Points = points,
             NetScore = points
         };
 
-        var victimUpdate = new ScrimEventAggregate();
+        ScrimEventAggregate victimUpdate = new();
 
         if (actionType == ScrimActionType.DamageAssist)
         {
@@ -368,17 +388,17 @@ public class ScrimMatchScorer : IScrimMatchScorer
 
     public async Task<ScrimEventScoringResult> ScoreObjectiveTickEventAsync(ScrimObjectiveTickActionEvent objective, CancellationToken ct = default)
     {
-        var actionType = objective.ActionType;
-        var scoringResult = GetActionRulePoints(actionType);
-        var points = scoringResult.Points;
+        ScrimActionType actionType = objective.ActionType;
+        ScrimEventScoringResult scoringResult = GetActionRulePoints(actionType);
+        int points = scoringResult.Points;
 
-        var playerUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate playerUpdate = new()
         {
             Points = points,
             NetScore = points
         };
 
-        var isDefense = (actionType == ScrimActionType.PointDefend
+        bool isDefense = (actionType == ScrimActionType.PointDefend
             || actionType == ScrimActionType.ObjectiveDefensePulse);
 
         if (isDefense)
@@ -401,14 +421,14 @@ public class ScrimMatchScorer : IScrimMatchScorer
     #region Objective Events
     public ScrimEventScoringResult ScoreFacilityControlEvent(ScrimFacilityControlActionEvent control)
     {
-        var teamOrdinal = control.ControllingTeamOrdinal;
-        var type = control.ControlType;
+        TeamDefinition teamOrdinal = control.ControllingTeamOrdinal;
+        FacilityControlType type = control.ControlType;
 
-        var actionType = control.ActionType;
-        var scoringResult = GetActionRulePoints(actionType);
-        var points = scoringResult.Points;
+        ScrimActionType actionType = control.ActionType;
+        ScrimEventScoringResult scoringResult = GetActionRulePoints(actionType);
+        int points = scoringResult.Points;
 
-        var teamUpdate = new ScrimEventAggregate()
+        ScrimEventAggregate teamUpdate = new()
         {
             Points = points,
             NetScore = points,
@@ -428,43 +448,45 @@ public class ScrimMatchScorer : IScrimMatchScorer
         }
 
         _teamsManager.UpdateTeamStats(teamOrdinal, teamUpdate);
-            
+
         return scoringResult;
     }
     #endregion Objective Events
 
     #region Misc. Non-Scored Events
-    public void HandlePlayerLogin(PlayerLogin login)
+
+    public void HandlePlayerLogin(IPlayerLogin login)
     {
-        var characterId = login.CharacterId;
+        ulong characterId = login.CharacterID;
         _teamsManager.SetPlayerOnlineStatus(characterId, true);
     }
 
-    public void HandlePlayerLogout(PlayerLogout login)
+    public void HandlePlayerLogout(IPlayerLogout login)
     {
-        var characterId = login.CharacterId;
+        ulong characterId = login.CharacterID;
         _teamsManager.SetPlayerOnlineStatus(characterId, false);
     }
+
     #endregion Misc. Non-Scored Events
 
     #region Rule Handling
     private ScrimEventScoringResult GetDeathOrDestructionEventPoints(ScrimActionType actionType, int? itemCategoryId, int? itemId, int? attackerLoadoutId)
     {
         /* Action Rules */
-        var actionRule = GetActionRule(actionType);
+        RulesetActionRule? actionRule = GetActionRule(actionType);
 
         if (actionRule == null)
         {
             return new ScrimEventScoringResult(ScrimEventScorePointsSource.Default, 0, false);
         }
-            
+
         if (!actionRule.DeferToItemCategoryRules || itemCategoryId == null)
         {
             return new ScrimEventScoringResult(ScrimEventScorePointsSource.ActionTypeRule, actionRule.Points, false);
         }
 
         /* Item Category Rules */
-        var itemCategoryRule = GetItemCategoryRule((int)itemCategoryId);
+        RulesetItemCategoryRule? itemCategoryRule = GetItemCategoryRule((int)itemCategoryId);
 
         if (itemCategoryRule == null)
         {
@@ -494,7 +516,7 @@ public class ScrimMatchScorer : IScrimMatchScorer
         }
 
         /* Item Rules */
-        var itemRule = GetItemRule((int)itemId);
+        RulesetItemRule? itemRule = GetItemRule((int)itemId);
 
         if (itemRule == null)
         {
@@ -539,7 +561,7 @@ public class ScrimMatchScorer : IScrimMatchScorer
 
     private ScrimEventScoringResult GetActionRulePoints(ScrimActionType actionType)
     {
-        var actionRule = _activeRuleset.RulesetActionRules
+        RulesetActionRule? actionRule = _activeRuleset.RulesetActionRules
             .Where(rule => rule.ScrimActionType == actionType)
             .FirstOrDefault();
 
@@ -554,12 +576,19 @@ public class ScrimMatchScorer : IScrimMatchScorer
 
     private ScrimEventScoringResult GetPlanetsideClassSettingPoints(int attackerLoadoutId, PlanetsideClassRuleSettings classSettings, ScrimEventScorePointsSource scoreSource)
     {
-        var planetsideClass = PlanetsideClassLoadoutTranslator.GetPlanetsideClass(attackerLoadoutId);
+        PlanetsideClass planetsideClass = PlanetsideClassLoadoutTranslator.GetPlanetsideClass(attackerLoadoutId);
 
-        var isBanned = classSettings.GetClassIsBanned(planetsideClass);
-        var points = classSettings.GetClassPoints(planetsideClass);
+        bool isBanned = classSettings.GetClassIsBanned(planetsideClass);
+        int points = classSettings.GetClassPoints(planetsideClass);
 
         return new ScrimEventScoringResult(scoreSource, points, isBanned);
     }
     #endregion Rule Handling
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _messageService.RaiseActiveRulesetChangeEvent -= OnActiveRulesetChangeEvent;
+        _messageService.RaiseRulesetRuleChangeEvent -= OnRulesetRuleChangeEvent;
+    }
 }
