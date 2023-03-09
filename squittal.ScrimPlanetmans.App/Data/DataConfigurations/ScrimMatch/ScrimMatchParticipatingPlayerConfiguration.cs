@@ -24,10 +24,5 @@ public class ScrimMatchParticipatingPlayerConfiguration : IEntityTypeConfigurati
             p => (int)p,
             p => (TeamDefinition)p
         );
-
-        builder.Ignore(e => e.ScrimMatch);
-        builder.Ignore(e => e.Faction);
-        builder.Ignore(e => e.World);
-        builder.Ignore(e => e.ConstructedTeam);
     }
 }

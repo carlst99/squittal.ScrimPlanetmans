@@ -160,32 +160,8 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
                             ScrimMatchRound = currentRound,
                             ActionType = destructionEvent.ActionType,
                             DeathType = destructionEvent.DeathType,
-                            AttackerVehicleClass = destructionEvent.AttackerVehicle?.Type,
-                            VictimVehicleClass = destructionEvent.VictimVehicle?.Type,
-                            AttackerTeamOrdinal = destructionEvent.AttackerPlayer?.TeamOrdinal,
-                            VictimTeamOrdinal = destructionEvent.VictimPlayer?.TeamOrdinal,
-                            AttackerFactionId = destructionEvent.AttackerPlayer?.FactionId,
-                            AttackerNameFull = destructionEvent.AttackerPlayer?.NameFull,
-                            AttackerLoadoutId = destructionEvent.AttackerPlayer?.LoadoutId,
-                            AttackerOutfitId = destructionEvent.AttackerPlayer?.OutfitId,
-                            AttackerOutfitAlias = destructionEvent.AttackerPlayer?.OutfitAlias,
-                            AttackerIsOutfitless = destructionEvent.AttackerPlayer?.IsOutfitless ?? true,
-                            VictimFactionId = destructionEvent.VictimPlayer?.FactionId,
-                            VictimNameFull = destructionEvent.VictimPlayer?.NameFull,
-                            VictimLoadoutId = destructionEvent.VictimPlayer?.LoadoutId,
-                            VictimOutfitId = destructionEvent.VictimPlayer?.OutfitId,
-                            VictimOutfitAlias = destructionEvent.VictimPlayer?.OutfitAlias,
-                            VictimIsOutfitless = destructionEvent.VictimPlayer?.IsOutfitless ?? true,
                             WeaponId = destructionEvent.Weapon.Id,
-                            WeaponItemCategoryId = destructionEvent.Weapon.ItemCategoryId,
-                            IsVehicleWeapon = destructionEvent.Weapon?.IsVehicleWeapon,
-                            ZoneId = destructionEvent.ZoneId,
-                            WorldId = (int)payload.WorldID,
-                            Points = destructionEvent.Points,
-                            //AttackerResultingPoints = destructionEvent.AttackerPlayer.EventAggregate.Points,
-                            //AttackerResultingNetScore = destructionEvent.AttackerPlayer.EventAggregate.NetScore,
-                            //VictimResultingPoints = destructionEvent.VictimPlayer.EventAggregate.Points,
-                            //VictimResultingNetScore = destructionEvent.VictimPlayer.EventAggregate.NetScore
+                            Points = destructionEvent.Points
                         };
 
                         _dbContext.ScrimVehicleDestructions.Add(dataModel);

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using squittal.ScrimPlanetmans.App.Models;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
@@ -13,63 +12,23 @@ public class ScrimDeath
     public required string ScrimMatchId { get; init; }
 
     [Required]
-    public DateTime Timestamp { get; set; }
+    public required DateTime Timestamp { get; init; }
 
     [Required]
-    public ulong? AttackerCharacterId { get; set; }
+    public required ulong VictimCharacterId { get; init; }
 
     [Required]
-    public required ulong VictimCharacterId { get; set; }
+    public required int ScrimMatchRound { get; init; }
 
     [Required]
-    public int ScrimMatchRound { get; set; }
+    public required ScrimActionType ActionType { get; init; }
 
-    public ScrimActionType ActionType { get; set; }
-    public DeathEventType DeathType { get; set; }
-
-    public TeamDefinition? AttackerTeamOrdinal { get; set; }
-    public TeamDefinition? VictimTeamOrdinal { get; set; }
-
-    public string? AttackerNameFull { get; set; }
-    public int? AttackerFactionId { get; set; }
-    public int? AttackerLoadoutId { get; set; }
-    public ulong? AttackerOutfitId { get; set; }
-    public string? AttackerOutfitAlias { get; set; }
-    public bool? AttackerIsOutfitless { get; set; }
-
-    public required string VictimNameFull { get; init; }
-    public required int VictimFactionId { get; init; }
-    public required int VictimLoadoutId { get; init; }
-    public ulong? VictimOutfitId { get; set; }
-    public string? VictimOutfitAlias { get; set; }
-    public bool VictimIsOutfitless { get; set; }
-
-    public bool IsHeadshot { get; set; }
-
-    public int? WeaponId { get; set; }
-    public int? WeaponItemCategoryId { get; set; }
-    public bool? IsVehicleWeapon { get; set; }
-    public int? AttackerVehicleId { get; set; }
-
-    public int ZoneId { get; set; }
-    public int WorldId { get; set; }
-
-    public int Points { get; set; }
-    public int? AttackerResultingPoints { get; set; }
-    public int? AttackerResultingNetScore { get; set; }
-    public int? VictimResultingPoints { get; set; }
-    public int? VictimResultingNetScore { get; set; }
-
-    #region Navigation Properties
-    public ScrimMatch ScrimMatch { get; set; }
-    public ScrimMatchParticipatingPlayer AttackerParticipatingPlayer { get; set; }
-    public ScrimMatchParticipatingPlayer VictimParticipatingPlayer { get; set; }
-    public Faction AttackerFaction { get; set; }
-    public Faction VictimFaction { get; set; }
-    public Item Weapon { get; set; }
-    public ItemCategory WeaponItemCategory { get; set; }
-    public Vehicle AttackerVehicle { get; set; }
-    public World World { get; set; }
-    public Zone Zone { get; set; }
-    #endregion Navigation Properties
+    public ulong? AttackerCharacterId { get; init; }
+    public DeathEventType DeathType { get; init; }
+    public TeamDefinition? AttackerTeamOrdinal { get; init; }
+    public TeamDefinition? VictimTeamOrdinal { get; init; }
+    public bool IsHeadshot { get; init; }
+    public int Points { get; init; }
+    public int? WeaponId { get; init; }
+    public int? AttackerVehicleId { get; init; }
 }

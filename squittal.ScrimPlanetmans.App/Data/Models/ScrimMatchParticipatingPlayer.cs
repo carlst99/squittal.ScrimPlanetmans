@@ -1,41 +1,22 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using squittal.ScrimPlanetmans.App.Models;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
 
 namespace squittal.ScrimPlanetmans.App.Data.Models;
 
 public class ScrimMatchParticipatingPlayer
 {
     [Required]
-    public string ScrimMatchId { get; set; }
+    public required string ScrimMatchId { get; init; }
 
     [Required]
-    public ulong CharacterId { get; set; }
+    public required ulong CharacterId { get; init; }
 
     [Required]
-    public TeamDefinition TeamOrdinal { get; set; }
+    public required TeamDefinition TeamOrdinal { get; init; }
 
-
-    public string NameFull { get; set; }
-    public string NameDisplay { get; set; }
-
-
-    public int FactionId { get; set; }
-    public int WorldId { get; set; }
-    public int PrestigeLevel { get; set; }
-
-    public bool IsFromOutfit { get; set; }
-    public ulong? OutfitId { get; set; }
-    public string? OutfitAlias { get; set; }
-
-    public bool IsFromConstructedTeam { get; set; }
-    public int? ConstructedTeamId { get; set; }
-
-
-    #region Navigation Properties
-    public ScrimMatch ScrimMatch { get; set; }
-    public Faction Faction { get; set; }
-    public World World { get; set; }
-    public ConstructedTeam ConstructedTeam { get; set; }
-    #endregion Navigation Properties
+    public int FactionId { get; init; }
+    public bool IsFromOutfit { get; init; }
+    public ulong? OutfitId { get; init; }
+    public bool IsFromConstructedTeam { get; init; }
+    public int? ConstructedTeamId { get; init; }
 }

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using squittal.ScrimPlanetmans.App.Models;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
@@ -10,34 +9,25 @@ namespace squittal.ScrimPlanetmans.App.Data.Models;
 public class ScrimFacilityControl
 {
     [Required]
-    public string ScrimMatchId { get; set; }
+    public required string ScrimMatchId { get; init; }
 
     [Required]
-    public DateTime Timestamp { get; set; }
+    public required DateTime Timestamp { get; init; }
 
     [Required]
-    public int FacilityId { get; set; }
+    public required int FacilityId { get; init; }
 
     [Required]
-    public TeamDefinition ControllingTeamOrdinal { get; set; }
+    public required TeamDefinition ControllingTeamOrdinal { get; init; }
 
     [Required]
-    public int ScrimMatchRound { get; set; }
+    public required int ScrimMatchRound { get; init; }
 
-    public ScrimActionType ActionType { get; set; }
-    public FacilityControlType ControlType { get; set; }
+    [Required]
+    public required ScrimActionType ActionType { get; init; }
 
-    public int ControllingFactionId { get; set; }
+    [Required]
+    public required FacilityControlType ControlType { get; init; }
 
-    public int? ZoneId { get; set; }
-    public int WorldId { get; set; }
-
-    public int Points { get; set; }
-
-    #region Navigation Properties
-    public ScrimMatch ScrimMatch { get; set; }
-    public Faction ControllingFaction { get; set; }
-    public Zone Zone { get; set; }
-    public World World { get; set; }
-    #endregion Navigation Properties
+    public int Points { get; init; }
 }

@@ -25,10 +25,5 @@ public class ScrimFacilityControlConfiguration : IEntityTypeConfiguration<ScrimF
             t => (int)t,
             t => (TeamDefinition)t
         );
-
-        builder.Ignore(e => e.ScrimMatch);
-        builder.Ignore(e => e.ControllingFaction);
-        builder.Ignore(e => e.Zone);
-        builder.Ignore(e => e.World);
     }
 }

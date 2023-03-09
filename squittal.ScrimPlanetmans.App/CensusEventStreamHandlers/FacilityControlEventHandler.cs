@@ -141,10 +141,8 @@ public class FacilityControlEventHandler : IPayloadHandler<IFacilityControl>
                     ControllingTeamOrdinal = controlEvent.ControllingTeamOrdinal,
                     ActionType = controlEvent.ActionType,
                     ControlType = controlEvent.ControlType,
-                    ControllingFactionId = (int)payload.NewFactionID,
-                    ZoneId = controlEvent.ZoneId,
-                    WorldId = (int)payload.WorldID,
                     Points = controlEvent.Points,
+                    FacilityId = controlEvent.FacilityId
                 };
 
                 _dbContext.ScrimFacilityControls.Add(dataModel);

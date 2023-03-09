@@ -263,23 +263,16 @@ public class ScrimMatchDataService : IScrimMatchDataService
         }
     }
 
-    private ScrimMatchParticipatingPlayer ConvertToDbModel(Player player, string matchId)
-    {
-        return new ScrimMatchParticipatingPlayer
+    private static ScrimMatchParticipatingPlayer ConvertToDbModel(Player player, string matchId)
+        => new()
         {
             ScrimMatchId = matchId,
             CharacterId = player.Id,
             TeamOrdinal = player.TeamOrdinal,
-            NameFull = player.NameFull,
-            NameDisplay = player.NameDisplay,
             FactionId = player.FactionId,
-            WorldId = player.WorldId,
-            PrestigeLevel = player.PrestigeLevel,
-            IsFromOutfit = !player.IsOutfitless,
+            IsFromOutfit = player.IsOutfitless,
             OutfitId = player.IsOutfitless ? null : player.OutfitId,
-            OutfitAlias = player.IsOutfitless ? null : player.OutfitAlias,
             IsFromConstructedTeam = player.IsFromConstructedTeam,
             ConstructedTeamId = player.IsFromConstructedTeam ? player.ConstructedTeamId : null
         };
-    }
 }
