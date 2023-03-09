@@ -8,12 +8,12 @@
 @using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.Models.Forms
 @using squittal.ScrimPlanetmans.App.Models.Planetside
+@using squittal.ScrimPlanetmans.App.Util
 
 @inject IScrimTeamsManager ScrimTeamsManager
 @inject IScrimMatchEngine ScrimMatchEngine
 @inject IOutfitService OutfitService
 @inject IWorldService WorldService
-@inject IFactionService FactionService
 @inject IScrimMessageBroadcastService MessageService
 
 @implements IDisposable
@@ -123,7 +123,7 @@
         <div class="sq-mini-card-12 @SqCssHelper.GetFactionClassFromId(outfit.FactionId)">
 
             <h5 class="@SqCssHelper.GetFactionClassFromId(outfit.FactionId)" style="color: var(--sq-ps2-primary); margin-bottom: 0.1rem;">
-                <b>[@outfit.Alias] @outfit.Name</b> (@outfit.MemberCount | @outfit.MembersOnlineCount) <span>@_worlds?.Where(w => w.Id == outfit.WorldId).Select(w => w.Name).FirstOrDefault()</span><span> @FactionService.GetFactionAbbrevFromId((int)outfit.FactionId)</span>
+                <b>[@outfit.Alias] @outfit.Name</b> (@outfit.MemberCount | @outfit.MembersOnlineCount) <span>@_worlds?.Where(w => w.Id == outfit.WorldId).Select(w => w.Name).FirstOrDefault()</span><span> @StringHelpers.GetFactionAbbreviation(outfit.FactionId)</span>
             </h5>
 
             <p style="margin: 0 0 0.1rem 0;">

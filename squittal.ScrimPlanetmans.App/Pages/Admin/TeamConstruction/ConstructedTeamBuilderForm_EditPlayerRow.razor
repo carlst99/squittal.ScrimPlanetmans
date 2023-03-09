@@ -6,7 +6,6 @@
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using System.Diagnostics.CodeAnalysis
 @inject IConstructedTeamService ConstructedTeamsService
-@inject IFactionService FactionService
 @inject IWorldService WorldService
 @inject IScrimMessageBroadcastService MessageService
 
@@ -259,12 +258,6 @@
         return _renderedCharacter.NameFull == $"uc{_renderedCharacter.CharacterId}"
             ? $"Unknown Character [{_renderedCharacter.CharacterId}]"
             : $"{_renderedCharacter.NameFull} [{_renderedCharacterId}]";
-    }
-
-
-    private string GetFactionAbbreviationFromId(int factionId)
-    {
-        return FactionService.GetFactionAbbrevFromId(factionId);
     }
 
     private void InvokeAsyncStateHasChanged()

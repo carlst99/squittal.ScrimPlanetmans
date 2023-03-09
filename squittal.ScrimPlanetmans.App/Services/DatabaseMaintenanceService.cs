@@ -18,7 +18,6 @@ public class DatabaseMaintenanceService
     private readonly ILoadoutService _loadoutService;
     private readonly IZoneService _zoneService;
     private readonly IWorldService _worldService;
-    private readonly IFactionService _factionService;
     private readonly IVehicleService _vehicleService;
 
     private readonly ISqlScriptRunner _adhocScriptRunner;
@@ -31,7 +30,6 @@ public class DatabaseMaintenanceService
     private readonly CensusStoreDataComparisonRow _loadouts;
     private readonly CensusStoreDataComparisonRow _zones;
     private readonly CensusStoreDataComparisonRow _worlds;
-    private readonly CensusStoreDataComparisonRow _factions;
     private readonly CensusStoreDataComparisonRow _vehicles;
 
     public List<CensusStoreDataComparisonRow> Comparisons { get; private set; } = new List<CensusStoreDataComparisonRow>();
@@ -47,7 +45,6 @@ public class DatabaseMaintenanceService
         ILoadoutService loadoutService,
         IZoneService zoneService,
         IWorldService worldService,
-        IFactionService factionService,
         IVehicleService vehicleService,
         ISqlScriptRunner adhocScriptRunner
     )
@@ -60,7 +57,6 @@ public class DatabaseMaintenanceService
         _loadoutService = loadoutService;
         _zoneService = zoneService;
         _worldService = worldService;
-        _factionService = factionService;
         _vehicleService = vehicleService;
         _adhocScriptRunner = adhocScriptRunner;
 
@@ -72,7 +68,6 @@ public class DatabaseMaintenanceService
         _loadouts = new CensusStoreDataComparisonRow("Loadouts", _loadoutService);
         _zones = new CensusStoreDataComparisonRow("Zones", _zoneService);
         _worlds = new CensusStoreDataComparisonRow("Worlds", _worldService);
-        _factions = new CensusStoreDataComparisonRow("Factions", _factionService);
         _vehicles = new CensusStoreDataComparisonRow("Vehicles", _vehicleService);
 
         Comparisons.Add(_mapRegions);
@@ -83,7 +78,6 @@ public class DatabaseMaintenanceService
         Comparisons.Add(_loadouts);
         Comparisons.Add(_zones);
         Comparisons.Add(_worlds);
-        Comparisons.Add(_factions);
         Comparisons.Add(_vehicles);
     }
 

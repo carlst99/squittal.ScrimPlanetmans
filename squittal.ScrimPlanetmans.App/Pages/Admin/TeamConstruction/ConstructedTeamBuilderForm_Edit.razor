@@ -11,7 +11,6 @@
 
 @inject IConstructedTeamService ConstructedTeamsService
 @inject IScrimMessageBroadcastService MessageService
-@inject IFactionService FactionService
 @inject IWorldService WorldService
 
 @implements IDisposable
@@ -447,11 +446,6 @@
         });
     }
     #endregion CharacterProcessing
-
-    private string GetFactionAbbreviationFromId(int factionId)
-    {
-        return FactionService.GetFactionAbbrevFromId(factionId);
-    }
 
     private void InvokeAsyncStateHasChanged()
     {

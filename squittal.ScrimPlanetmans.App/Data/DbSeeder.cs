@@ -14,7 +14,6 @@ namespace squittal.ScrimPlanetmans.App.Data;
 public class DbSeeder : IDbSeeder
 {
     private readonly IWorldService _worldService;
-    private readonly IFactionService _factionService;
     private readonly IItemService _itemService;
     private readonly IItemCategoryService _itemCategoryService;
     private readonly IZoneService _zoneService;
@@ -32,7 +31,6 @@ public class DbSeeder : IDbSeeder
     public DbSeeder
     (
         IWorldService worldService,
-        IFactionService factionService,
         IItemService itemService,
         IItemCategoryService itemCategoryService,
         IZoneService zoneService,
@@ -49,7 +47,6 @@ public class DbSeeder : IDbSeeder
     )
     {
         _worldService = worldService;
-        _factionService = factionService;
         _itemService = itemService;
         _itemCategoryService = itemCategoryService;
         _zoneService = zoneService;
@@ -73,9 +70,6 @@ public class DbSeeder : IDbSeeder
 
             Task worldsTask = _worldService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(worldsTask);
-
-            Task factionsTask = _factionService.RefreshStoreAsync(true, true, cancellationToken);
-            TaskList.Add(factionsTask);
 
             Task itemsTask = _itemService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(itemsTask);

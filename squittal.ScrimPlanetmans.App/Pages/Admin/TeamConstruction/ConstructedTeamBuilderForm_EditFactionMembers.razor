@@ -9,10 +9,10 @@
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
+@using squittal.ScrimPlanetmans.App.Util
 
 @inject IConstructedTeamService ConstructedTeamsService
 @inject IScrimMessageBroadcastService MessageService
-@inject IFactionService FactionService
 @inject IWorldService WorldService
 
 @implements IDisposable
@@ -135,7 +135,7 @@
         if (i_teamId != _renderedTeamId || i_factionId != _renderedFactionId || viewOnlyChanged)
         {
             _renderedFactionId = i_factionId;
-            _renderedFactionAbbreviation = GetFactionAbbreviationFromId(_renderedFactionId);
+            _renderedFactionAbbreviation = StringHelpers.GetFactionAbbreviation(_renderedFactionId);
 
             _renderedTeamId = i_teamId;
 
@@ -310,11 +310,6 @@
         );
     }
     #endregion CharacterProcessing
-
-    private string GetFactionAbbreviationFromId(int factionId)
-    {
-        return FactionService.GetFactionAbbrevFromId(factionId);
-    }
 
     private void InvokeAsyncStateHasChanged()
     {

@@ -7,13 +7,13 @@
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
 @using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
+@using squittal.ScrimPlanetmans.App.Util
 
 @inject IScrimTeamsManager TeamsManager
 @inject IConstructedTeamService ConstructedTeamsService
 @inject IScrimMatchEngine ScrimMatchEngine
 @inject IOutfitService OutfitService
 @inject IWorldService WorldService
-@inject IFactionService FactionService
 @inject IScrimMessageBroadcastService MessageService
 
 @implements IDisposable
@@ -24,7 +24,7 @@
     <div class="sq-mini-card-12 @SqCssHelper.GetFactionClassFromId(_renderedConstructedTeamMatchInfo.ActiveFactionId)">
 
         <h5 class="@SqCssHelper.GetFactionClassFromId(_renderedConstructedTeamMatchInfo.ActiveFactionId)" style="color: var(--sq-ps2-primary); margin-bottom: 0.1rem; padding: 8px 0 0 15px;">
-            <b><span class="mono-font">[@_renderedConstructedTeamMatchInfo.ConstructedTeam.Alias]</span> @_renderedConstructedTeamMatchInfo.ConstructedTeam.Name</b> (@((int)_renderedConstructedTeamMatchInfo.MembersFactionCount) | @((int)_renderedConstructedTeamMatchInfo.MembersOnlineCount)) <span> @FactionService.GetFactionAbbrevFromId((int)_renderedConstructedTeamMatchInfo.ActiveFactionId)</span>
+            <b><span class="mono-font">[@_renderedConstructedTeamMatchInfo.ConstructedTeam.Alias]</span> @_renderedConstructedTeamMatchInfo.ConstructedTeam.Name</b> (@((int)_renderedConstructedTeamMatchInfo.MembersFactionCount) | @((int)_renderedConstructedTeamMatchInfo.MembersOnlineCount)) <span> @StringHelpers.GetFactionAbbreviation(_renderedConstructedTeamMatchInfo.ActiveFactionId)</span>
         </h5>
 
     <p style="margin: 0 0 0.1rem 0;  padding-left: 16px;">

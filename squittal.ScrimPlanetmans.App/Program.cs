@@ -121,7 +121,6 @@ public class Program
         );
         services.AddCensusHelpers();
 
-        services.AddTransient<IFactionService, FactionService>();
         services.AddSingleton<IZoneService, ZoneService>();
         services.AddSingleton<IItemService, ItemService>();
         services.AddSingleton<IItemCategoryService, ItemCategoryService>();

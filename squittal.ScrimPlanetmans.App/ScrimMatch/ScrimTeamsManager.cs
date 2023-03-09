@@ -18,6 +18,7 @@ using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
+using squittal.ScrimPlanetmans.App.Util;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch;
 
@@ -28,7 +29,6 @@ public class ScrimTeamsManager : IScrimTeamsManager
     private readonly ILogger<ScrimTeamsManager> _logger;
     private readonly IScrimPlayersService _scrimPlayers;
     private readonly IOutfitService _outfitService;
-    private readonly IFactionService _factionService;
     private readonly IConstructedTeamService _constructedTeamService;
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly IDbContextHelper _dbContextHelper;
@@ -46,7 +46,6 @@ public class ScrimTeamsManager : IScrimTeamsManager
         ILogger<ScrimTeamsManager> logger,
         IScrimPlayersService scrimPlayers,
         IOutfitService outfitService,
-        IFactionService factionService,
         IScrimMessageBroadcastService messageService,
         IScrimMatchDataService matchDataService,
         IConstructedTeamService constructedTeamService,
@@ -56,7 +55,6 @@ public class ScrimTeamsManager : IScrimTeamsManager
         _logger = logger;
         _scrimPlayers = scrimPlayers;
         _outfitService = outfitService;
-        _factionService = factionService;
         _messageService = messageService;
         _matchDataService = matchDataService;
         _constructedTeamService = constructedTeamService;
@@ -125,13 +123,8 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         team.FactionId = factionId;
 
-        string abbrev = factionId is null
-            ? "null"
-            : _factionService.GetFactionAbbrevFromId((int)factionId);
-
-        string oldAbbrev = oldFactionId is null
-            ? "null"
-            : _factionService.GetFactionAbbrevFromId(oldFactionId.Value);
+        string abbrev = StringHelpers.GetFactionAbbreviation(factionId);
+        string oldAbbrev = StringHelpers.GetFactionAbbreviation(oldFactionId);
 
         _messageService.BroadcastTeamFactionChangeMessage(new TeamFactionChangeMessage(teamOrdinal, factionId, abbrev, oldFactionId, oldAbbrev));
         _logger.LogInformation

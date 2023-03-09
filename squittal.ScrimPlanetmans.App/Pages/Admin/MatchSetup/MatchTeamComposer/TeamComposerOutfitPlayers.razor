@@ -8,13 +8,13 @@
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
 @using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
+@using squittal.ScrimPlanetmans.App.Util
 
 @inject IScrimTeamsManager TeamsManager
 @inject IConstructedTeamService ConstructedTeamsService
 @inject IScrimMatchEngine ScrimMatchEngine
 @inject IOutfitService OutfitService
 @inject IWorldService WorldService
-@inject IFactionService FactionService
 @inject IScrimMessageBroadcastService MessageService
 
 @implements IDisposable
@@ -25,7 +25,7 @@
     <div class="sq-mini-card-12 @SqCssHelper.GetFactionClassFromId(_renderedOutfit.FactionId)">
 
         <h5 class="@SqCssHelper.GetFactionClassFromId(_renderedOutfit.FactionId)" style="color: var(--sq-ps2-primary); margin-bottom: 0.1rem; padding: 8px 0 0 15px;">
-            <b><span class="mono-font">[@_renderedOutfit.Alias]</span> @_renderedOutfit.Name</b> (@_renderedOutfit.MemberCount | @_renderedOutfit.MembersOnlineCount) <span>@_worlds?.Where(w => w.Id == _renderedOutfit.WorldId).Select(w => w.Name).FirstOrDefault()</span><span> @FactionService.GetFactionAbbrevFromId((int)_renderedOutfit.FactionId)</span>
+            <b><span class="mono-font">[@_renderedOutfit.Alias]</span> @_renderedOutfit.Name</b> (@_renderedOutfit.MemberCount | @_renderedOutfit.MembersOnlineCount) <span>@_worlds?.Where(w => w.Id == _renderedOutfit.WorldId).Select(w => w.Name).FirstOrDefault()</span><span> @StringHelpers.GetFactionAbbreviation(_renderedOutfit.FactionId)</span>
         </h5>
 
         <p style="margin: 0 0 0.1rem 0;  padding-left: 16px;">

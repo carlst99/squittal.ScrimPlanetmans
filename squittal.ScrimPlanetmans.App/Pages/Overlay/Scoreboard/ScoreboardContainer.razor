@@ -5,11 +5,11 @@
 @using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.Models
+@using squittal.ScrimPlanetmans.App.Util
 
 @inject IScrimMatchEngine ScrimMatchEngine
 @inject IScrimTeamsManager ScrimTeamsManager
 @inject IScrimMessageBroadcastService MessageService
-@inject IFactionService FactionService
 
 @implements IDisposable
 
@@ -122,7 +122,7 @@
         }
         else
         {
-            UpdateTeamFactionDisplay(TeamDefinition.Team1, FactionService.GetFactionAbbrevFromId((int)_teamFactionId1));
+            UpdateTeamFactionDisplay(TeamDefinition.Team1, StringHelpers.GetFactionAbbreviation(_teamFactionId1));
         }
 
         if (_teamFactionId2 == null)
@@ -131,7 +131,7 @@
         }
         else
         {
-            UpdateTeamFactionDisplay(TeamDefinition.Team2, FactionService.GetFactionAbbrevFromId((int)_teamFactionId2));
+            UpdateTeamFactionDisplay(TeamDefinition.Team2, StringHelpers.GetFactionAbbreviation(_teamFactionId2));
         }
     }
 
