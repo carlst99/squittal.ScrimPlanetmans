@@ -41,68 +41,74 @@ public class ScrimVehicleDestructionActionEventMessage : ScrimActionEventMessage
         }
     }
 
-    private string GetOutsideInterferenceInfo(ScrimVehicleDestructionActionEvent DestructionEvent)
+    private string GetOutsideInterferenceInfo(ScrimVehicleDestructionActionEvent destructionEvent)
     {
-        Player player;
-        string otherCharacterId;
+        Player? player;
+        ulong otherCharacterId;
 
-        var weaponName = DestructionEvent.Weapon != null ? DestructionEvent.Weapon.Name : "Unknown weapon";
-        var victimVehicleName = DestructionEvent.VictimVehicle != null ? DestructionEvent.VictimVehicle.Name : "Unknown vehicle";
-        var actionDisplay = GetEnumValueName(DestructionEvent.ActionType);
+        string? weaponName = destructionEvent.Weapon.Name;
+        string victimVehicleName = destructionEvent.VictimVehicle != null ? destructionEvent.VictimVehicle.Name : "Unknown vehicle";
+        string actionDisplay = GetEnumValueName(destructionEvent.ActionType);
 
-        if (DestructionEvent.AttackerPlayer != null)
+        if (destructionEvent.AttackerPlayer != null)
         {
-            player = DestructionEvent.AttackerPlayer;
-            otherCharacterId = DestructionEvent.VictimCharacterId;
+            player = destructionEvent.AttackerPlayer;
+            otherCharacterId = destructionEvent.VictimCharacterId;
 
-            var playerName = player.NameDisplay;
-            var outfitDisplay = !string.IsNullOrWhiteSpace(player.OutfitAlias)
+            string playerName = player.NameDisplay;
+            string outfitDisplay = !string.IsNullOrWhiteSpace(player.OutfitAlias)
                 ? $"[{player.OutfitAlias}] "
                 : string.Empty;
 
             return $"{actionDisplay} VEHICLE DESTROYED: {outfitDisplay}{playerName} {{{weaponName}}} {victimVehicleName} ({otherCharacterId})";
         }
-        else
-        {
-            player = DestructionEvent.VictimPlayer;
-            otherCharacterId = DestructionEvent.AttackerCharacterId;
 
-            var playerName = player.NameDisplay;
-            var outfitDisplay = !string.IsNullOrWhiteSpace(player.OutfitAlias)
+        if (destructionEvent.VictimPlayer is not null)
+        {
+            player = destructionEvent.VictimPlayer;
+            otherCharacterId = destructionEvent.AttackerCharacterId;
+
+            string playerName = player.NameDisplay;
+            string outfitDisplay = !string.IsNullOrWhiteSpace(player.OutfitAlias)
                 ? $"[{player.OutfitAlias}] "
                 : string.Empty;
 
             return $"{actionDisplay} VEHICLE LOST: {otherCharacterId} {{{weaponName}}} {victimVehicleName} ({outfitDisplay}{playerName})";
         }
+
+        return "Invalid outside interference vehicle destroy (neither player is recognised)";
     }
 
     private string GetKillInfo(ScrimVehicleDestructionActionEvent destructionEvent)
     {
-        var attacker = destructionEvent.AttackerPlayer;
-        var victim = destructionEvent.VictimPlayer;
+        Player? attacker = destructionEvent.AttackerPlayer;
+        Player? victim = destructionEvent.VictimPlayer;
 
-        var attackerTeam = attacker.TeamOrdinal.ToString();
+        if (attacker is null)
+            return "Invalid kill: no attacker";
 
-        var attackerName = attacker.NameDisplay;
+        string attackerTeam = attacker.TeamOrdinal.ToString();
 
-        var victimName = victim != null ? victim.NameDisplay : string.Empty;
+        string attackerName = attacker.NameDisplay;
 
-        var attackerOutfit = !string.IsNullOrWhiteSpace(attacker.OutfitAlias)
+        string victimName = victim is not null ? victim.NameDisplay : string.Empty;
+
+        string attackerOutfit = !string.IsNullOrWhiteSpace(attacker.OutfitAlias)
             ? $"[{attacker.OutfitAlias}] "
             : string.Empty;
 
 
-        var victimOutfit = (victim != null && !string.IsNullOrWhiteSpace(victim?.OutfitAlias))
+        string victimOutfit = !string.IsNullOrWhiteSpace(victim?.OutfitAlias)
             ? $"[{victim.OutfitAlias}] "
             : string.Empty;
 
-        var actionDisplay = GetEnumValueName(destructionEvent.ActionType);
-        var pointsDisplay = GetPointsDisplay(destructionEvent.Points);
+        string actionDisplay = GetEnumValueName(destructionEvent.ActionType);
+        string pointsDisplay = GetPointsDisplay(destructionEvent.Points);
 
-        var weaponName = DestructionEvent.Weapon != null ? DestructionEvent.Weapon.Name : "Unknown weapon";
-        var victimVehicleName = DestructionEvent.VictimVehicle != null ? DestructionEvent.VictimVehicle.Name : "Unknown vehicle";
+        string? weaponName = DestructionEvent.Weapon.Name;
+        string victimVehicleName = DestructionEvent.VictimVehicle != null ? DestructionEvent.VictimVehicle.Name : "Unknown vehicle";
 
-        var bannedDisplay = destructionEvent.IsBanned ? "RULE BREAK - " : string.Empty;
+        string bannedDisplay = destructionEvent.IsBanned ? "RULE BREAK - " : string.Empty;
 
         return $"{bannedDisplay}Team {attackerTeam} {actionDisplay}: {pointsDisplay} {attackerOutfit}{attackerName} {{{weaponName}}} {victimVehicleName} ({victimOutfit}{victimName})";
     }
@@ -114,23 +120,23 @@ public class ScrimVehicleDestructionActionEventMessage : ScrimActionEventMessage
 
     private string GetSuicideInfo(ScrimVehicleDestructionActionEvent destructionEvent)
     {
-        var attacker = destructionEvent.AttackerPlayer;
+        Player? attacker = destructionEvent.AttackerPlayer;
 
-        var attackerTeam = attacker.TeamOrdinal.ToString();
+        string attackerTeam = attacker.TeamOrdinal.ToString();
 
-        var attackerName = attacker.NameDisplay;
+        string attackerName = attacker.NameDisplay;
 
-        var attackerOutfit = !string.IsNullOrWhiteSpace(attacker.OutfitAlias)
+        string attackerOutfit = !string.IsNullOrWhiteSpace(attacker.OutfitAlias)
             ? $"[{attacker.OutfitAlias}] "
             : string.Empty;
 
-        var actionDisplay = GetEnumValueName(destructionEvent.ActionType);
-        var pointsDisplay = GetPointsDisplay(destructionEvent.Points);
+        string actionDisplay = GetEnumValueName(destructionEvent.ActionType);
+        string pointsDisplay = GetPointsDisplay(destructionEvent.Points);
 
-        var weaponName = DestructionEvent.Weapon != null ? DestructionEvent.Weapon.Name : "Unknown weapon";
-        var victimVehicleName = DestructionEvent.VictimVehicle != null ? DestructionEvent.VictimVehicle.Name : "Unknown vehicle";
+        string? weaponName = DestructionEvent.Weapon.Name;
+        string victimVehicleName = DestructionEvent.VictimVehicle != null ? DestructionEvent.VictimVehicle.Name : "Unknown vehicle";
 
-        var bannedDisplay = destructionEvent.IsBanned ? "RULE BREAK - " : string.Empty;
+        string bannedDisplay = destructionEvent.IsBanned ? "RULE BREAK - " : string.Empty;
 
         return $"{bannedDisplay}Team {attackerTeam} {actionDisplay}: {pointsDisplay} {attackerOutfit}{attackerName} ({victimVehicleName}) {{{weaponName}}}";
     }

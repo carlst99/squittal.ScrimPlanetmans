@@ -8,12 +8,11 @@ namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 public abstract class ScrimActionEvent
 {
+    public required int ZoneId { get; init; }
+    public required DateTime Timestamp { get; init; }
 
-    public DateTime Timestamp { get; set; }
     public ScrimActionType ActionType { get; set; }
-    public bool IsBanned { get; set; } = false;
-
-    public int? ZoneId { get; set; }
+    public bool IsBanned { get; set; }
 }
 
 public class ScrimDeathActionEvent : ScrimActionEvent
@@ -198,21 +197,15 @@ public record ScrimActionExperienceGainInfo(int Id, int Amount);
 
 public class ScrimVehicleDestructionActionEvent : ScrimActionEvent
 {
+    public required ScrimActionWeaponInfo Weapon { get; init; }
+    public required ulong VictimCharacterId { get; init; }
+
+    public ulong AttackerCharacterId { get; set; }
     public Player? AttackerPlayer { get; set; }
     public Player? VictimPlayer { get; set; }
-
-    public required ScrimActionWeaponInfo Weapon { get; set; }
-
     public ScrimActionVehicleInfo? AttackerVehicle { get; set; }
     public ScrimActionVehicleInfo? VictimVehicle { get; set; }
-
-    public string AttackerCharacterId { get; set; }
-    public string VictimCharacterId { get; set; }
-
     public int AttackerLoadoutId { get; set; }
-
-    public int? VictimFactionId { get; set; }
-
     public int Points { get; set; }
     public DeathEventType DeathType { get; set; }
 }

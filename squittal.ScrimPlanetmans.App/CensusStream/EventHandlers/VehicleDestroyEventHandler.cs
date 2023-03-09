@@ -61,6 +61,10 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
         if (payload.CharacterID is 0)
             return;
 
+        // Sanity check
+        if (payload.VehicleID is 0)
+            return;
+
         ulong attackerId = payload.AttackerCharacterID;
         ulong victimId = payload.CharacterID;
         bool involvesBenchedPlayer = false;
@@ -85,6 +89,7 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
 
         ScrimVehicleDestructionActionEvent destructionEvent = new()
         {
+            VictimCharacterId = victimId,
             Timestamp = payload.Timestamp.UtcDateTime,
             ZoneId = (int)payload.ZoneID.CombinedId,
             Weapon = weapon
@@ -92,15 +97,11 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
 
         Vehicle? attackerVehicle = await _vehicleService.GetVehicleInfoAsync((int)payload.AttackerVehicleID);
         if (attackerVehicle != null)
-        {
             destructionEvent.AttackerVehicle = new ScrimActionVehicleInfo(attackerVehicle);
-        }
 
         Vehicle? victimVehicle = await _vehicleService.GetVehicleInfoAsync((int)payload.VehicleID);
         if (victimVehicle != null)
-        {
             destructionEvent.VictimVehicle = new ScrimActionVehicleInfo(victimVehicle);
-        }
 
         try
         {
@@ -119,11 +120,10 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
                 }
             }
 
-            destructionEvent.VictimCharacterId = victimId;
             Player? victimPlayer = _teamsManager.GetPlayerFromId(victimId);
             destructionEvent.VictimPlayer = victimPlayer;
 
-            if (victimPlayer != null)
+            if (victimPlayer is not null)
                 involvesBenchedPlayer = involvesBenchedPlayer || victimPlayer.IsBenched;
 
             destructionEvent.DeathType = GetVehicleDestructionDeathType(destructionEvent);
@@ -162,24 +162,24 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
                             DeathType = destructionEvent.DeathType,
                             AttackerVehicleClass = destructionEvent.AttackerVehicle?.Type,
                             VictimVehicleClass = destructionEvent.VictimVehicle?.Type,
-                            AttackerTeamOrdinal = destructionEvent.AttackerPlayer.TeamOrdinal,
-                            VictimTeamOrdinal = destructionEvent.VictimPlayer.TeamOrdinal,
-                            AttackerFactionId = destructionEvent.AttackerPlayer.FactionId,
-                            AttackerNameFull = destructionEvent.AttackerPlayer.NameFull,
+                            AttackerTeamOrdinal = destructionEvent.AttackerPlayer?.TeamOrdinal,
+                            VictimTeamOrdinal = destructionEvent.VictimPlayer?.TeamOrdinal,
+                            AttackerFactionId = destructionEvent.AttackerPlayer?.FactionId,
+                            AttackerNameFull = destructionEvent.AttackerPlayer?.NameFull,
                             AttackerLoadoutId = destructionEvent.AttackerPlayer?.LoadoutId,
-                            AttackerOutfitId = destructionEvent.AttackerPlayer.IsOutfitless ? null : destructionEvent.AttackerPlayer.OutfitId,
-                            AttackerOutfitAlias = destructionEvent.AttackerPlayer.IsOutfitless ? null : destructionEvent.AttackerPlayer.OutfitAlias,
-                            AttackerIsOutfitless = destructionEvent.AttackerPlayer.IsOutfitless,
-                            VictimFactionId = destructionEvent.VictimPlayer.FactionId,
-                            VictimNameFull = destructionEvent.VictimPlayer.NameFull,
+                            AttackerOutfitId = destructionEvent.AttackerPlayer?.OutfitId,
+                            AttackerOutfitAlias = destructionEvent.AttackerPlayer?.OutfitAlias,
+                            AttackerIsOutfitless = destructionEvent.AttackerPlayer?.IsOutfitless ?? true,
+                            VictimFactionId = destructionEvent.VictimPlayer?.FactionId,
+                            VictimNameFull = destructionEvent.VictimPlayer?.NameFull,
                             VictimLoadoutId = destructionEvent.VictimPlayer?.LoadoutId,
-                            VictimOutfitId = destructionEvent.VictimPlayer.IsOutfitless ? null : destructionEvent.VictimPlayer.OutfitId,
-                            VictimOutfitAlias = destructionEvent.VictimPlayer.IsOutfitless ? null : destructionEvent.VictimPlayer.OutfitAlias,
-                            VictimIsOutfitless = destructionEvent.VictimPlayer.IsOutfitless,
-                            WeaponId = destructionEvent.Weapon?.Id,
-                            WeaponItemCategoryId = destructionEvent.Weapon?.ItemCategoryId,
+                            VictimOutfitId = destructionEvent.VictimPlayer?.OutfitId,
+                            VictimOutfitAlias = destructionEvent.VictimPlayer?.OutfitAlias,
+                            VictimIsOutfitless = destructionEvent.VictimPlayer?.IsOutfitless ?? true,
+                            WeaponId = destructionEvent.Weapon.Id,
+                            WeaponItemCategoryId = destructionEvent.Weapon.ItemCategoryId,
                             IsVehicleWeapon = destructionEvent.Weapon?.IsVehicleWeapon,
-                            ZoneId = (int)destructionEvent.ZoneId,
+                            ZoneId = destructionEvent.ZoneId,
                             WorldId = (int)payload.WorldID,
                             Points = destructionEvent.Points,
                             //AttackerResultingPoints = destructionEvent.AttackerPlayer.EventAggregate.Points,
@@ -219,11 +219,8 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
     {
         // TODO: determine what a bailed-then-crashed undamaged vehicle looks like
         // Determine if this is involves a non-tracked player
-        if ((destruction.AttackerPlayer == null && !string.IsNullOrWhiteSpace(destruction.AttackerCharacterId))
-            || (destruction.VictimPlayer == null && !string.IsNullOrWhiteSpace(destruction.VictimCharacterId)))
-        {
+        if (destruction.AttackerPlayer is null || destruction.VictimPlayer is null)
             return ScrimActionType.OutsideInterference;
-        }
 
         if (destruction.VictimVehicle is null)
             return ScrimActionType.Unknown;

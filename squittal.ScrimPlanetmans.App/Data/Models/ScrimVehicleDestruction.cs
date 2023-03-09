@@ -30,21 +30,21 @@ public class ScrimVehicleDestruction
     public ScrimActionType ActionType { get; set; }
     public DeathEventType DeathType { get; set; }
 
-    public TeamDefinition AttackerTeamOrdinal { get; set; }
-    public TeamDefinition VictimTeamOrdinal { get; set; }
+    public TeamDefinition? AttackerTeamOrdinal { get; set; }
+    public TeamDefinition? VictimTeamOrdinal { get; set; }
 
     public VehicleType? AttackerVehicleClass { get; set; }
     public VehicleType? VictimVehicleClass { get; set; }
 
-    public string AttackerNameFull { get; set; }
-    public int AttackerFactionId { get; set; }
+    public string? AttackerNameFull { get; set; }
+    public int? AttackerFactionId { get; set; }
     public int? AttackerLoadoutId { get; set; }
     public ulong? AttackerOutfitId { get; set; }
     public string? AttackerOutfitAlias { get; set; }
     public bool AttackerIsOutfitless { get; set; }
 
-    public string VictimNameFull { get; set; }
-    public int VictimFactionId { get; set; }
+    public string? VictimNameFull { get; set; }
+    public int? VictimFactionId { get; set; }
     public int? VictimLoadoutId { get; set; }
     public ulong? VictimOutfitId { get; set; }
     public string? VictimOutfitAlias { get; set; }
