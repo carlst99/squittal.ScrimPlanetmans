@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
@@ -7,11 +6,12 @@ public class RulesetFacilityRule
 {
     [Required]
     public int RulesetId { get; set; }
+
     [Required]
-    public int FacilityId { get; set; }
+    public required uint FacilityId { get; init; }
+
     [Required]
-    public int MapRegionId { get; set; }
+    public required uint MapRegionId { get; init; }
 
     public Ruleset Ruleset { get; set; }
-    public MapRegion? MapRegion { get; set; }
 }

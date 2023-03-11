@@ -13,7 +13,6 @@ public class ApplicationDataLoader : IApplicationDataLoader
 {
     private readonly IScrimRulesetManager _rulesetManager;
     private readonly IScrimMatchScorer _matchScorer;
-    private readonly IFacilityService _facilityService;
     private readonly IWorldService _worldService;
     private readonly IZoneService _zoneService;
     private readonly IDbSeeder _dbSeeder;
@@ -23,7 +22,6 @@ public class ApplicationDataLoader : IApplicationDataLoader
     public ApplicationDataLoader(
         IScrimRulesetManager rulesetManager,
         IScrimMatchScorer matchScorer,
-        IFacilityService facilityService,
         IWorldService worldService,
         IZoneService zoneService,
         IDbSeeder dbSeeder,
@@ -31,7 +29,6 @@ public class ApplicationDataLoader : IApplicationDataLoader
     {
         _rulesetManager = rulesetManager;
         _matchScorer = matchScorer;
-        _facilityService = facilityService;
         _worldService = worldService;
         _zoneService = zoneService;
         _dbSeeder = dbSeeder;
@@ -51,9 +48,6 @@ public class ApplicationDataLoader : IApplicationDataLoader
 
             var seedDefaultRulesetTask = _rulesetManager.SeedDefaultRulesetAsync();
             TaskList.Add(seedDefaultRulesetTask);
-
-            var scrimmableMapRegionsTask = _facilityService.SetUpScrimmableMapRegionsAsync();
-            TaskList.Add(scrimmableMapRegionsTask);
 
             var worldsMapTask = _worldService.SetUpWorldsMap();
             TaskList.Add(worldsMapTask);

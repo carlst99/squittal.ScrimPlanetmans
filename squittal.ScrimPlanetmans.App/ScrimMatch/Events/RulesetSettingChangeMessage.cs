@@ -1,19 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Text;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public class RulesetSettingChangeMessage
 {
-    public Ruleset.Models.Ruleset Ruleset { get; set; }
-    public List<RulesetSettingChange> ChangedSettings { get; set; } = new List<RulesetSettingChange>();
+    public Ruleset.Models.Ruleset Ruleset { get; }
+    public List<RulesetSettingChange> ChangedSettings { get; }
     public string Info => GetInfoString();
 
     public RulesetSettingChangeMessage(Ruleset.Models.Ruleset ruleset, Ruleset.Models.Ruleset previousRuleset)
     {
         Ruleset = ruleset;
+        ChangedSettings = new List<RulesetSettingChange>();
 
         CalculateSettingChanges(ruleset, previousRuleset);
     }
@@ -43,36 +42,25 @@ public class RulesetSettingChangeMessage
 
     private string GetInfoString()
     {
-        if (Ruleset == null)
-        {
-            return string.Empty;
-        }
+        StringBuilder stringBuilder = new($"Settings changed for Ruleset {Ruleset.Name} [{Ruleset.Id}]: ");
 
-        var stringBuilder = new StringBuilder($"Settings changed for Ruleset {Ruleset.Name} [{Ruleset.Id}]: ");
-
-        if (ChangedSettings == null || !ChangedSettings.Any())
+        if (ChangedSettings.Count is 0)
         {
             stringBuilder.Append("none");
-
             return stringBuilder.ToString();
         }
 
-        var isFirst = true;
-        foreach (var setting in ChangedSettings)
+        bool isFirst = true;
+        foreach (RulesetSettingChange setting in ChangedSettings)
         {
-            var settingString = isFirst ? GetEnumValueName(setting) : $", {GetEnumValueName(setting)}";
+            if (!isFirst)
+                stringBuilder.Append(", ");
 
-            stringBuilder.Append(settingString);
-
+            stringBuilder.Append(setting);
             isFirst = false;
         }
 
         return stringBuilder.ToString();
-    }
-
-    private string GetEnumValueName(RulesetSettingChange type)
-    {
-        return Enum.GetName(typeof(RulesetSettingChange), type);
     }
 }
 

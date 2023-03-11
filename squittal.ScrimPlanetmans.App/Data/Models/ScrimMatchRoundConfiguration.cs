@@ -18,7 +18,7 @@ public class ScrimMatchRoundConfiguration
     public int WorldId { get; set; }
     public bool IsManualWorldId { get; set; } // = false;
 
-    public int? FacilityId { get; set; } // = -1
+    public uint? FacilityId { get; set; } // = -1
     public bool IsRoundEndedOnFacilityCapture { get; set; } // = false; // TODO from MatchConfiguration: move this setting to the Ruleset model
 
     #region Navigation Properties

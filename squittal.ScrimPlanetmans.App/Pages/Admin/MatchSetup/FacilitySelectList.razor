@@ -1,9 +1,11 @@
 ﻿@using System.Linq;
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
+@using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
 @using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 
-@inject IFacilityService FacilityService
+@inject ICensusMapRegionService MapRegionService
 @inject IZoneService ZoneService
 
 @if (_mapRegions == null || _zones == null)
@@ -15,15 +17,15 @@ else
 <EditForm Model="@_matchConfiguration">
         <InputSelect class="btn-sm" style="margin-right: 5px; width: 249px;"  @bind-Value=@_matchConfiguration.FacilityIdString>
 
-            <option value=@_noFacilitIdValue>No Base</option>
+            <option value=@NO_FACILITY_ID_VALUE>No Base</option>
 
-            @foreach (var zone in _mapZones)
+            @foreach (uint zone in _mapZones)
             {
                 <optgroup label="@(_zones.Where(z => zone == z.Id).Select(z => z.Name).FirstOrDefault())" style="background-color: var(--sq-bg-white-unlit); color: var(--sq-pink); font-size: 1rem;"/>
 
-                @foreach (var region in _mapRegions.Where(r => r.ZoneId == zone))
+                @foreach (CensusMapRegion region in _mapRegions.Where(r => r.ZoneId == zone))
                 {
-                    <option value=@region.Id label="@region.FacilityName">@region.FacilityName</option>
+                    <option value=@region.MapRegionId label="@region.FacilityName">@region.FacilityName</option>
                 }
             }
         </InputSelect>
@@ -32,31 +34,23 @@ else
 }
 
 @code {
-    private List<MapRegion> _mapRegions { get; set; } = new List<MapRegion>();
+    public const string NO_FACILITY_ID_VALUE = "-1";
 
-    private List<int> _mapZones { get; set; } = new List<int>();
-
-    private List<Zone> _zones { get; set; } = new List<Zone>();
-
-    private int _selectedFacilityId { get; set; }
-
-    private MatchConfiguration _matchConfiguration { get; set; } = new MatchConfiguration();
-
-    private string _noFacilitIdValue { get; set; } = "-1";
+    private List<CensusMapRegion> _mapRegions { get; set; } = new();
+    private List<uint> _mapZones { get; set; } = new();
+    private List<Zone> _zones { get; set; } = new();
+    private MatchConfiguration _matchConfiguration { get; } = new();
 
     protected override async Task OnInitializedAsync()
     {
-        var zones = await ZoneService.GetAllZonesAsync();
+        IEnumerable<Zone> zones = await ZoneService.GetAllZonesAsync();
         _zones = zones.ToList();
 
-        var mapRegions = await FacilityService.GetScrimmableMapRegionsAsync();
-        var _mapRegions = mapRegions.OrderBy(r => r.FacilityName).ToList();
-
-        _mapZones = _mapRegions.Select(r => r.ZoneId).Distinct().ToList();
-    }
-
-    void OnFacilityIdChange()
-    {
-
+        IReadOnlyList<CensusMapRegion>? mapRegions = await MapRegionService.GetAllAsync();
+        if (mapRegions is not null)
+        {
+            _mapRegions = mapRegions.OrderBy(r => r.FacilityName).ToList();
+            _mapZones = mapRegions.Select(r => r.ZoneId).Distinct().ToList();
+        }
     }
 }

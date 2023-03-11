@@ -15,7 +15,6 @@ public class DbSeeder : IDbSeeder
     private readonly IWorldService _worldService;
     private readonly IZoneService _zoneService;
     private readonly IScrimRulesetManager _rulesetManager;
-    private readonly IFacilityService _facilityService;
     private readonly IVehicleService _vehicleService;
     private readonly ISqlScriptRunner _sqlScriptRunner;
     private readonly ILogger<DbSeeder> _logger;
@@ -25,7 +24,6 @@ public class DbSeeder : IDbSeeder
         IWorldService worldService,
         IZoneService zoneService,
         IScrimRulesetManager rulesetManager,
-        IFacilityService facilityService,
         IVehicleService vehicleService,
         ISqlScriptRunner sqlScriptRunner,
         ILogger<DbSeeder> logger
@@ -34,7 +32,6 @@ public class DbSeeder : IDbSeeder
         _worldService = worldService;
         _zoneService = zoneService;
         _rulesetManager = rulesetManager;
-        _facilityService = facilityService;
         _vehicleService = vehicleService;
         _sqlScriptRunner = sqlScriptRunner;
         _logger = logger;
@@ -54,9 +51,6 @@ public class DbSeeder : IDbSeeder
 
             Task scrimActionTask = _rulesetManager.SeedScrimActionModelsAsync(cancellationToken);
             TaskList.Add(scrimActionTask);
-
-            Task facilitiesTask = _facilityService.RefreshStoreAsync(true, true, cancellationToken);
-            TaskList.Add(facilitiesTask);
 
             Task vehicleTask = _vehicleService.RefreshStoreAsync(true, false, cancellationToken);
             TaskList.Add(vehicleTask);

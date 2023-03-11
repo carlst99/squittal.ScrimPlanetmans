@@ -17,7 +17,6 @@ public class PlanetmansDbContext : DbContext
     }
 
     #region Census DbSets
-    public DbSet<MapRegion> MapRegions { get; set; }
     //public DbSet<Outfit> Outfits { get; set; }
     //public DbSet<OutfitMember> OutfitMembers { get; set; }
     public DbSet<Vehicle> Vehicles { get; set; }
@@ -78,7 +77,6 @@ public class PlanetmansDbContext : DbContext
         base.OnModelCreating(builder);
 
         #region Census Configuration
-        builder.ApplyConfiguration(new MapRegionConfiguration());
         builder.ApplyConfiguration(new VehicleConfiguration());
         builder.ApplyConfiguration(new WorldConfiguration());
         builder.ApplyConfiguration(new ZoneConfiguration());

@@ -18,7 +18,6 @@ using squittal.ScrimPlanetmans.App.Models.Forms;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
-using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.Services.Rulesets;
@@ -32,8 +31,8 @@ public partial class RulesetDataService : IRulesetDataService
 
     private readonly ILogger<RulesetDataService> _logger;
     private readonly IDbContextHelper _dbContextHelper;
-    private readonly IFacilityService _facilityService;
     private readonly ICensusItemService _itemService;
+    private readonly ICensusMapRegionService _mapRegionService;
     private readonly IItemCategoryService _itemCategoryService;
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly IRulesetFileService _rulesetFileService;
@@ -56,8 +55,8 @@ public partial class RulesetDataService : IRulesetDataService
     (
         ILogger<RulesetDataService> logger,
         IDbContextHelper dbContextHelper,
-        IFacilityService facilityService,
         ICensusItemService itemService,
+        ICensusMapRegionService mapRegionService,
         IItemCategoryService itemCategoryService,
         IScrimMessageBroadcastService messageService,
         IRulesetFileService rulesetFileService
@@ -65,7 +64,7 @@ public partial class RulesetDataService : IRulesetDataService
     {
         _logger = logger;
         _dbContextHelper = dbContextHelper;
-        _facilityService = facilityService;
+        _mapRegionService = mapRegionService;
         _itemService = itemService;
         _itemCategoryService = itemCategoryService;
         _messageService = messageService;
@@ -379,10 +378,7 @@ public partial class RulesetDataService : IRulesetDataService
         PlanetmansDbContext dbContext = factory.GetDbContext();
 
         IEnumerable<RulesetFacilityRule> result = dbContext.RulesetFacilityRules
-            .Where(r => r.RulesetId == rulesetId)
-            .Include("MapRegion")
-            .OrderBy(r => r.MapRegion.ZoneId)
-            .ThenBy(r => r.MapRegion.FacilityName);
+            .Where(r => r.RulesetId == rulesetId);
 
         return Task.FromResult(result);
     }
@@ -391,23 +387,23 @@ public partial class RulesetDataService : IRulesetDataService
     {
         IEnumerable<RulesetFacilityRule> usedFacilities = await GetRulesetFacilityRulesAsync(rulesetId, ct);
 
-        IEnumerable<MapRegion> allFacilities = await _facilityService.GetScrimmableMapRegionsAsync();
-        allFacilities = allFacilities.Where(f => f is { IsDeprecated: false, IsCurrent: true });
+        IEnumerable<CensusMapRegion>? allFacilities = await _mapRegionService.GetAllAsync(ct);
+        if (allFacilities is null)
+            return Array.Empty<RulesetFacilityRule>();
 
         return allFacilities.Where(a => usedFacilities.All(u => u.FacilityId != a.FacilityId))
-            .Select(a => ConvertToFacilityRule(rulesetId, a))
-            .OrderBy(r => r.MapRegion.ZoneId)
-            .ThenBy(r => r.MapRegion.FacilityName);
+            .OrderBy(mr => mr.ZoneId)
+            .ThenBy(mr => mr.FacilityName)
+            .Select(mr => ConvertToFacilityRule(rulesetId, mr));
     }
 
-    private static RulesetFacilityRule ConvertToFacilityRule(int rulesetId, MapRegion mapRegion)
+    private static RulesetFacilityRule ConvertToFacilityRule(int rulesetId, CensusMapRegion mapRegion)
     {
         return new RulesetFacilityRule
         {
             RulesetId = rulesetId,
             FacilityId = mapRegion.FacilityId,
-            MapRegionId = mapRegion.Id,
-            MapRegion = mapRegion
+            MapRegionId = mapRegion.MapRegionId,
         };
     }
 
@@ -522,7 +518,7 @@ public partial class RulesetDataService : IRulesetDataService
                 RulesetSettingChangeMessage changeMessage = new(storeEntity, oldRuleset);
                 _messageService.BroadcastRulesetSettingChangeMessage(changeMessage);
 
-                _logger.LogInformation(changeMessage.Info);
+                _logger.LogInformation("{ChangeMessage}", changeMessage.Info);
 
                 return true;
             }
@@ -889,16 +885,12 @@ public partial class RulesetDataService : IRulesetDataService
                     if (storeEntity == null)
                     {
                         if (rule.ChangeType == RulesetFacilityRuleChangeType.Add)
-                        {
-                            rule.RulesetFacilityRule.MapRegion = null;
                             newEntities.Add(rule.RulesetFacilityRule);
-                        }
                     }
                     else
                     {
                         if (rule.ChangeType == RulesetFacilityRuleChangeType.Add)
                         {
-                            rule.RulesetFacilityRule.MapRegion = null;
                             storeEntity = rule.RulesetFacilityRule;
                             dbContext.RulesetFacilityRules.Update(storeEntity);
                         }
@@ -1396,15 +1388,14 @@ public partial class RulesetDataService : IRulesetDataService
         }
     }
 
-    private RulesetFacilityRule BuildRulesetFacilityRule(int rulesetId, int facilityId, int mapRegionId)
-    {
-        return new RulesetFacilityRule
+    private static RulesetFacilityRule BuildRulesetFacilityRule(int rulesetId, uint facilityId, uint mapRegionId)
+        => new()
         {
             RulesetId = rulesetId,
             FacilityId = facilityId,
             MapRegionId = mapRegionId
         };
-    }
+
     #endregion SAVE / UPDATE methods
 
     public async Task<bool> DeleteRulesetAsync(int rulesetId, CancellationToken ct = default)
@@ -1769,7 +1760,7 @@ public partial class RulesetDataService : IRulesetDataService
                     dbContext.Rulesets.Update(storeRuleset);
 
                     RulesetRuleChangeMessage message = new(storeRuleset, RulesetRuleChangeType.ItemCategoryRule);
-                    _logger.LogInformation(message.Info);
+                    _logger.LogInformation("{RulesetRuleChangeInfo}", message.Info);
                     _messageService.BroadcastRulesetRuleChangeMessage(message);
                 }
 

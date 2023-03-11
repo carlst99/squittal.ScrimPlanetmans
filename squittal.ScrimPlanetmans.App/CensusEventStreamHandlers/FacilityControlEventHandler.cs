@@ -4,15 +4,15 @@ using DbgCensus.EventStream.Abstractions.Objects.Events.Worlds;
 using DbgCensus.EventStream.EventHandlers.Abstractions;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Models;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
+using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.ScrimMatch;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
-using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.CensusEventStreamHandlers;
@@ -21,7 +21,7 @@ public class FacilityControlEventHandler : IPayloadHandler<IFacilityControl>
 {
     private readonly ILogger<FacilityControlEventHandler> _logger;
     private readonly IEventFilterService _eventFilter;
-    private readonly IFacilityService _facilityService;
+    private readonly ICensusMapRegionService _mapRegionService;
     private readonly IScrimTeamsManager _teamsManager;
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly IScrimMatchScorer _scorer;
@@ -32,7 +32,7 @@ public class FacilityControlEventHandler : IPayloadHandler<IFacilityControl>
     (
         ILogger<FacilityControlEventHandler> logger,
         IEventFilterService eventFilter,
-        IFacilityService facilityService,
+        ICensusMapRegionService mapRegionService,
         IScrimTeamsManager teamsManager,
         IScrimMessageBroadcastService messageService,
         IScrimMatchScorer scorer,
@@ -42,7 +42,7 @@ public class FacilityControlEventHandler : IPayloadHandler<IFacilityControl>
     {
         _logger = logger;
         _eventFilter = eventFilter;
-        _facilityService = facilityService;
+        _mapRegionService = mapRegionService;
         _teamsManager = teamsManager;
         _messageService = messageService;
         _scorer = scorer;
@@ -104,12 +104,12 @@ public class FacilityControlEventHandler : IPayloadHandler<IFacilityControl>
         if (actionType == ScrimActionType.None)
             return;
 
-        MapRegion mapRegion = await _facilityService.GetScrimmableMapRegionFromFacilityIdAsync((int)payload.FacilityID);
+        CensusMapRegion? mapRegion = await _mapRegionService.GetByFacilityIdAsync(payload.FacilityID, ct);
 
         ScrimFacilityControlActionEvent controlEvent = new()
         {
             FacilityId = (int)payload.FacilityID,
-            FacilityName = mapRegion.FacilityName,
+            FacilityName = mapRegion?.FacilityName,
             NewFactionId = (int)payload.NewFactionID,
             OldFactionId = (int)payload.OldFactionID,
             DurationHeld = (int)payload.DurationHeld,

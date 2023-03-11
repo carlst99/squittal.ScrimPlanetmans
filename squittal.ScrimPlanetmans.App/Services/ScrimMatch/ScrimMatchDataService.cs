@@ -187,7 +187,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
             RoundSecondsTotal = matchConfiguration.RoundSecondsTotal,
             WorldId = matchConfiguration.WorldId,
             IsManualWorldId = matchConfiguration.IsManualWorldId,
-            FacilityId = matchConfiguration.FacilityId > 0 ? matchConfiguration.FacilityId : (int?)null,
+            FacilityId = matchConfiguration.FacilityId > 0 ? matchConfiguration.FacilityId : null,
             IsRoundEndedOnFacilityCapture = matchConfiguration.EndRoundOnFacilityCapture
         };
     }

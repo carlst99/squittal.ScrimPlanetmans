@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Forms;
@@ -32,14 +33,14 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var scrimMatchesQuery = dbContext.ScrimMatchInfo
+            IQueryable<ScrimMatchInfo> scrimMatchesQuery = dbContext.ScrimMatchInfo
                 .Where(GetHistoricalScrimMatchBrowserWhereExpression(searchFilter))
                 .AsQueryable();
 
-            var paginatedList = await PaginatedList<ScrimMatchInfo>.CreateAsync(scrimMatchesQuery.AsNoTracking().OrderByDescending(m => m.StartTime), pageIndex ?? 1, _scrimMatchBrowserPageSize, cancellationToken);
+            PaginatedList<ScrimMatchInfo>? paginatedList = await PaginatedList<ScrimMatchInfo>.CreateAsync(scrimMatchesQuery.AsNoTracking().OrderByDescending(m => m.StartTime), pageIndex ?? 1, _scrimMatchBrowserPageSize, cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -48,7 +49,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
                 return null;
             }
 
-            foreach (var match in paginatedList.Contents)
+            foreach (ScrimMatchInfo match in paginatedList.Contents)
             {
                 match.SetTeamAliases();
             }
@@ -75,7 +76,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
 
     private Expression<Func<ScrimMatchInfo, bool>> GetHistoricalScrimMatchBrowserWhereExpression(ScrimMatchReportBrowserSearchFilter searchFilter)
     {
-        var isDefaultFilter = searchFilter.IsDefaultFilter;
+        bool isDefaultFilter = searchFilter.IsDefaultFilter;
 
         Expression<Func<ScrimMatchInfo, bool>> whereExpression = null;
 
@@ -83,7 +84,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         {
             Expression<Func<ScrimMatchInfo, bool>> roundExpression = m => m.RoundCount >= searchFilter.MinimumRoundCount;
 
-            var twoHoursAgo = DateTime.UtcNow - TimeSpan.FromHours(2);
+            DateTime twoHoursAgo = DateTime.UtcNow - TimeSpan.FromHours(2);
             Expression<Func<ScrimMatchInfo, bool>> recentMatchExpression = m => m.StartTime >= twoHoursAgo;
 
             roundExpression = roundExpression.Or(recentMatchExpression);
@@ -147,7 +148,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
             Expression<Func<ScrimMatchInfo, bool>> searchTermsExpression = null;
             Expression<Func<ScrimMatchInfo, bool>> aliasTermsExpression = null;
 
-            foreach (var term in searchFilter.SearchTermsList)
+            foreach (string term in searchFilter.SearchTermsList)
             {
                 Expression<Func<ScrimMatchInfo, bool>> exp = m => m.Title.Contains(term); // DbFunctionsExtensions.Like(EF.Functions, m.Title, "%" + term + "%");
                 searchTermsExpression = searchTermsExpression == null ? exp : searchTermsExpression.Or(exp);
@@ -156,7 +157,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
             termsExpresion = searchTermsExpression;
 
 
-            foreach (var term in searchFilter.AliasSearchTermsList)
+            foreach (string term in searchFilter.AliasSearchTermsList)
             {
                 Expression<Func<ScrimMatchInfo, bool>> exp = m => m.ScrimMatchId.Contains(term); // DbFunctionsExtensions.Like(EF.Functions, m.ScrimMatchId, "%" + term + "%");
                 aliasTermsExpression = aliasTermsExpression == null ? exp : aliasTermsExpression.And(exp);
@@ -174,10 +175,10 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var scrimMatchInfo = await dbContext.ScrimMatchInfo.Where(m => m.ScrimMatchId == scrimMatchId).FirstOrDefaultAsync(cancellationToken);
+            ScrimMatchInfo? scrimMatchInfo = await dbContext.ScrimMatchInfo.Where(m => m.ScrimMatchId == scrimMatchId).FirstOrDefaultAsync(cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -206,49 +207,27 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         }
     }
 
-    public async Task<IEnumerable<int>> GetScrimMatchBrowserFacilityIdsListAsync(CancellationToken cancellationToken)
+    public Task<IEnumerable<uint>> GetScrimMatchBrowserFacilityIdsListAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var distinctFacilityIds = await dbContext.ScrimMatchInfo
-                .Where(m => m.FacilityId != null)
-                .Select(m => (int)m.FacilityId)
-                .Distinct()
-                .ToListAsync(cancellationToken);
+        IEnumerable<uint> result = dbContext.ScrimMatchInfo
+            .Where(m => m.FacilityId.HasValue)
+            .Select(m => m.FacilityId!.Value)
+            .Distinct();
 
-            cancellationToken.ThrowIfCancellationRequested();
-
-            return distinctFacilityIds;
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation($"Task Request cancelled: GetScrimMatchBrowserFacilityIdsListAsync");
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation($"Request cancelled: GetScrimMatchBrowserFacilityIdsListAsync");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"{ex}");
-
-            return null;
-        }
+        return Task.FromResult(result);
     }
 
     public async Task<IEnumerable<Ruleset>> GetScrimMatchBrowseRulesetIdsListAsync(CancellationToken cancellationToken)
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var distinctRulesetIds = await dbContext.ScrimMatchInfo
+            List<int> distinctRulesetIds = await dbContext.ScrimMatchInfo
                 .Select(m => m.RulesetId)
                 .Distinct()
                 .ToListAsync(cancellationToken);
@@ -260,7 +239,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
                 return null;
             }
 
-            var distinctRulesets = await dbContext.Rulesets
+            List<Ruleset> distinctRulesets = await dbContext.Rulesets
                 .Where(r => distinctRulesetIds.Contains(r.Id))
                 .ToListAsync(cancellationToken);
 
@@ -300,8 +279,8 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
             return await dbContext.ScrimMatchReportInfantryPlayerStats
                 .AsNoTracking()
@@ -332,8 +311,8 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
             return await dbContext.ScrimMatchReportInfantryPlayerRoundStats
                 .AsNoTracking()
@@ -365,8 +344,8 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
             return await dbContext.ScrimMatchReportInfantryTeamStats
                 .AsNoTracking()
@@ -396,8 +375,8 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
             return await dbContext.ScrimMatchReportInfantryTeamRoundStats
                 .AsNoTracking()
@@ -428,8 +407,8 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
             return await dbContext.ScrimMatchReportInfantryDeaths
                 .AsNoTracking()
@@ -459,8 +438,8 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
             return await dbContext.ScrimMatchReportInfantryDeaths
                 .AsNoTracking()
@@ -492,8 +471,8 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
             return await dbContext.ScrimMatchReportInfantryPlayerHeadToHeadStats
                 .AsNoTracking()
@@ -525,8 +504,8 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
             return await dbContext.ScrimMatchReportInfantryPlayerClassEventCounts
                 .AsNoTracking()
@@ -557,8 +536,8 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
             return await dbContext.ScrimMatchReportInfantryPlayerWeaponStats
                 .AsNoTracking()

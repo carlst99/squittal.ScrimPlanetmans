@@ -97,9 +97,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DaybreakGames.Census" Version="3.2.4" />
     <PackageReference Include="DbgCensus.EventStream.EventHandlers" Version="3.4.0" />
-    <PackageReference Include="DbgCensus.Rest" Version="3.4.0" />
+    <PackageReference Include="DbgCensus.Rest" Version="3.5.0" />
     <PackageReference Include="MediatR" Version="12.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="7.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.3">
@@ -117,9 +116,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Data\SQL\CensusBackups\dbo.MapRegion.Table.sql">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="Data\SQL\CensusBackups\dbo.Vehicle.Table.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -130,9 +126,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Data\SQL\MigrationHelpers\Backfill_ItemCategoryDomainAndIsWeapon.sql">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Data\SQL\MigrationHelpers\Backfill_MapRegionsTable.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Data\SQL\MigrationHelpers\Backfill_RulesetActionRuleDeferToItemCategoryRules.sql">

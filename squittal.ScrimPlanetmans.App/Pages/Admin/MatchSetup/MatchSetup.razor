@@ -6,7 +6,9 @@
 @using squittal.ScrimPlanetmans.App.Pages.Admin.MatchSetup.MatchTeamComposer;
 @using System.Threading;
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
 @using squittal.ScrimPlanetmans.App.Models
+@using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
@@ -17,7 +19,7 @@
 
 @inject IScrimMessageBroadcastService MessageService
 @inject IScrimMatchEngine ScrimMatchEngine
-@inject IFacilityService FacilityService
+@inject ICensusMapRegionService MapRegionService
 @inject IZoneService ZoneService
 @inject IWorldService WorldService
 @inject IScrimRulesetManager RulesetManager
@@ -230,8 +232,8 @@
     #endregion Ruleset Select List Variables
 
     #region Facility & World Select List Variables
-    private IEnumerable<MapRegion> _mapRegions { get; set; }
-    private List<int> _mapZones { get; set; } = new List<int>();
+    private IEnumerable<CensusMapRegion>? _mapRegions { get; set; }
+    private List<uint> _mapZones { get; set; } = new();
     private IEnumerable<Zone> _zones { get; set; }
     private string _noFacilitIdValue { get; set; } = "-1";
 
@@ -363,19 +365,28 @@
                 }
             }
 
-            if (_activeRuleset.RulesetFacilityRules.Any())
+            if (_activeRuleset.RulesetFacilityRules?.Any() is true)
             {
-                var mapRegions = _activeRuleset.RulesetFacilityRules.Select(r => r.MapRegion).ToList();
-                _mapRegions = mapRegions.OrderBy(r => r.FacilityName).ToList();
+                List<CensusMapRegion> mapRegions = new();
+                foreach (RulesetFacilityRule rule in _activeRuleset.RulesetFacilityRules)
+                {
+                    CensusMapRegion? region = await MapRegionService.GetByFacilityIdAsync(rule.FacilityId);
+                    if (region is not null)
+                        mapRegions.Add(region);
+                }
 
-                _mapZones = _mapRegions.Select(r => r.ZoneId).Distinct().ToList();
+                _mapRegions = mapRegions.OrderBy(r => r.FacilityName).ToList();
+                _mapZones = mapRegions.Select(r => r.ZoneId).Distinct().ToList();
             }
             else
             {
-                var mapRegions = await FacilityService.GetScrimmableMapRegionsAsync();
+                IReadOnlyList<CensusMapRegion>? mapRegions = await MapRegionService.GetAllAsync();
 
-                _mapRegions = mapRegions.OrderBy(r => r.FacilityName).ToList();
-                _mapZones = _mapRegions.Select(r => r.ZoneId).Distinct().ToList();
+                if (mapRegions is not null)
+                {
+                    _mapRegions = mapRegions.OrderBy(r => r.FacilityName).ToList();
+                    _mapZones = mapRegions.Select(r => r.ZoneId).Distinct().ToList();
+                }
             }
         }
 

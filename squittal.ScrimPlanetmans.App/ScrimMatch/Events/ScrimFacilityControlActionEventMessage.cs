@@ -1,4 +1,4 @@
-﻿using System;
+﻿using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.MessageLogs;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
@@ -6,7 +6,7 @@ namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public class ScrimFacilityControlActionEventMessage : ScrimActionEventMessage
 {
-    public ScrimFacilityControlActionEvent FacilityControl { get; set; }
+    public ScrimFacilityControlActionEvent FacilityControl { get; }
 
     public ScrimFacilityControlActionEventMessage(ScrimFacilityControlActionEvent facilityControl)
     {
@@ -21,17 +21,17 @@ public class ScrimFacilityControlActionEventMessage : ScrimActionEventMessage
 
     private string GetInfo()
     {
-        var teamOrdinal = FacilityControl.ControllingTeamOrdinal;
+        TeamDefinition teamOrdinal = FacilityControl.ControllingTeamOrdinal;
 
-        var actionDisplay = GetEnumValueName(FacilityControl.ActionType);
-        var controlTypeDisplay = Enum.GetName(typeof(FacilityControlType), FacilityControl.ControlType).ToUpper();
+        string actionDisplay = GetEnumValueName(FacilityControl.ActionType);
+        string controlTypeDisplay = FacilityControl.ControlType.ToString().ToUpper();
 
-        var facilityName = FacilityControl.FacilityName;
-        var facilityId = FacilityControl.FacilityId;
+        string facilityName = FacilityControl.FacilityName ?? "Unknown facility";
+        int facilityId = FacilityControl.FacilityId;
 
-        var pointsDisplay = GetPointsDisplay(FacilityControl.Points);
+        string pointsDisplay = GetPointsDisplay(FacilityControl.Points);
 
-        var bannedDisplay = FacilityControl.IsBanned ? "RULE BREAK - " : string.Empty;
+        string bannedDisplay = FacilityControl.IsBanned ? "RULE BREAK - " : string.Empty;
 
         return $"{bannedDisplay}Team {teamOrdinal} {actionDisplay} {controlTypeDisplay}: {pointsDisplay} {facilityName} [{facilityId}]";
     }

@@ -171,7 +171,7 @@ public class ScrimFacilityControlActionEvent : ScrimActionEvent
 {
     public int FacilityId { get; set; }
     public int WorldId { get; set; }
-    public string FacilityName { get; set; } = string.Empty;
+    public string? FacilityName { get; set; }
 
     public FacilityControlType ControlType { get; set; }
     public TeamDefinition ControllingTeamOrdinal { get; set; }

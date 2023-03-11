@@ -17,7 +17,7 @@ public class MatchConfiguration
     public bool IsWorldIdSet { get; private set; } = false;
     public int WorldId { get => GetWorldIdFromString(); }
     public string WorldIdString { get; set; } = "19";
-    public int FacilityId { get => GetFacilityIdFromString(); }
+    public uint FacilityId => GetFacilityIdFromString();
     public string FacilityIdString { get; set; } = "-1";
 
     public bool EndRoundOnFacilityCapture { get; set; } = false; // TODO: move this setting to the Ruleset model
@@ -182,17 +182,10 @@ public class MatchConfiguration
         }
     }
 
-    private int GetFacilityIdFromString()
-    {
-        if (int.TryParse(FacilityIdString, out int intId))
-        {
-            return intId;
-        }
-        else
-        {
-            return -1;
-        }
-    }
+    private uint GetFacilityIdFromString()
+        => uint.TryParse(FacilityIdString, out uint facilityId)
+            ? facilityId
+            : 0;
 
     private int GetWorldIdFromString()
     {

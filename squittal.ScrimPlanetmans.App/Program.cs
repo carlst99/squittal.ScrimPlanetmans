@@ -18,7 +18,6 @@ using squittal.ScrimPlanetmans.App.Abstractions.Services.Rulesets;
 using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers;
 using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.Control;
 using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.PreDispatch;
-using squittal.ScrimPlanetmans.App.CensusServices;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch;
@@ -135,14 +134,9 @@ public class Program
             .AddTransient<ICensusItemService, CensusItemService>()
             .AddTransient<ICensusItemCategoryService, CensusItemCategoryService>()
             .AddTransient<ICensusLoadoutService, CensusLoadoutService>()
+            .AddTransient<ICensusMapRegionService, CensusMapRegionService>()
             .AddTransient<ICensusOutfitService, CensusOutfitService>()
             .AddTransient<ICensusProfileService, CensusProfileService>();
-
-        services.AddCensusServices
-        (
-            options => options.CensusServiceId = builder.Configuration["DaybreakGamesServiceKey"]
-        );
-        services.AddCensusHelpers();
 
         // Register Census EventStream Services
         builder.Services.Configure<EventStreamOptions>(builder.Configuration.GetSection(nameof(EventStreamOptions)));
@@ -164,7 +158,6 @@ public class Program
         services.AddHostedService<EventStreamWorker>();
 
         // Register PlanetSide services
-        services.AddSingleton<IFacilityService, FacilityService>();
         services.AddTransient<IItemCategoryService, ItemCategoryService>();
         services.AddTransient<ILoadoutService, LoadoutService>();
         services.AddTransient<IOutfitService, OutfitService>();

@@ -12,12 +12,6 @@ public class RulesetFacilityRuleConfiguration : IEntityTypeConfiguration<Ruleset
 
         builder.HasKey(e => new { e.RulesetId, e.FacilityId });
 
-        builder.Ignore(e => e.MapRegion);
-
-        builder.HasOne(e => e.MapRegion)
-            .WithOne()
-            .HasForeignKey<RulesetFacilityRule>(e => new { e.MapRegionId, e.FacilityId });
-
         builder.HasOne(e => e.Ruleset)
             .WithMany(r => r.RulesetFacilityRules)
             .HasForeignKey(e => e.RulesetId);

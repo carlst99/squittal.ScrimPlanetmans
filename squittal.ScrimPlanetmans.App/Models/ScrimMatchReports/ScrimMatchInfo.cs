@@ -21,7 +21,7 @@ public class ScrimMatchInfo
     // World & Facility correspond to last round's configuration
     public int WorldId { get; set; }
     public string WorldName { get; set; }
-    public int? FacilityId { get; set; }
+    public uint? FacilityId { get; set; }
     public string FacilityName { get; set; }
 
     //public bool EndRoundOnFacilityCapture { get; set; } = false;

@@ -318,12 +318,6 @@ else
                 message = success ? $"Team {_renderedTeamOrdinal} [{alias}] Players REFRESH: Players Added"
                                   : $"Team {_renderedTeamOrdinal} [{alias}] Players REFRESH: No Players Added";
             }
-            catch (DaybreakGames.Census.Exceptions.CensusServiceUnavailableException ex)
-            {
-                _isLoadingMembers = false;
-
-                message = $"<span style=\"color: red;\"><span style=\"font-weight: 600;\">Failed to refresh outfit [{alias}]. The Census API Outfit service may be broken:</span> {ex.ToString()}</span>";
-            }
             catch (Exception ex)
             {
                 _isLoadingMembers = false;

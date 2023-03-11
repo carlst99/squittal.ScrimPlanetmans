@@ -18,7 +18,6 @@ public class DatabaseMaintenanceService
 
     public DatabaseMaintenanceService
     (
-        IFacilityService facilityService,
         IZoneService zoneService,
         IWorldService worldService,
         IVehicleService vehicleService,
@@ -27,12 +26,10 @@ public class DatabaseMaintenanceService
     {
         _adhocScriptRunner = adhocScriptRunner;
 
-        CensusStoreDataComparisonRow mapRegions = new("Map Regions", facilityService);
         CensusStoreDataComparisonRow zones = new("Zones", zoneService);
         CensusStoreDataComparisonRow worlds = new("Worlds", worldService);
         CensusStoreDataComparisonRow vehicles = new("Vehicles", vehicleService);
 
-        Comparisons.Add(mapRegions);
         Comparisons.Add(zones);
         Comparisons.Add(worlds);
         Comparisons.Add(vehicles);

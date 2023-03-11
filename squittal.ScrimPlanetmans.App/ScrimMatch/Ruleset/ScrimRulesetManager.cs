@@ -1057,14 +1057,12 @@ public class ScrimRulesetManager : IScrimRulesetManager
         };
     }
 
-    private static RulesetFacilityRule BuildRulesetFacilityRule(int facilityId, int mapRegionId)
-    {
-        return new RulesetFacilityRule
+    private static RulesetFacilityRule BuildRulesetFacilityRule(uint facilityId, uint mapRegionId)
+        => new()
         {
             FacilityId = facilityId,
             MapRegionId = mapRegionId
         };
-    }
 
     public async Task SeedScrimActionModelsAsync(CancellationToken ct = default)
     {
