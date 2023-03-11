@@ -64,7 +64,7 @@ public class CensusItemService : BaseCensusService, ICensusItemService
         }
 
         IQueryBuilder query = CreateDefaultItemQuery()
-            .Where("item_id", SearchModifier.Equals, toRetrieve);
+            .WhereAll("item_id", SearchModifier.Equals, toRetrieve);
 
         IReadOnlyList<CensusItem>? getItems = await GetListAsync<CensusItem>(query, ct);
         if (getItems is null)

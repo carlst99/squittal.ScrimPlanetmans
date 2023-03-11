@@ -68,7 +68,7 @@ public class CensusCharacterService : BaseCensusService, ICensusCharacterService
             return retrieved;
 
         IQueryBuilder query = CreateDefaultCharacterQuery()
-            .Where("character_id", SearchModifier.Equals, toRetrieve);
+            .WhereAll("character_id", SearchModifier.Equals, toRetrieve);
 
         IReadOnlyList<CensusCharacter>? characters = await GetListAsync<CensusCharacter>(query, ct);
         if (characters is not null)
@@ -113,7 +113,7 @@ public class CensusCharacterService : BaseCensusService, ICensusCharacterService
     {
         IQueryBuilder query = QueryService.CreateQuery()
             .OnCollection("characters_online_status")
-            .Where("character_id", SearchModifier.Equals, characterIds);
+            .WhereAll("character_id", SearchModifier.Equals, characterIds);
 
         return await GetListAsync<CensusCharactersOnlineStatus>(query, ct);
     }
