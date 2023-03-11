@@ -6,7 +6,7 @@ using squittal.ScrimPlanetmans.App.Services.Planetside;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
-public class Player : IEquitable<Player>
+public class Player
 {
     public ulong Id { get; }
 

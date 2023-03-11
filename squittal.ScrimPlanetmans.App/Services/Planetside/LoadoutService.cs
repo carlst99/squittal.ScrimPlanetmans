@@ -21,6 +21,23 @@ public class LoadoutService : ILoadoutService
     }
 
     /// <inheritdoc />
+    public async Task<CensusProfileType?> GetLoadoutProfileTypeAsync(uint loadoutId, CancellationToken ct = default)
+    {
+        IReadOnlyList<CensusLoadout>? loadouts = await _loadoutService.GetAllAsync(ct);
+        IReadOnlyList<CensusProfile>? profiles = await _profileService.GetAllAsync(ct);
+
+        if (loadouts is null || profiles is null)
+            return null;
+
+        CensusLoadout? loadout = loadouts.FirstOrDefault(x => x.LoadoutId == loadoutId);
+        if (loadout is null)
+            return null;
+
+        return (CensusProfileType?)profiles.FirstOrDefault(p => p.ProfileId == loadout.ProfileId)?
+            .ProfileTypeId;
+    }
+
+    /// <inheritdoc />
     public async Task<bool> IsLoadoutOfProfileTypeAsync
     (
         uint loadoutId,
@@ -28,15 +45,7 @@ public class LoadoutService : ILoadoutService
         CancellationToken ct = default
     )
     {
-        IReadOnlyList<CensusLoadout>? loadouts = await _loadoutService.GetAllAsync(ct);
-        IReadOnlyList<CensusProfile>? profiles = await _profileService.GetAllAsync(ct);
-
-        if (loadouts is null || profiles is null)
-            return false; // Not ideal, but oh well
-
-        CensusLoadout? loadout = loadouts.FirstOrDefault(x => x.LoadoutId == loadoutId);
-
-        return loadout is not null
-            && profiles.Any(p => p.ProfileId == loadout.ProfileId && p.ProfileTypeId == (int)profileType);
+        CensusProfileType? loadoutProfileType = await GetLoadoutProfileTypeAsync(loadoutId, ct);
+        return loadoutProfileType == profileType;
     }
 }

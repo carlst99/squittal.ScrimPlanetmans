@@ -1,6 +1,7 @@
 ﻿@using squittal.ScrimPlanetmans.App.Pages.Shared;
 @using System.Threading;
 @using squittal.ScrimPlanetmans.App.Models
+@using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatchReports.Interfaces
@@ -137,7 +138,7 @@ else
 
     private List<ScrimMatchReportInfantryPlayerHeadToHeadStats> _headToHeadStats { get; set; }
 
-    private Dictionary<string, PlanetsideClass> _opponentClassMap { get; set; }
+    private Dictionary<string, CensusProfileType> _opponentClassMap { get; set; }
 
     private bool _isChangingScrimMatch { get; set; } = false;
     private bool _isLoadingStats { get; set; } = false;
@@ -300,37 +301,17 @@ else
         }
     }
 
-    private string GetLoadoutIconFromLoadoutId(PlanetsideClass planetsideClass)
-    {
-        if (planetsideClass == PlanetsideClass.Infiltrator)
+    private string GetLoadoutIconFromLoadoutId(CensusProfileType planetsideClass)
+        => planetsideClass switch
         {
-            return "infil";
-        }
-        else if (planetsideClass == PlanetsideClass.LightAssault)
-        {
-            return "la";
-        }
-        else if (planetsideClass == PlanetsideClass.Medic)
-        {
-            return "medic";
-        }
-        else if (planetsideClass == PlanetsideClass.Engineer)
-        {
-            return "engy";
-        }
-        else if (planetsideClass == PlanetsideClass.HeavyAssault)
-        {
-            return "heavy";
-        }
-        else if (planetsideClass == PlanetsideClass.MAX)
-        {
-            return "max";
-        }
-        else
-        {
-            return "unknown";
-        }
-    }
+            CensusProfileType.Infiltrator => "infil",
+            CensusProfileType.LightAssault => "la",
+            CensusProfileType.CombatMedic => "medic",
+            CensusProfileType.Engineer => "engy",
+            CensusProfileType.HeavyAssault => "heavy",
+            CensusProfileType.MAX => "max",
+            _ => "unknown"
+        };
 
     private string GetLoadoutIconFilterStyle(int factionId)
     {

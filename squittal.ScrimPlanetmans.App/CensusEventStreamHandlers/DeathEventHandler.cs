@@ -97,8 +97,8 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
             AttackerCharacterId = isSuicide ? victimId : attackerId,
             VictimPlayer = victimPlayer,
             AttackerPlayer = isSuicide ? victimPlayer : attackerPlayer,
-            VictimLoadoutId = (int)payload.CharacterLoadoutID,
-            AttackerLoadoutId = (int)(isSuicide ? payload.CharacterLoadoutID : payload.AttackerLoadoutID),
+            VictimLoadoutId = payload.CharacterLoadoutID,
+            AttackerLoadoutId = isSuicide ? payload.CharacterLoadoutID : payload.AttackerLoadoutID,
             Timestamp = payload.Timestamp.UtcDateTime,
             ZoneId = (int)payload.ZoneID.CombinedId,
             IsHeadshot = payload.IsHeadshot,
@@ -172,13 +172,13 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
         bool attackerIsVehicle = death.Weapon is { IsVehicleWeapon: true };
         bool attackerIsMax = await _loadoutService.IsLoadoutOfProfileTypeAsync
         (
-            (uint)death.AttackerLoadoutId,
+            death.AttackerLoadoutId,
             CensusProfileType.MAX,
             ct
         );
         bool victimIsMax = await _loadoutService.IsLoadoutOfProfileTypeAsync
         (
-            (uint)death.VictimLoadoutId,
+            death.VictimLoadoutId,
             CensusProfileType.MAX,
             ct
         );

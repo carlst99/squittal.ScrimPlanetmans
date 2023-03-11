@@ -159,11 +159,11 @@
                                                     <span>Infiltrator</span>
                                                 </td>
                                                 <td class="mono-font" style="opacity: @GetValueOpacity(itemRule.InfiltratorPoints);">
-                                                    <InputNumber Value="@itemRule.InfiltratorPoints" ValueChanged="@((int p) => OnChangeRulePlanetsideClassPoints(itemRule, PlanetsideClass.Infiltrator, p))" ValueExpression="@(() => itemRule.InfiltratorPoints)" style="text-align: right; width: 50px; color: var(--sq-black); border: 1px solid transparent; background-color: transparent;" />
+                                                    <InputNumber Value="@itemRule.InfiltratorPoints" ValueChanged="@((int p) => OnChangeRulePlanetsideClassPoints(itemRule, CensusProfileType.Infiltrator, p))" ValueExpression="@(() => itemRule.InfiltratorPoints)" style="text-align: right; width: 50px; color: var(--sq-black); border: 1px solid transparent; background-color: transparent;" />
                                                 </td>
 
                                                 <td style="opacity: @GetBoolValueOpacity(itemRule.InfiltratorIsBanned);">
-                                                    <InputCheckbox Value="@itemRule.InfiltratorIsBanned" ValueChanged="@((bool b) => OnChangeRulePlanetsideClassIsBanned(itemRule, PlanetsideClass.Infiltrator, b))" ValueExpression="@(() => itemRule.InfiltratorIsBanned)" style="position: relative; top: 1px;" /><span style="padding-left: 4px; color: var(--sq-black);">@(itemRule.InfiltratorIsBanned ? "Yes" : "No")</span>
+                                                    <InputCheckbox Value="@itemRule.InfiltratorIsBanned" ValueChanged="@((bool b) => OnChangeRulePlanetsideClassIsBanned(itemRule, CensusProfileType.Infiltrator, b))" ValueExpression="@(() => itemRule.InfiltratorIsBanned)" style="position: relative; top: 1px;" /><span style="padding-left: 4px; color: var(--sq-black);">@(itemRule.InfiltratorIsBanned ? "Yes" : "No")</span>
                                                 </td>
                                             </tr>
 
@@ -173,11 +173,11 @@
                                                     <span>Light Assault</span>
                                                 </td>
                                                 <td class="mono-font" style="opacity: @GetValueOpacity(itemRule.LightAssaultPoints);">
-                                                    <InputNumber Value="@itemRule.LightAssaultPoints" ValueChanged="@((int p) => OnChangeRulePlanetsideClassPoints(itemRule, PlanetsideClass.LightAssault, p))" ValueExpression="@(() => itemRule.LightAssaultPoints)" style="text-align: right; width: 50px; color: var(--sq-black); border: 1px solid transparent; background-color: transparent;" />
+                                                    <InputNumber Value="@itemRule.LightAssaultPoints" ValueChanged="@((int p) => OnChangeRulePlanetsideClassPoints(itemRule, CensusProfileType.LightAssault, p))" ValueExpression="@(() => itemRule.LightAssaultPoints)" style="text-align: right; width: 50px; color: var(--sq-black); border: 1px solid transparent; background-color: transparent;" />
                                                 </td>
 
                                                 <td style="opacity: @GetBoolValueOpacity(itemRule.LightAssaultIsBanned);">
-                                                    <InputCheckbox Value="@itemRule.LightAssaultIsBanned" ValueChanged="@((bool b) => OnChangeRulePlanetsideClassIsBanned(itemRule, PlanetsideClass.LightAssault, b))" ValueExpression="@(() => itemRule.LightAssaultIsBanned)" style="position: relative; top: 1px;" /><span style="padding-left: 4px; color: var(--sq-black);">@(itemRule.LightAssaultIsBanned ? "Yes" : "No")</span>
+                                                    <InputCheckbox Value="@itemRule.LightAssaultIsBanned" ValueChanged="@((bool b) => OnChangeRulePlanetsideClassIsBanned(itemRule, CensusProfileType.LightAssault, b))" ValueExpression="@(() => itemRule.LightAssaultIsBanned)" style="position: relative; top: 1px;" /><span style="padding-left: 4px; color: var(--sq-black);">@(itemRule.LightAssaultIsBanned ? "Yes" : "No")</span>
                                                 </td>
                                             </tr>
 
@@ -187,11 +187,11 @@
                                                     <span>Medic</span>
                                                 </td>
                                                 <td class="mono-font" style="opacity: @GetValueOpacity(itemRule.MedicPoints);">
-                                                    <InputNumber Value="@itemRule.MedicPoints" ValueChanged="@((int p) => OnChangeRulePlanetsideClassPoints(itemRule, PlanetsideClass.Medic, p))" ValueExpression="@(() => itemRule.MedicPoints)" style="text-align: right; width: 50px; color: var(--sq-black); border: 1px solid transparent; background-color: transparent;" />
+                                                    <InputNumber Value="@itemRule.MedicPoints" ValueChanged="@((int p) => OnChangeRulePlanetsideClassPoints(itemRule, CensusProfileType.CombatMedic, p))" ValueExpression="@(() => itemRule.MedicPoints)" style="text-align: right; width: 50px; color: var(--sq-black); border: 1px solid transparent; background-color: transparent;" />
                                                 </td>
 
                                                 <td style="opacity: @GetBoolValueOpacity(itemRule.MedicIsBanned);">
-                                                    <InputCheckbox Value="@itemRule.MedicIsBanned" ValueChanged="@((bool b) => OnChangeRulePlanetsideClassIsBanned(itemRule, PlanetsideClass.Medic, b))" ValueExpression="@(() => itemRule.MedicIsBanned)" style="position: relative; top: 1px;" /><span style="padding-left: 4px; color: var(--sq-black);">@(itemRule.MedicIsBanned ? "Yes" : "No")</span>
+                                                    <InputCheckbox Value="@itemRule.MedicIsBanned" ValueChanged="@((bool b) => OnChangeRulePlanetsideClassIsBanned(itemRule, CensusProfileType.CombatMedic, b))" ValueExpression="@(() => itemRule.MedicIsBanned)" style="position: relative; top: 1px;" /><span style="padding-left: 4px; color: var(--sq-black);">@(itemRule.MedicIsBanned ? "Yes" : "No")</span>
                                                 </td>
                                             </tr>
 
@@ -201,11 +201,11 @@
                                                     <span>Engineer</span>
                                                 </td>
                                                 <td class="mono-font" style="opacity: @GetValueOpacity(itemRule.EngineerPoints);">
-                                                    <InputNumber Value="@itemRule.EngineerPoints" ValueChanged="@((int p) => OnChangeRulePlanetsideClassPoints(itemRule, PlanetsideClass.Engineer, p))" ValueExpression="@(() => itemRule.EngineerPoints)" style="text-align: right; width: 50px; color: var(--sq-black); border: 1px solid transparent; background-color: transparent;" />
+                                                    <InputNumber Value="@itemRule.EngineerPoints" ValueChanged="@((int p) => OnChangeRulePlanetsideClassPoints(itemRule, CensusProfileType.Engineer, p))" ValueExpression="@(() => itemRule.EngineerPoints)" style="text-align: right; width: 50px; color: var(--sq-black); border: 1px solid transparent; background-color: transparent;" />
                                                 </td>
 
                                                 <td style="opacity: @GetBoolValueOpacity(itemRule.EngineerIsBanned);">
-                                                    <InputCheckbox Value="@itemRule.EngineerIsBanned" ValueChanged="@((bool b) => OnChangeRulePlanetsideClassIsBanned(itemRule, PlanetsideClass.Engineer, b))" ValueExpression="@(() => itemRule.EngineerIsBanned)" style="position: relative; top: 1px;" /><span style="padding-left: 4px; color: var(--sq-black);">@(itemRule.EngineerIsBanned ? "Yes" : "No")</span>
+                                                    <InputCheckbox Value="@itemRule.EngineerIsBanned" ValueChanged="@((bool b) => OnChangeRulePlanetsideClassIsBanned(itemRule, CensusProfileType.Engineer, b))" ValueExpression="@(() => itemRule.EngineerIsBanned)" style="position: relative; top: 1px;" /><span style="padding-left: 4px; color: var(--sq-black);">@(itemRule.EngineerIsBanned ? "Yes" : "No")</span>
                                                 </td>
                                             </tr>
 
@@ -215,11 +215,11 @@
                                                     <span>Heavy Assault</span>
                                                 </td>
                                                 <td class="mono-font" style="opacity: @GetValueOpacity(itemRule.HeavyAssaultPoints);">
-                                                    <InputNumber Value="@itemRule.HeavyAssaultPoints" ValueChanged="@((int p) => OnChangeRulePlanetsideClassPoints(itemRule, PlanetsideClass.HeavyAssault, p))" ValueExpression="@(() => itemRule.HeavyAssaultPoints)" style="text-align: right; width: 50px; color: var(--sq-black); border: 1px solid transparent; background-color: transparent;" />
+                                                    <InputNumber Value="@itemRule.HeavyAssaultPoints" ValueChanged="@((int p) => OnChangeRulePlanetsideClassPoints(itemRule, CensusProfileType.HeavyAssault, p))" ValueExpression="@(() => itemRule.HeavyAssaultPoints)" style="text-align: right; width: 50px; color: var(--sq-black); border: 1px solid transparent; background-color: transparent;" />
                                                 </td>
 
                                                 <td style="opacity: @GetBoolValueOpacity(itemRule.HeavyAssaultIsBanned);">
-                                                    <InputCheckbox Value="@itemRule.HeavyAssaultIsBanned" ValueChanged="@((bool b) => OnChangeRulePlanetsideClassIsBanned(itemRule, PlanetsideClass.HeavyAssault, b))" ValueExpression="@(() => itemRule.HeavyAssaultIsBanned)" style="position: relative; top: 1px;" /><span style="padding-left: 4px; color: var(--sq-black);">@(itemRule.HeavyAssaultIsBanned ? "Yes" : "No")</span>
+                                                    <InputCheckbox Value="@itemRule.HeavyAssaultIsBanned" ValueChanged="@((bool b) => OnChangeRulePlanetsideClassIsBanned(itemRule, CensusProfileType.HeavyAssault, b))" ValueExpression="@(() => itemRule.HeavyAssaultIsBanned)" style="position: relative; top: 1px;" /><span style="padding-left: 4px; color: var(--sq-black);">@(itemRule.HeavyAssaultIsBanned ? "Yes" : "No")</span>
                                                 </td>
                                             </tr>
 
@@ -229,11 +229,11 @@
                                                     <span>MAX</span>
                                                 </td>
                                                 <td class="mono-font" style="opacity: @GetValueOpacity(itemRule.MaxPoints);">
-                                                    <InputNumber Value="@itemRule.MaxPoints" ValueChanged="@((int p) => OnChangeRulePlanetsideClassPoints(itemRule, PlanetsideClass.MAX, p))" ValueExpression="@(() => itemRule.MaxPoints)" style="text-align: right; width: 50px; color: var(--sq-black); border: 1px solid transparent; background-color: transparent;" />
+                                                    <InputNumber Value="@itemRule.MaxPoints" ValueChanged="@((int p) => OnChangeRulePlanetsideClassPoints(itemRule, CensusProfileType.MAX, p))" ValueExpression="@(() => itemRule.MaxPoints)" style="text-align: right; width: 50px; color: var(--sq-black); border: 1px solid transparent; background-color: transparent;" />
                                                 </td>
 
                                                 <td style="opacity: @GetBoolValueOpacity(itemRule.MaxIsBanned);">
-                                                    <InputCheckbox Value="@itemRule.MaxIsBanned" ValueChanged="@((bool b) => OnChangeRulePlanetsideClassIsBanned(itemRule, PlanetsideClass.MAX, b))" ValueExpression="@(() => itemRule.MaxIsBanned)" style="position: relative; top: 1px;" /><span style="padding-left: 4px; color: var(--sq-black);">@(itemRule.MaxIsBanned ? "Yes" : "No")</span>
+                                                    <InputCheckbox Value="@itemRule.MaxIsBanned" ValueChanged="@((bool b) => OnChangeRulePlanetsideClassIsBanned(itemRule, CensusProfileType.MAX, b))" ValueExpression="@(() => itemRule.MaxIsBanned)" style="position: relative; top: 1px;" /><span style="padding-left: 4px; color: var(--sq-black);">@(itemRule.MaxIsBanned ? "Yes" : "No")</span>
                                                 </td>
                                             </tr>
 
@@ -578,7 +578,7 @@
         InvokeAsyncStateHasChanged();
     }
 
-    private void OnChangeRulePlanetsideClassPoints(RulesetItemRule rule, PlanetsideClass planetsideClass, int newPoints)
+    private void OnChangeRulePlanetsideClassPoints(RulesetItemRule rule, CensusProfileType planetsideClass, int newPoints)
     {
         var itemId = rule.ItemId;
         var currentRuleClassSettings = rule.GetPlanetsideClassRuleSettings();
@@ -624,7 +624,7 @@
         InvokeAsyncStateHasChanged();
     }
 
-    private void OnChangeRulePlanetsideClassIsBanned(RulesetItemRule rule, PlanetsideClass planetsideClass, bool newIsBanned)
+    private void OnChangeRulePlanetsideClassIsBanned(RulesetItemRule rule, CensusProfileType planetsideClass, bool newIsBanned)
     {
         var itemId = rule.ItemId;
         var currentRuleClassSettings = rule.GetPlanetsideClassRuleSettings();

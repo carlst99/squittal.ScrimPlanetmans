@@ -1,29 +1,27 @@
-﻿using squittal.ScrimPlanetmans.App.Models;
-using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
+﻿using squittal.ScrimPlanetmans.App.Models.CensusRest;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
-public class PlanetsideClassRuleSettings : IEquitable<PlanetsideClassRuleSettings>
+public class PlanetsideClassRuleSettings
 {
-    public bool InfiltratorIsBanned { get; set; } = false;
-    public int InfiltratorPoints { get; set; } = 0;
+    public bool InfiltratorIsBanned { get; set; }
+    public int InfiltratorPoints { get; set; }
 
-    public bool LightAssaultIsBanned { get; set; } = false;
-    public int LightAssaultPoints { get; set; } = 0;
+    public bool LightAssaultIsBanned { get; set; }
+    public int LightAssaultPoints { get; set; }
 
-    public bool MedicIsBanned { get; set; } = false;
-    public int MedicPoints { get; set; } = 0;
+    public bool MedicIsBanned { get; set; }
+    public int MedicPoints { get; set; }
 
-    public bool EngineerIsBanned { get; set; } = false;
-    public int EngineerPoints { get; set; } = 0;
+    public bool EngineerIsBanned { get; set; }
+    public int EngineerPoints { get; set; }
 
-    public bool HeavyAssaultIsBanned { get; set; } = false;
-    public int HeavyAssaultPoints { get; set; } = 0;
+    public bool HeavyAssaultIsBanned { get; set; }
+    public int HeavyAssaultPoints { get; set; }
 
-    public bool MaxIsBanned { get; set; } = false;
-    public int MaxPoints { get; set; } = 0;
+    public bool MaxIsBanned { get; set; }
+    public int MaxPoints { get; set; }
 
-    #region Constructors
     public PlanetsideClassRuleSettings()
     {
     }
@@ -91,64 +89,60 @@ public class PlanetsideClassRuleSettings : IEquitable<PlanetsideClassRuleSetting
         MaxIsBanned = rule.MaxIsBanned;
         MaxPoints = rule.MaxPoints;
     }
-    #endregion Constructors
 
-    #region Getters
-    public bool GetClassIsBanned(PlanetsideClass planetsideClass)
+    public bool GetClassIsBanned(CensusProfileType planetsideClass)
     {
         return planetsideClass switch
         {
-            PlanetsideClass.Infiltrator => InfiltratorIsBanned,
-            PlanetsideClass.LightAssault => LightAssaultIsBanned,
-            PlanetsideClass.Medic => MedicIsBanned,
-            PlanetsideClass.Engineer => EngineerIsBanned,
-            PlanetsideClass.HeavyAssault => HeavyAssaultIsBanned,
-            PlanetsideClass.MAX => MaxIsBanned,
+            CensusProfileType.Infiltrator => InfiltratorIsBanned,
+            CensusProfileType.LightAssault => LightAssaultIsBanned,
+            CensusProfileType.CombatMedic => MedicIsBanned,
+            CensusProfileType.Engineer => EngineerIsBanned,
+            CensusProfileType.HeavyAssault => HeavyAssaultIsBanned,
+            CensusProfileType.MAX => MaxIsBanned,
             _ => false,
         };
     }
 
-    public int GetClassPoints(PlanetsideClass planetsideClass)
+    public int GetClassPoints(CensusProfileType planetsideClass)
     {
         return planetsideClass switch
         {
-            PlanetsideClass.Infiltrator => InfiltratorPoints,
-            PlanetsideClass.LightAssault => LightAssaultPoints,
-            PlanetsideClass.Medic => MedicPoints,
-            PlanetsideClass.Engineer => EngineerPoints,
-            PlanetsideClass.HeavyAssault => HeavyAssaultPoints,
-            PlanetsideClass.MAX => MaxPoints,
+            CensusProfileType.Infiltrator => InfiltratorPoints,
+            CensusProfileType.LightAssault => LightAssaultPoints,
+            CensusProfileType.CombatMedic => MedicPoints,
+            CensusProfileType.Engineer => EngineerPoints,
+            CensusProfileType.HeavyAssault => HeavyAssaultPoints,
+            CensusProfileType.MAX => MaxPoints,
             _ => 0,
         };
     }
-    #endregion Getters
 
-    #region Setters
-    public void SetClassIsBanned(PlanetsideClass planetsideClass, bool newIsBanned)
+    public void SetClassIsBanned(CensusProfileType planetsideClass, bool newIsBanned)
     {
         switch (planetsideClass)
         {
-            case PlanetsideClass.Infiltrator:
+            case CensusProfileType.Infiltrator:
                 InfiltratorIsBanned = newIsBanned;
                 return;
 
-            case PlanetsideClass.LightAssault:
+            case CensusProfileType.LightAssault:
                 LightAssaultIsBanned = newIsBanned;
                 return;
 
-            case PlanetsideClass.Medic:
+            case CensusProfileType.CombatMedic:
                 MedicIsBanned = newIsBanned;
                 return;
 
-            case PlanetsideClass.Engineer:
+            case CensusProfileType.Engineer:
                 EngineerIsBanned = newIsBanned;
                 return;
 
-            case PlanetsideClass.HeavyAssault:
+            case CensusProfileType.HeavyAssault:
                 HeavyAssaultIsBanned = newIsBanned;
                 return;
 
-            case PlanetsideClass.MAX:
+            case CensusProfileType.MAX:
                 MaxIsBanned = newIsBanned;
                 return;
 
@@ -157,31 +151,31 @@ public class PlanetsideClassRuleSettings : IEquitable<PlanetsideClassRuleSetting
         }
     }
 
-    public void SetClassPoints(PlanetsideClass planetsideClass, int newPoints)
+    public void SetClassPoints(CensusProfileType planetsideClass, int newPoints)
     {
         switch (planetsideClass)
         {
-            case PlanetsideClass.Infiltrator:
+            case CensusProfileType.Infiltrator:
                 InfiltratorPoints = newPoints;
                 return;
 
-            case PlanetsideClass.LightAssault:
+            case CensusProfileType.LightAssault:
                 LightAssaultPoints = newPoints;
                 return;
 
-            case PlanetsideClass.Medic:
+            case CensusProfileType.CombatMedic:
                 MedicPoints = newPoints;
                 return;
 
-            case PlanetsideClass.Engineer:
+            case CensusProfileType.Engineer:
                 EngineerPoints = newPoints;
                 return;
 
-            case PlanetsideClass.HeavyAssault:
+            case CensusProfileType.HeavyAssault:
                 HeavyAssaultPoints = newPoints;
                 return;
 
-            case PlanetsideClass.MAX:
+            case CensusProfileType.MAX:
                 MaxPoints = newPoints;
                 return;
 
@@ -189,30 +183,18 @@ public class PlanetsideClassRuleSettings : IEquitable<PlanetsideClassRuleSetting
                 return;
         }
     }
-    #endregion Setters
 
-    #region Equality
-    public override bool Equals(object obj)
-    {
-        return this.Equals(obj as PlanetsideClassRuleSettings);
-    }
+    public override bool Equals(object? obj)
+        => obj is PlanetsideClassRuleSettings settings
+            && Equals(settings);
 
-    public bool Equals(PlanetsideClassRuleSettings s)
+    public bool Equals(PlanetsideClassRuleSettings? s)
     {
         if (s is null)
-        {
             return false;
-        }
 
         if (ReferenceEquals(this, s))
-        {
             return true;
-        }
-
-        if (this.GetType() != s.GetType())
-        {
-            return false;
-        }
 
         return this.InfiltratorIsBanned == s.InfiltratorIsBanned
             && this.InfiltratorPoints == s.InfiltratorPoints
@@ -228,29 +210,16 @@ public class PlanetsideClassRuleSettings : IEquitable<PlanetsideClassRuleSetting
             && this.MaxPoints == s.MaxPoints;
     }
 
-    public static bool operator ==(PlanetsideClassRuleSettings lhs, PlanetsideClassRuleSettings rhs)
+    public static bool operator ==(PlanetsideClassRuleSettings? lhs, PlanetsideClassRuleSettings? rhs)
     {
         if (lhs is null)
-        {
-            if (rhs is null)
-            {
-                return true;
-            }
-
-            return false;
-        }
+            return rhs is null;
 
         return lhs.Equals(rhs);
     }
 
-    public static bool operator !=(PlanetsideClassRuleSettings lhs, PlanetsideClassRuleSettings rhs)
+    public static bool operator !=(PlanetsideClassRuleSettings? lhs, PlanetsideClassRuleSettings? rhs)
     {
         return !(lhs == rhs);
     }
-
-    public override int GetHashCode()
-    {
-        return GetHashCode();
-    }
-    #endregion Equality
 }

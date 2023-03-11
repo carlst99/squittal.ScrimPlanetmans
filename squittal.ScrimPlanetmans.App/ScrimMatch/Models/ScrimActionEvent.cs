@@ -25,8 +25,8 @@ public class ScrimDeathActionEvent : ScrimActionEvent
     public required ScrimActionWeaponInfo Weapon { get; init; }
     public required ulong AttackerCharacterId { get; init; }
     public required ulong VictimCharacterId { get; init; }
-    public required int AttackerLoadoutId { get; init; }
-    public required int VictimLoadoutId { get; init; }
+    public required uint AttackerLoadoutId { get; init; }
+    public required uint VictimLoadoutId { get; init; }
     public int? AttackerVehicleId { get; set; }
     public bool IsHeadshot { get; init; }
 
@@ -205,7 +205,7 @@ public class ScrimVehicleDestructionActionEvent : ScrimActionEvent
     public Player? VictimPlayer { get; set; }
     public ScrimActionVehicleInfo? AttackerVehicle { get; set; }
     public ScrimActionVehicleInfo? VictimVehicle { get; set; }
-    public int AttackerLoadoutId { get; set; }
+    public uint AttackerLoadoutId { get; set; }
     public int Points { get; set; }
     public DeathEventType DeathType { get; set; }
 }

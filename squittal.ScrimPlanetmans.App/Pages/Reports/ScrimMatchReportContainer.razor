@@ -12,6 +12,7 @@
 @using System.Threading;
 @using System.Text.RegularExpressions;
 @using squittal.ScrimPlanetmans.App.Models
+@using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatchReports.Interfaces
 
@@ -237,7 +238,7 @@
                                     {
                                         <td style="padding-left: 10px;"></td>
                                         <td style="text-align: right; width: 120px;">
-                                            <div class="playerLoadoutIcon ps2-icon @GetLoadoutIconFromLoadoutId(playerRoundStats.GetOrderedPlanetsideClassEventCountsList().Select(e => e.PlanetsideClass).FirstOrDefault())" style="filter: @GetLoadoutIconFilterStyle(player.FactionId); display: inline-block; vertical-align: text-bottom; margin-right: 8px;"></div>@*@player.GetOrderedPlanetsideClassEventCountsList().OrderByDescending(e => e.EventCount).FirstOrDefault().EventCount</div>*@
+                                            <div class="playerLoadoutIcon ps2-icon @GetLoadoutIconFromLoadoutId(playerRoundStats.GetOrderedPlanetsideClassEventCountsList().First().PlanetsideClass)" style="filter: @GetLoadoutIconFilterStyle(player.FactionId); display: inline-block; vertical-align: text-bottom; margin-right: 8px;"></div>@*@player.GetOrderedPlanetsideClassEventCountsList().OrderByDescending(e => e.EventCount).FirstOrDefault().EventCount</div>*@
                                             <div style="display: inline-block; vertical-align: text-bottom;">Round @round</div>
                                         </td>
                                         <td>@playerRoundStats.Points</td>
@@ -758,110 +759,54 @@
 
     private decimal GetPointGraphWidth(int points)
     {
-        var maxPoints = _maxPlayerPoints;
+        int maxPoints = _maxPlayerPoints;
 
-        var playerPoints = points;
-
-        return (playerPoints >= 1 && maxPoints > 0) ? Math.Ceiling(100 * ((decimal)playerPoints / (decimal)maxPoints)) : 4;
+        return points >= 1 && maxPoints > 0
+            ? Math.Ceiling(100 * ((decimal)points / maxPoints))
+            : 4;
     }
 
     private decimal GetPointGraphWidth(int points, int round)
     {
-        int maxPoints = 0;
-        var playerPoints = points;
-
-        if (!_maxPlayerRoundPoints.TryGetValue(round, out maxPoints))
-        {
+        if (!_maxPlayerRoundPoints.TryGetValue(round, out int maxPoints))
             maxPoints = 0;
-        }
 
-        return (playerPoints >= 1 && maxPoints > 0) ? Math.Ceiling(100 * ((decimal)playerPoints / (decimal)maxPoints)) : 4;
+        return points >= 1 && maxPoints > 0
+            ? Math.Ceiling(100 * ((decimal)points / maxPoints))
+            : 4;
     }
 
-    private double GetStatOpacity(int value)
-    {
-        return (value != 0)
-            ? 1.0
-            : 0.5;
-    }
+    private static string GetNetScoreLabelCssClass(int netScore)
+        => netScore switch
+        {
+            0 => "neutral",
+            < 0 => "negative",
+            _ => string.Empty
+        };
 
-    private string GetNetScoreLabelCssClass(int netScore)
-    {
-        if (netScore == 0)
-        {
-            return "neutral";
-        }
-        else if (netScore < 0)
-        {
-            return "negative";
-        }
-        else
-        {
-            return string.Empty;
-        }
-    }
+    private static string GetNetScoreLabelText(int netScore)
+        => netScore == 0 ? "•" : "Δ";
 
-    private string GetNetScoreLabelText(int netScore)
-    {
-        if (netScore == 0)
+    private static string GetLoadoutIconFromLoadoutId(CensusProfileType planetsideClass)
+        => planetsideClass switch
         {
-            return "•";
-        }
-        else
-        {
-            return "Δ";
-        }
-    }
+            CensusProfileType.Infiltrator => "infil",
+            CensusProfileType.LightAssault => "la",
+            CensusProfileType.CombatMedic => "medic",
+            CensusProfileType.Engineer => "engy",
+            CensusProfileType.HeavyAssault => "heavy",
+            CensusProfileType.MAX => "max",
+            _ => "unknown"
+        };
 
-    private string GetLoadoutIconFromLoadoutId(PlanetsideClass planetsideClass)
-    {
-        if (planetsideClass == PlanetsideClass.Infiltrator)
+    private static string GetLoadoutIconFilterStyle(int factionId)
+        => factionId switch
         {
-            return "infil";
-        }
-        else if (planetsideClass == PlanetsideClass.LightAssault)
-        {
-            return "la";
-        }
-        else if (planetsideClass == PlanetsideClass.Medic)
-        {
-            return "medic";
-        }
-        else if (planetsideClass == PlanetsideClass.Engineer)
-        {
-            return "engy";
-        }
-        else if (planetsideClass == PlanetsideClass.HeavyAssault)
-        {
-            return "heavy";
-        }
-        else if (planetsideClass == PlanetsideClass.MAX)
-        {
-            return "max";
-        }
-        else
-        {
-            return "unknown";
-        }
-    }
-
-    private string GetLoadoutIconFilterStyle(int factionId)
-    {
-        if (factionId == 1)
-        {
-            return "brightness(0) saturate(100%) invert(39%) sepia(41%) saturate(1794%) hue-rotate(224deg) brightness(98%) contrast(91%);";
-        }
-        if (factionId == 2)
-        {
-            return "brightness(0) saturate(100%) invert(49%) sepia(57%) saturate(1428%) hue-rotate(184deg) brightness(101%) contrast(98%);";
-        }
-        if (factionId == 3)
-        {
-            return "brightness(0) saturate(100%) invert(50%) sepia(34%) saturate(1466%) hue-rotate(307deg) brightness(98%) contrast(88%);";
-        }
-
-        return string.Empty;
-    }
+            1 => "brightness(0) saturate(100%) invert(39%) sepia(41%) saturate(1794%) hue-rotate(224deg) brightness(98%) contrast(91%);",
+            2 => "brightness(0) saturate(100%) invert(49%) sepia(57%) saturate(1428%) hue-rotate(184deg) brightness(101%) contrast(98%);",
+            3 => "brightness(0) saturate(100%) invert(50%) sepia(34%) saturate(1466%) hue-rotate(307deg) brightness(98%) contrast(88%);",
+            _ => string.Empty
+        };
 
     private string GetDetailsPanelFactionClass()
     {
@@ -884,35 +829,25 @@
                     : string.Empty;
     }
 
-    private string GetRoundRowBorderClass(int round, int maxRounds)
-    {
-        return round == maxRounds ? "last-of-group" : string.Empty;
-    }
+    private static string GetRoundRowBorderClass(int round, int maxRounds)
+        => round == maxRounds
+            ? "last-of-group"
+            : string.Empty;
 
-    private MarkupString GetAbbreviatedDamageDealt(int damageDealt, bool isTeamValue)
+    private static MarkupString GetAbbreviatedDamageDealt(int damageDealt, bool isTeamValue)
     {
-        //if (damageDealt < 10000)
-        var color = isTeamValue ? "var(sq-ps2-primary)" : "var(--sq-ov-ps2-primary-dark-alpha-70)";
+        string color = isTeamValue
+            ? "var(sq-ps2-primary)"
+            : "var(--sq-ov-ps2-primary-dark-alpha-70)";
 
-        if (damageDealt < 1000)
+        return damageDealt switch
         {
-            return (MarkupString)damageDealt.ToString("N0");
-        }
-        else if (damageDealt < 100000)
-        {
-            return (MarkupString)$"{Math.Round(damageDealt / 1000.0, 1)}<span style=\"color: {color};\">k</span>";
-        }
-        else
-        {
-            return (MarkupString)$"{Math.Round(damageDealt / 1000.0, 0)}<span style=\"color: {color};\">k</span>";;
-        }
+            < 1000 => (MarkupString)damageDealt.ToString("N0"),
+            < 100000 => (MarkupString)$"{Math.Round(damageDealt / 1000.0, 1)}<span style=\"color: {color};\">k</span>",
+            _ => (MarkupString)$"{Math.Round(damageDealt / 1000.0, 0)}<span style=\"color: {color};\">k</span>"
+        };
     }
 
     private void InvokeAsyncStateHasChanged()
-    {
-        InvokeAsync(() =>
-        {
-            StateHasChanged();
-        });
-    }
+        => InvokeAsync(StateHasChanged);
 }

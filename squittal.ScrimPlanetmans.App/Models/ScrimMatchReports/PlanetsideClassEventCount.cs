@@ -1,13 +1,5 @@
-﻿namespace squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
+﻿using squittal.ScrimPlanetmans.App.Models.CensusRest;
 
-public class PlanetsideClassEventCount
-{
-    public PlanetsideClass PlanetsideClass { get; set; }
-    public int EventCount { get; set; }
+namespace squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
 
-    public PlanetsideClassEventCount(PlanetsideClass planetsideClass, int eventCount)
-    {
-        PlanetsideClass = planetsideClass;
-        EventCount = eventCount;
-    }
-}
+public record PlanetsideClassEventCount(CensusProfileType PlanetsideClass, int EventCount);

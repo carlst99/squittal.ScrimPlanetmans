@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using squittal.ScrimPlanetmans.App.Models.CensusRest;
 
 namespace squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
 
@@ -38,20 +39,22 @@ public class ScrimMatchReportInfantryPlayerClassEventCounts
     public int DamageAssistsAsEngineer { get; set; }
     public int DamageAssistsAsMax { get; set; }
 
-    public PlanetsideClass PrimaryPlanetsideClass => GetOrderedPlanetsideClassEventCountsList().Select(c => c.PlanetsideClass).FirstOrDefault();
+    public CensusProfileType PrimaryPlanetsideClass => GetOrderedPlanetsideClassEventCountsList()
+        .First()
+        .PlanetsideClass;
 
-    public List<PlanetsideClassEventCount> GetOrderedPlanetsideClassEventCountsList()
+    public IEnumerable<PlanetsideClassEventCount> GetOrderedPlanetsideClassEventCountsList()
     {
-        var classCountsList = new List<PlanetsideClassEventCount>()
+        List<PlanetsideClassEventCount> classCountsList = new List<PlanetsideClassEventCount>()
         {
-            new PlanetsideClassEventCount(PlanetsideClass.HeavyAssault, EventsAsHeavyAssault),
-            new PlanetsideClassEventCount(PlanetsideClass.LightAssault, EventsAsLightAssault),
-            new PlanetsideClassEventCount(PlanetsideClass.Infiltrator, EventsAsInfiltrator),
-            new PlanetsideClassEventCount(PlanetsideClass.Medic, EventsAsMedic),
-            new PlanetsideClassEventCount(PlanetsideClass.Engineer, EventsAsEngineer),
-            new PlanetsideClassEventCount(PlanetsideClass.MAX, EventsAsMax)
+            new(CensusProfileType.HeavyAssault, EventsAsHeavyAssault),
+            new(CensusProfileType.LightAssault, EventsAsLightAssault),
+            new(CensusProfileType.Infiltrator, EventsAsInfiltrator),
+            new(CensusProfileType.CombatMedic, EventsAsMedic),
+            new(CensusProfileType.Engineer, EventsAsEngineer),
+            new(CensusProfileType.MAX, EventsAsMax)
         };
 
-        return classCountsList.OrderByDescending(c => c.EventCount).ToList();
+        return classCountsList.OrderByDescending(c => c.EventCount);
     }
 }

@@ -113,14 +113,14 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
             if (payload.AttackerCharacterID is not 0)
             {
                 destructionEvent.AttackerCharacterId = attackerId;
-                destructionEvent.AttackerLoadoutId = (int)payload.AttackerLoadoutID;
+                destructionEvent.AttackerLoadoutId = payload.AttackerLoadoutID;
 
                 Player? attackerPlayer = _teamsManager.GetPlayerFromId(attackerId);
                 destructionEvent.AttackerPlayer = attackerPlayer;
 
                 if (attackerPlayer != null)
                 {
-                    _teamsManager.SetPlayerLoadoutId(attackerId, destructionEvent.AttackerLoadoutId);
+                    _teamsManager.SetPlayerLoadoutId(attackerId, (int)destructionEvent.AttackerLoadoutId);
                     involvesBenchedPlayer = involvesBenchedPlayer || attackerPlayer.IsBenched;
                 }
             }
@@ -212,7 +212,7 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
 
         bool attackerIsMax = await _loadoutService.IsLoadoutOfProfileTypeAsync
         (
-            (uint)destruction.AttackerLoadoutId,
+            destruction.AttackerLoadoutId,
             CensusProfileType.MAX,
             ct
         );

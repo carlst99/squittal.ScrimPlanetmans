@@ -3,7 +3,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Models;
+using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
@@ -17,6 +19,7 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
     private readonly IScrimRulesetManager _rulesets;
     private readonly IScrimTeamsManager _teamsManager;
     private readonly IScrimMessageBroadcastService _messageService;
+    private readonly ILoadoutService _loadoutService;
 
     private Ruleset.Models.Ruleset? _activeRuleset;
 
@@ -24,12 +27,14 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
     (
         IScrimRulesetManager rulesets,
         IScrimTeamsManager teamsManager,
-        IScrimMessageBroadcastService messageService
+        IScrimMessageBroadcastService messageService,
+        ILoadoutService loadoutService
     )
     {
         _rulesets = rulesets;
         _teamsManager = teamsManager;
         _messageService = messageService;
+        _loadoutService = loadoutService;
 
         _messageService.RaiseActiveRulesetChangeEvent += OnActiveRulesetChangeEvent;
         _messageService.RaiseRulesetRuleChangeEvent += OnRulesetRuleChangeEvent;
@@ -65,21 +70,26 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
     {
         return death.DeathType switch
         {
-            DeathEventType.Kill => await ScoreKillAsync(death),
-            DeathEventType.Suicide => await ScoreSuicide(death),
-            DeathEventType.Teamkill => await ScoreTeamkillAsync(death),
+            DeathEventType.Kill => await ScoreKillAsync(death, ct),
+            DeathEventType.Suicide => await ScoreSuicide(death, ct),
+            DeathEventType.Teamkill => await ScoreTeamkillAsync(death, ct),
             _ => new ScrimEventScoringResult(ScrimEventScorePointsSource.Default, 0, false)
         };
     }
 
-    private async Task<ScrimEventScoringResult> ScoreKillAsync(ScrimDeathActionEvent death)
+    private async Task<ScrimEventScoringResult> ScoreKillAsync
+    (
+        ScrimDeathActionEvent death,
+        CancellationToken ct
+    )
     {
-        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints
+        ScrimEventScoringResult scoringResult = await GetDeathOrDestructionEventPoints
         (
             death.ActionType,
             death.Weapon.ItemCategoryId,
             death.Weapon.Id,
-            death.AttackerLoadoutId
+            death.AttackerLoadoutId,
+            ct
         );
 
         int points = scoringResult.Points;
@@ -107,14 +117,19 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
         return scoringResult;
     }
 
-    private async Task<ScrimEventScoringResult> ScoreSuicide(ScrimDeathActionEvent death)
+    private async Task<ScrimEventScoringResult> ScoreSuicide
+    (
+        ScrimDeathActionEvent death,
+        CancellationToken ct
+    )
     {
-        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints
+        ScrimEventScoringResult scoringResult = await GetDeathOrDestructionEventPoints
         (
             death.ActionType,
             death.Weapon.ItemCategoryId,
             death.Weapon.Id,
-            death.AttackerLoadoutId
+            death.AttackerLoadoutId,
+            ct
         );
 
         int points = scoringResult.Points;
@@ -132,14 +147,19 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
         return scoringResult;
     }
 
-    private async Task<ScrimEventScoringResult> ScoreTeamkillAsync(ScrimDeathActionEvent death)
+    private async Task<ScrimEventScoringResult> ScoreTeamkillAsync
+    (
+        ScrimDeathActionEvent death,
+        CancellationToken ct
+    )
     {
-        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints
+        ScrimEventScoringResult scoringResult = await GetDeathOrDestructionEventPoints
         (
             death.ActionType,
             death.Weapon.ItemCategoryId,
             death.Weapon.Id,
-            death.AttackerLoadoutId
+            death.AttackerLoadoutId,
+            ct
         );
 
         int points = scoringResult.Points;
@@ -165,25 +185,34 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
     #endregion Death Events
 
     #region Vehicle Destruction Events
-    public async Task<ScrimEventScoringResult> ScoreVehicleDestructionEventAsync(ScrimVehicleDestructionActionEvent destruction, CancellationToken ct = default)
+    public async Task<ScrimEventScoringResult> ScoreVehicleDestructionEventAsync
+    (
+        ScrimVehicleDestructionActionEvent destruction,
+        CancellationToken ct = default
+    )
     {
         return destruction.DeathType switch
         {
-            DeathEventType.Kill => await ScoreVehicleDestruction(destruction),
-            DeathEventType.Suicide => await ScoreVehicleTeamDestruction(destruction),
-            DeathEventType.Teamkill => await ScoreVehicleSuicideDestruction(destruction),
+            DeathEventType.Kill => await ScoreVehicleDestruction(destruction, ct),
+            DeathEventType.Suicide => await ScoreVehicleTeamDestruction(destruction, ct),
+            DeathEventType.Teamkill => await ScoreVehicleSuicideDestruction(destruction, ct),
             _ => new ScrimEventScoringResult(ScrimEventScorePointsSource.Default, 0, false)
         };
     }
 
-    private async Task<ScrimEventScoringResult> ScoreVehicleDestruction(ScrimVehicleDestructionActionEvent destruction)
+    private async Task<ScrimEventScoringResult> ScoreVehicleDestruction
+    (
+        ScrimVehicleDestructionActionEvent destruction,
+        CancellationToken ct
+    )
     {
-        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints
+        ScrimEventScoringResult scoringResult = await GetDeathOrDestructionEventPoints
         (
             destruction.ActionType,
             destruction.Weapon.ItemCategoryId,
             destruction.Weapon.Id,
-            destruction.AttackerLoadoutId
+            destruction.AttackerLoadoutId,
+            ct
         );
 
         int points = scoringResult.Points;
@@ -212,14 +241,19 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
 
     }
 
-    private async Task<ScrimEventScoringResult> ScoreVehicleSuicideDestruction(ScrimVehicleDestructionActionEvent destruction)
+    private async Task<ScrimEventScoringResult> ScoreVehicleSuicideDestruction
+    (
+        ScrimVehicleDestructionActionEvent destruction,
+        CancellationToken ct
+    )
     {
-        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints
+        ScrimEventScoringResult scoringResult = await GetDeathOrDestructionEventPoints
         (
             destruction.ActionType,
             destruction.Weapon.ItemCategoryId,
             destruction.Weapon.Id,
-            destruction.AttackerLoadoutId
+            destruction.AttackerLoadoutId,
+            ct
         );
 
         int points = scoringResult.Points;
@@ -238,14 +272,19 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
         return scoringResult;
     }
 
-    private async Task<ScrimEventScoringResult> ScoreVehicleTeamDestruction(ScrimVehicleDestructionActionEvent destruction)
+    private async Task<ScrimEventScoringResult> ScoreVehicleTeamDestruction
+    (
+        ScrimVehicleDestructionActionEvent destruction,
+        CancellationToken ct
+    )
     {
-        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints
+        ScrimEventScoringResult scoringResult = await GetDeathOrDestructionEventPoints
         (
             destruction.ActionType,
             destruction.Weapon.ItemCategoryId,
             destruction.Weapon.Id,
-            destruction.AttackerLoadoutId
+            destruction.AttackerLoadoutId,
+            ct
         );
 
         int points = scoringResult.Points;
@@ -493,12 +532,13 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
     #endregion Misc. Non-Scored Events
 
     #region Rule Handling
-    private ScrimEventScoringResult GetDeathOrDestructionEventPoints
+    private async Task<ScrimEventScoringResult> GetDeathOrDestructionEventPoints
     (
         ScrimActionType actionType,
         uint? itemCategoryId,
         uint itemId,
-        int attackerLoadoutId
+        uint attackerLoadoutId,
+        CancellationToken ct
     )
     {
         /* Action Rules */
@@ -531,11 +571,12 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
 
         if (itemCategoryRule.DeferToPlanetsideClassSettings)
         {
-            return GetPlanetsideClassSettingPoints
+            return await GetPlanetsideClassSettingPoints
             (
                 attackerLoadoutId,
                 itemCategoryRule.GetPlanetsideClassRuleSettings(),
-                ScrimEventScorePointsSource.ItemCategoryRulePlanetsideClassSetting
+                ScrimEventScorePointsSource.ItemCategoryRulePlanetsideClassSetting,
+                ct
             );
         }
 
@@ -559,11 +600,12 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
 
         if (itemRule.DeferToPlanetsideClassSettings)
         {
-            return GetPlanetsideClassSettingPoints
+            return await GetPlanetsideClassSettingPoints
             (
                 attackerLoadoutId,
                 itemRule.GetPlanetsideClassRuleSettings(),
-                ScrimEventScorePointsSource.ItemRulePlanetsideClassSetting
+                ScrimEventScorePointsSource.ItemRulePlanetsideClassSetting,
+                ct
             );
         }
 
@@ -592,17 +634,19 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
             : new ScrimEventScoringResult(ScrimEventScorePointsSource.ActionTypeRule, actionRule.Points, false);
     }
 
-    private static ScrimEventScoringResult GetPlanetsideClassSettingPoints
+    private async Task<ScrimEventScoringResult> GetPlanetsideClassSettingPoints
     (
-        int attackerLoadoutId,
+        uint attackerLoadoutId,
         PlanetsideClassRuleSettings classSettings,
-        ScrimEventScorePointsSource scoreSource
+        ScrimEventScorePointsSource scoreSource,
+        CancellationToken ct
     )
     {
-        PlanetsideClass planetsideClass = PlanetsideClassLoadoutTranslator.GetPlanetsideClass(attackerLoadoutId);
+        CensusProfileType? profileType = await _loadoutService.GetLoadoutProfileTypeAsync(attackerLoadoutId, ct);
+        profileType ??= CensusProfileType.HeavyAssault; // Lazy default
 
-        bool isBanned = classSettings.GetClassIsBanned(planetsideClass);
-        int points = classSettings.GetClassPoints(planetsideClass);
+        bool isBanned = classSettings.GetClassIsBanned(profileType.Value);
+        int points = classSettings.GetClassPoints(profileType.Value);
 
         return new ScrimEventScoringResult(scoreSource, points, isBanned);
     }

@@ -164,13 +164,13 @@ public class Program
         services.AddHostedService<EventStreamWorker>();
 
         // Register PlanetSide services
-        services.AddTransient<ILoadoutService, LoadoutService>();
-        services.AddSingleton<IZoneService, ZoneService>();
-        services.AddSingleton<IItemCategoryService, ItemCategoryService>();
         services.AddSingleton<IFacilityService, FacilityService>();
+        services.AddTransient<IItemCategoryService, ItemCategoryService>();
+        services.AddTransient<ILoadoutService, LoadoutService>();
+        services.AddTransient<IOutfitService, OutfitService>();
         services.AddTransient<IVehicleService, VehicleService>();
         services.AddSingleton<IWorldService, WorldService>();
-        services.AddSingleton<IOutfitService, OutfitService>();
+        services.AddSingleton<IZoneService, ZoneService>();
 
         // Register Scrim services
         services.AddSingleton<IScrimMessageBroadcastService, ScrimMessageBroadcastService>();
