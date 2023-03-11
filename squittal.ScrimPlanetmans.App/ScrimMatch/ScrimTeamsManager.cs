@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Data.Models;
@@ -16,7 +17,6 @@ using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
-using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.Util;
 

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -9,9 +8,10 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.Rulesets;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
-using squittal.ScrimPlanetmans.App.Logging;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.Models.Forms;
@@ -19,30 +19,26 @@ using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
-using squittal.ScrimPlanetmans.App.Services.Rulesets.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.Services.Rulesets;
 
-public class RulesetDataService : IRulesetDataService
+public partial class RulesetDataService : IRulesetDataService
 {
+    private const int RULESET_BROWSER_PAGE_SIZE = 15;
+
+    private static readonly Regex _rulesetNameRegex = GetRulesetNameRegex();
+    private static readonly Regex _rulesetDefaultMatchTitleRegex = _rulesetNameRegex; //(^(?!.)$|^([A-Za-z0-9()\[\]\-_'.][ ]{0,1}){1,49}[A-Za-z0-9()\[\]\-_'.]$)
+
+    private readonly ILogger<RulesetDataService> _logger;
     private readonly IDbContextHelper _dbContextHelper;
     private readonly IFacilityService _facilityService;
     private readonly ICensusItemService _itemService;
     private readonly IItemCategoryService _itemCategoryService;
     private readonly IScrimMessageBroadcastService _messageService;
-    private readonly ILogger<RulesetDataService> _logger;
+    private readonly IRulesetFileService _rulesetFileService;
 
     private readonly ConcurrentDictionary<int, Ruleset> _rulesetsMap = new();
-
-    public int ActiveRulesetId { get; private set; }
-
-    public int CustomDefaultRulesetId { get; private set; }
-
-    private readonly int _rulesetBrowserPageSize = 15;
-
-    public int DefaultRulesetId { get; } = 1;
-
     private readonly KeyedSemaphoreSlim _rulesetLock = new();
     private readonly KeyedSemaphoreSlim _overlayConfigurationLock = new();
     private readonly KeyedSemaphoreSlim _actionRulesLock = new();
@@ -52,25 +48,28 @@ public class RulesetDataService : IRulesetDataService
     private readonly KeyedSemaphoreSlim _rulesetExportLock = new();
     private readonly AutoResetEvent _defaultRulesetAutoEvent = new(true);
 
-    public static Regex RulesetNameRegex { get; } = new("^([A-Za-z0-9()\\[\\]\\-_'.][ ]{0,1}){1,49}[A-Za-z0-9()\\[\\]\\-_'.]$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    public static Regex RulesetDefaultMatchTitleRegex => RulesetNameRegex; //(^(?!.)$|^([A-Za-z0-9()\[\]\-_'.][ ]{0,1}){1,49}[A-Za-z0-9()\[\]\-_'.]$)
+    public int ActiveRulesetId { get; private set; }
+    public int CustomDefaultRulesetId { get; private set; }
+    public int DefaultRulesetId => 1;
 
     public RulesetDataService
     (
+        ILogger<RulesetDataService> logger,
         IDbContextHelper dbContextHelper,
         IFacilityService facilityService,
         ICensusItemService itemService,
         IItemCategoryService itemCategoryService,
         IScrimMessageBroadcastService messageService,
-        ILogger<RulesetDataService> logger
+        IRulesetFileService rulesetFileService
     )
     {
+        _logger = logger;
         _dbContextHelper = dbContextHelper;
         _facilityService = facilityService;
         _itemService = itemService;
         _itemCategoryService = itemCategoryService;
         _messageService = messageService;
-        _logger = logger;
+        _rulesetFileService = rulesetFileService;
     }
 
     public async Task RefreshRulesetsAsync(CancellationToken ct = default)
@@ -121,7 +120,7 @@ public class RulesetDataService : IRulesetDataService
                         id => BuildRulesetItemCategoryRule(ruleset.Id, id)
                     )
                     .ToArray();
-                await SaveRulesetItemCategoryRules(ruleset.Id, newRules);
+                await SaveRulesetItemCategoryRules(ruleset.Id, newRules, ct);
 
                 _logger.LogInformation
                 (
@@ -188,7 +187,7 @@ public class RulesetDataService : IRulesetDataService
                         w => BuildRulesetItemRule(ruleset.Id, w.ItemId, w.ItemCategoryId)
                     )
                     .ToArray();
-                await SaveRulesetItemRules(ruleset.Id, newRules);
+                await SaveRulesetItemRules(ruleset.Id, newRules, ct);
 
                 _logger.LogInformation
                 (
@@ -219,7 +218,7 @@ public class RulesetDataService : IRulesetDataService
         (
             rulesetsQuery,
             pageIndex ?? 1,
-            _rulesetBrowserPageSize,
+            RULESET_BROWSER_PAGE_SIZE,
             cancellationToken
         );
 
@@ -556,7 +555,7 @@ public class RulesetDataService : IRulesetDataService
 
                 ct.ThrowIfCancellationRequested();
 
-                RulesetOverlayConfiguration? previousConfiguration = (storeConfiguration == null) ? null : BuildRulesetOverlayConfiguration(rulesetId, storeConfiguration.UseCompactLayout, storeConfiguration.StatsDisplayType, storeConfiguration.ShowStatusPanelScores);
+                RulesetOverlayConfiguration? previousConfiguration = storeConfiguration == null ? null : BuildRulesetOverlayConfiguration(rulesetId, storeConfiguration.UseCompactLayout, storeConfiguration.StatsDisplayType, storeConfiguration.ShowStatusPanelScores);
 
                 RulesetOverlayConfiguration newConfiguration = BuildRulesetOverlayConfiguration(rulesetId, rulesetOverlayConfiguration.UseCompactLayout, rulesetOverlayConfiguration.StatsDisplayType, rulesetOverlayConfiguration.ShowStatusPanelScores);
 
@@ -710,9 +709,9 @@ public class RulesetDataService : IRulesetDataService
                 using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
                 PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                IEnumerable<RulesetItemCategoryRule> storeRules = await GetRulesetItemCategoryRulesAsync(rulesetId, ct);
-
                 List<RulesetItemCategoryRule> newEntities = new();
+                RulesetItemCategoryRule[] storeRules = (await GetRulesetItemCategoryRulesAsync(rulesetId, ct))
+                    .ToArray();
 
                 foreach (RulesetItemCategoryRule rule in ruleUpdates)
                 {
@@ -806,8 +805,7 @@ public class RulesetDataService : IRulesetDataService
                 using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
                 PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                IEnumerable<RulesetItemRule> storeRules = await GetRulesetItemRulesAsync(rulesetId, ct);
-
+                RulesetItemRule[] storeRules = (await GetRulesetItemRulesAsync(rulesetId, ct)).ToArray();
                 List<RulesetItemRule> newEntities = new();
 
                 foreach (RulesetItemRule rule in ruleUpdates)
@@ -821,7 +819,6 @@ public class RulesetDataService : IRulesetDataService
                     else
                     {
                         storeEntity = rule;
-
                         dbContext.RulesetItemRules.Update(storeEntity);
                     }
                 }
@@ -1049,8 +1046,6 @@ public class RulesetDataService : IRulesetDataService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to seed a default overlay configuration for a new ruleset");
-
-                return;
             }
         }
     }
@@ -1276,8 +1271,13 @@ public class RulesetDataService : IRulesetDataService
                 using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
                 PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                IEnumerable<RulesetItemRule> defaultItemRules = GetRulesetItemRulesForItemCategoryId(DefaultRulesetId, itemCategoryId);
-                IEnumerable<RulesetItemRule> storeItemRules = GetRulesetItemRulesForItemCategoryId(rulesetId, itemCategoryId);
+                Dictionary<uint, RulesetItemRule> defaultItemRules
+                    = GetRulesetItemRulesForItemCategoryId(DefaultRulesetId, itemCategoryId)
+                        .ToDictionary(x => x.ItemId, x => x);
+
+                Dictionary<uint, RulesetItemRule> storeItemRules
+                    = GetRulesetItemRulesForItemCategoryId(rulesetId, itemCategoryId)
+                        .ToDictionary(x => x.ItemId, x => x);
 
                 IReadOnlyList<CensusItem>? allStoreItems = await _itemService.GetByCategoryAsync(itemCategoryId);
                 if (allStoreItems is null)
@@ -1287,15 +1287,15 @@ public class RulesetDataService : IRulesetDataService
 
                 foreach (CensusItem item in allStoreItems)
                 {
-                    RulesetItemRule? defaultRule = defaultItemRules.FirstOrDefault(r => r.ItemId == item.ItemId);
-                    RulesetItemRule? storeRule = storeItemRules.FirstOrDefault(r => r.ItemId == item.ItemId);
+                    defaultItemRules.TryGetValue(item.ItemId, out RulesetItemRule? defaultRule);
+                    storeItemRules.TryGetValue(item.ItemId, out RulesetItemRule? storeRule);
 
                     if (storeRule == null)
                     {
                         if (defaultRule != null)
                         {
-                            int points = (itemCategoryPoints != 0 && defaultRule.Points != 0) ? itemCategoryPoints : defaultRule.Points;
-                            bool isBanned = (isItemCategoryBanned) ? isItemCategoryBanned : defaultRule.IsBanned;
+                            int points = itemCategoryPoints != 0 && defaultRule.Points != 0 ? itemCategoryPoints : defaultRule.Points;
+                            bool isBanned = isItemCategoryBanned ? isItemCategoryBanned : defaultRule.IsBanned;
 
                             RulesetItemRule newRule = BuildRulesetItemRule(rulesetId, item.ItemId, itemCategoryId, points, isBanned);
                             createdRules.Add(newRule);
@@ -1322,9 +1322,7 @@ public class RulesetDataService : IRulesetDataService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.ToString());
-
-                return;
+                _logger.LogError(ex, "Failed to update an item category's item rules");
             }
         }
     }
@@ -1394,8 +1392,6 @@ public class RulesetDataService : IRulesetDataService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to seed new ruleset from default facility rules");
-
-                return;
             }
         }
     }
@@ -1424,7 +1420,7 @@ public class RulesetDataService : IRulesetDataService
                     return false;
                 }
 
-                if (!(await CanDeleteRuleset(rulesetId, ct)))
+                if (!await CanDeleteRuleset(rulesetId, ct))
                 {
                     return false;
                 }
@@ -1469,7 +1465,7 @@ public class RulesetDataService : IRulesetDataService
 
             foreach (Ruleset ruleset in rulesets)
             {
-                _rulesetsMap.AddOrUpdate(ruleset.Id, ruleset, (key, oldValue) => ruleset);
+                _rulesetsMap.AddOrUpdate(ruleset.Id, ruleset, (_, _) => ruleset);
             }
 
             Ruleset? customDefaultRuleset = rulesets.FirstOrDefault(r => r.IsCustomDefault);
@@ -1484,46 +1480,20 @@ public class RulesetDataService : IRulesetDataService
     public async Task<bool> CanDeleteRuleset(int rulesetId, CancellationToken cancellationToken)
     {
         if (rulesetId == CustomDefaultRulesetId || rulesetId == ActiveRulesetId || rulesetId == DefaultRulesetId)
-        {
             return false;
-        }
 
-        try
-        {
-            bool hasBeenUsed = await HasRulesetBeenUsedAsync(rulesetId, cancellationToken);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            return !hasBeenUsed;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex.ToString());
-
-            return false;
-        }
+        bool hasBeenUsed = await HasRulesetBeenUsedAsync(rulesetId, cancellationToken);
+        return !hasBeenUsed;
     }
 
     public async Task<bool> HasRulesetBeenUsedAsync(int rulesetId, CancellationToken cancellationToken)
     {
-        try
-        {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            bool result = await dbContext.ScrimMatches.AnyAsync(m => m.RulesetId == rulesetId, cancellationToken);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex.ToString());
-
-            return false;
-        }
+        return await dbContext.ScrimMatches.AnyAsync(m => m.RulesetId == rulesetId, cancellationToken);
     }
+
     #endregion Helper Methods
 
     #region Ruleset Activation / Defaulting / Favoriting
@@ -1586,7 +1556,7 @@ public class RulesetDataService : IRulesetDataService
         }
         catch (Exception ex)
         {
-            _logger.LogError("Failed setting ruleset {ID} as new custom default ruleset", rulesetId);
+            _logger.LogError(ex, "Failed setting ruleset {ID} as new custom default ruleset", rulesetId);
 
             _defaultRulesetAutoEvent.Set();
 
@@ -1596,19 +1566,19 @@ public class RulesetDataService : IRulesetDataService
     #endregion Ruleset Activation / Defaulting / Favoriting
 
     #region Import / Export JSON
-    public async Task<bool> ExportRulesetToJsonFile(int rulesetId, CancellationToken cancellationToken)
+    public async Task<bool> ExportRulesetToJsonFile(int rulesetId, CancellationToken ct)
     {
-        using (await _rulesetExportLock.WaitAsync($"{rulesetId}", cancellationToken))
+        using (await _rulesetExportLock.WaitAsync($"{rulesetId}", ct))
         {
             try
             {
-                Ruleset? ruleset = await GetRulesetFromIdAsync(rulesetId, cancellationToken);
+                Ruleset? ruleset = await GetRulesetFromIdAsync(rulesetId, ct);
                 if (ruleset is null)
                     return false;
 
                 string fileName = GetRulesetFileName(rulesetId, ruleset.Name);
 
-                if (await RulesetFileHandler.WriteToJsonFile(fileName, new JsonRuleset(ruleset, fileName)))
+                if (await _rulesetFileService.WriteToJsonFileAsync(fileName, new JsonRuleset(ruleset, fileName), ct))
                 {
                     _logger.LogInformation("Exported ruleset {ID} to file {FileName}", rulesetId, fileName);
                     return true;
@@ -1635,24 +1605,12 @@ public class RulesetDataService : IRulesetDataService
     {
         try
         {
-            Stopwatch stopWatchReadJson = new();
-            Stopwatch stopWatchMakeTasks = new();
-            Stopwatch stopWatchRunTasks = new();
-
-            Stopwatch stopWatchTotal = Stopwatch.StartNew();
-            stopWatchReadJson.Start();
-
-            JsonRuleset? jsonRuleset = await RulesetFileHandler.ReadFromJsonFile(fileName);
-
-            if (jsonRuleset == null)
-            {
-                _logger.LogWarning("Failed importing ruleset from file {Name}: failed reading JSON file", fileName);
+            JsonRuleset? jsonRuleset = await _rulesetFileService.ReadFromJsonFileAsync(fileName, ct);
+            if (jsonRuleset is null)
                 return null;
-            }
 
             Ruleset? ruleset = await CreateRulesetAsync(ConvertToDbModel(jsonRuleset, fileName), ct);
-
-            if (ruleset == null)
+            if (ruleset is null)
             {
                 _logger.LogWarning
                 (
@@ -1662,9 +1620,6 @@ public class RulesetDataService : IRulesetDataService
 
                 return null;
             }
-
-            stopWatchReadJson.Stop();
-            stopWatchMakeTasks.Start();
 
             List<Task> TaskList = new();
 
@@ -1691,7 +1646,10 @@ public class RulesetDataService : IRulesetDataService
 
             if (jsonRuleset.RulesetItemCategoryRules != null && jsonRuleset.RulesetItemCategoryRules.Any())
             {
-                ruleset.RulesetItemCategoryRules = jsonRuleset.RulesetItemCategoryRules.Select(r => ConvertToDbModel(ruleset.Id, r)).ToList();
+                ruleset.RulesetItemCategoryRules = jsonRuleset.RulesetItemCategoryRules
+                    .Select(r => ConvertToDbModel(ruleset.Id, r))
+                    .ToList();
+
                 Task itemCategoryRulesTask = SaveRulesetItemCategoryRules(ruleset.Id, ruleset.RulesetItemCategoryRules, ct);
                 TaskList.Add(itemCategoryRulesTask);
 
@@ -1699,14 +1657,18 @@ public class RulesetDataService : IRulesetDataService
 
                 foreach (JsonRulesetItemCategoryRule jsonItemCategoryRule in jsonRuleset.RulesetItemCategoryRules)
                 {
-                    if (jsonItemCategoryRule.RulesetItemRules != null && jsonItemCategoryRule.RulesetItemRules.Any())
+                    if (jsonItemCategoryRule.RulesetItemRules is null
+                        || jsonItemCategoryRule.RulesetItemRules.Count is 0)
+                        continue;
+
+                    foreach (JsonRulesetItemRule jsonItemRule in jsonItemCategoryRule.RulesetItemRules)
                     {
-                        foreach (JsonRulesetItemRule jsonItemRule in jsonItemCategoryRule.RulesetItemRules)
+                        if (rulesetItemRules.All(r => r.ItemId != jsonItemRule.ItemId))
                         {
-                            if (rulesetItemRules.All(r => r.ItemId != jsonItemRule.ItemId))
-                            {
-                                rulesetItemRules.Add(ConvertToDbModel(ruleset.Id, jsonItemRule, jsonItemCategoryRule.ItemCategoryId));
-                            }
+                            rulesetItemRules.Add
+                            (
+                                ConvertToDbModel(ruleset.Id, jsonItemRule, jsonItemCategoryRule.ItemCategoryId)
+                            );
                         }
                     }
                 }
@@ -1724,14 +1686,8 @@ public class RulesetDataService : IRulesetDataService
                 TaskList.Add(facilityRulesTask);
             }
 
-            stopWatchMakeTasks.Stop();
-
-            stopWatchRunTasks.Start();
-
             if (TaskList.Any())
-            {
                 await Task.WhenAll(TaskList);
-            }
 
             _logger.LogInformation("Created ruleset {ID} from file {File}", ruleset.Id, fileName);
 
@@ -1744,27 +1700,14 @@ public class RulesetDataService : IRulesetDataService
             }
 
             if (!returnOverlayConfiguration)
-            {
                 ruleset.RulesetOverlayConfiguration = null;
-            }
 
-            stopWatchRunTasks.Stop();
-            stopWatchTotal.Stop();
-
-            string stopWatchTotalString = $"Imported Ruleset {fileName}: {stopWatchTotal.ElapsedMilliseconds / 1000.0}s";
-            string stopWatchReadJsonString = $"\n\t\t   Read JSON: {stopWatchReadJson.ElapsedMilliseconds / 1000.0}s";
-            string stopWatchMakeTasksString = $"\n\t\t   Make Tasks: {stopWatchMakeTasks.ElapsedMilliseconds / 1000.0}s";
-            string stopWatchRunTasksString = $"\n\t\t   Run Tasks: {stopWatchRunTasks.ElapsedMilliseconds / 1000.0}s";
-
-            _logger.LogInformation($"{stopWatchTotalString}{stopWatchReadJsonString}{stopWatchMakeTasksString}{stopWatchRunTasksString}");
-
-
+            _logger.LogInformation("Imported ruleset {FileName}", fileName);
             return ruleset;
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed to import new ruleset from file {fileName}: {ex}");
-
+            _logger.LogError(ex, "Failed to import new ruleset from file {FileName}", fileName);
             return null;
         }
     }
@@ -1780,11 +1723,8 @@ public class RulesetDataService : IRulesetDataService
         using (await _facilityRulesLock.WaitAsync($"{rulesetId}"))
         {
             List<RulesetFacilityRule> ruleUpdates = rules.Where(rule => rule.RulesetId == rulesetId).ToList();
-
-            if (!ruleUpdates.Any())
-            {
+            if (ruleUpdates.Count is 0)
                 return;
-            }
 
             try
             {
@@ -1844,22 +1784,24 @@ public class RulesetDataService : IRulesetDataService
     }
 
     public IEnumerable<string> GetJsonRulesetFileNames()
-    {
-        return RulesetFileHandler.GetJsonRulesetFileNames();
-    }
+        => _rulesetFileService.GetJsonRulesetFileNames();
 
-    private string GetRulesetFileName(int rulesetId, string rulesetName)
+    private static string GetRulesetFileName(int rulesetId, string rulesetName)
     {
         char[] characters = $"rs{rulesetId}_{rulesetName}".ToCharArray();
 
-        characters = Array.FindAll(characters, (c => (char.IsLetterOrDigit(c)
-            || char.IsWhiteSpace(c)
-            || c == '-'
-            || c == '_')));
+        characters = Array.FindAll
+        (
+            characters,
+            c => char.IsLetterOrDigit(c)
+                || char.IsWhiteSpace(c)
+                || c is '-' or '_'
+        );
+
         return new string(characters);
     }
 
-    private Ruleset ConvertToDbModel(JsonRuleset jsonRuleset, string sourceFileName)
+    private static Ruleset ConvertToDbModel(JsonRuleset jsonRuleset, string sourceFileName)
     {
         return new Ruleset
         {
@@ -1883,15 +1825,26 @@ public class RulesetDataService : IRulesetDataService
         return BuildRulesetOverlayConfiguration(rulesetId, useCompactLayout, statsDisplayType, jsonConfiguration.UseCompactLayout);
     }
 
-    private RulesetActionRule ConvertToDbModel(int rulesetId, JsonRulesetActionRule jsonRule)
-    {
-        return BuildRulesetActionRule(rulesetId, jsonRule.ScrimActionType, jsonRule.Points, jsonRule.DeferToItemCategoryRules);
-    }
+    private static RulesetActionRule ConvertToDbModel(int rulesetId, JsonRulesetActionRule jsonRule)
+        => BuildRulesetActionRule
+        (
+            rulesetId,
+            jsonRule.ScrimActionType,
+            jsonRule.Points,
+            jsonRule.DeferToItemCategoryRules
+        );
 
-    private RulesetItemCategoryRule ConvertToDbModel(int rulesetId, JsonRulesetItemCategoryRule jsonRule)
-    {
-        return BuildRulesetItemCategoryRule(rulesetId, jsonRule.ItemCategoryId, jsonRule.Points, jsonRule.IsBanned, jsonRule.DeferToItemRules, jsonRule.DeferToPlanetsideClassSettings, new PlanetsideClassRuleSettings(jsonRule));
-    }
+    private static RulesetItemCategoryRule ConvertToDbModel(int rulesetId, JsonRulesetItemCategoryRule jsonRule)
+        => BuildRulesetItemCategoryRule
+        (
+            rulesetId,
+            jsonRule.ItemCategoryId,
+            jsonRule.Points,
+            jsonRule.IsBanned,
+            jsonRule.DeferToItemRules,
+            jsonRule.DeferToPlanetsideClassSettings,
+            new PlanetsideClassRuleSettings(jsonRule)
+        );
 
     private static RulesetItemRule ConvertToDbModel(int rulesetId, JsonRulesetItemRule jsonRule, uint itemCategoryId)
         => BuildRulesetItemRule
@@ -1906,24 +1859,19 @@ public class RulesetDataService : IRulesetDataService
         );
 
     private RulesetFacilityRule ConvertToDbModel(int rulesetID, JsonRulesetFacilityRule jsonRule)
-    {
-        return BuildRulesetFacilityRule(rulesetID, jsonRule.FacilityId, jsonRule.MapRegionId);
-    }
+        => BuildRulesetFacilityRule(rulesetID, jsonRule.FacilityId, jsonRule.MapRegionId);
 
     #endregion Import / Export JSON
 
     public static bool IsValidRulesetName(string name)
-    {
-        return RulesetNameRegex.Match(name).Success;
-    }
+        => _rulesetNameRegex.Match(name).Success;
 
     public static bool IsValidRulesetDefaultRoundLength(int seconds)
-    {
-        return seconds > 0;
-    }
+        => seconds > 0;
 
     public static bool IsValidRulesetDefaultMatchTitle(string title)
-    {
-        return RulesetDefaultMatchTitleRegex.Match(title).Success || string.IsNullOrWhiteSpace(title);
-    }
+        => _rulesetDefaultMatchTitleRegex.Match(title).Success || string.IsNullOrWhiteSpace(title);
+
+    [GeneratedRegex("^([A-Za-z0-9()\\[\\]\\-_'.][ ]{0,1}){1,49}[A-Za-z0-9()\\[\\]\\-_'.]$", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
+    private static partial Regex GetRulesetNameRegex();
 }

@@ -2,9 +2,9 @@
 using System.Threading.Tasks;
 using DbgCensus.Core.Objects;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
-using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.Services.Planetside;
 

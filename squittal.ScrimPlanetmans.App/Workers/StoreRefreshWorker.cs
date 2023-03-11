@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using squittal.ScrimPlanetmans.App.Services.Rulesets.Interfaces;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.Rulesets;
 
 namespace squittal.ScrimPlanetmans.App.Workers;
 

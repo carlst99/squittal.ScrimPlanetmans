@@ -6,7 +6,7 @@ using squittal.ScrimPlanetmans.App.Models.Forms;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
-namespace squittal.ScrimPlanetmans.App.Services.Rulesets.Interfaces;
+namespace squittal.ScrimPlanetmans.App.Abstractions.Services.Rulesets;
 
 public interface IRulesetDataService
 {
@@ -50,7 +50,7 @@ public interface IRulesetDataService
     Task<bool> HasRulesetBeenUsedAsync(int rulesetId, CancellationToken cancellationToken);
     Task<bool> DeleteRulesetAsync(int rulesetId, CancellationToken ct = default);
 
-    Task<bool> ExportRulesetToJsonFile(int rulesetId, CancellationToken cancellationToken);
+    Task<bool> ExportRulesetToJsonFile(int rulesetId, CancellationToken ct);
 
     Task<Ruleset?> ImportNewRulesetFromJsonFile
     (

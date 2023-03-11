@@ -14,6 +14,7 @@ using Serilog.Events;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.Rulesets;
 using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers;
 using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.Control;
 using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.PreDispatch;
@@ -30,7 +31,6 @@ using squittal.ScrimPlanetmans.App.Services.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.Rulesets;
-using squittal.ScrimPlanetmans.App.Services.Rulesets.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatchReports;
@@ -144,15 +144,6 @@ public class Program
         );
         services.AddCensusHelpers();
 
-        // Register Census helper services
-        services.AddTransient<ILoadoutService, LoadoutService>();
-        services.AddSingleton<IZoneService, ZoneService>();
-        services.AddSingleton<IItemCategoryService, ItemCategoryService>();
-        services.AddSingleton<IFacilityService, FacilityService>();
-        services.AddTransient<IVehicleService, VehicleService>();
-        services.AddSingleton<IWorldService, WorldService>();
-        services.AddSingleton<IOutfitService, OutfitService>();
-
         // Register Census EventStream Services
         builder.Services.Configure<EventStreamOptions>(builder.Configuration.GetSection(nameof(EventStreamOptions)));
 
@@ -172,10 +163,18 @@ public class Program
 
         services.AddHostedService<EventStreamWorker>();
 
+        // Register PlanetSide services
+        services.AddTransient<ILoadoutService, LoadoutService>();
+        services.AddSingleton<IZoneService, ZoneService>();
+        services.AddSingleton<IItemCategoryService, ItemCategoryService>();
+        services.AddSingleton<IFacilityService, FacilityService>();
+        services.AddTransient<IVehicleService, VehicleService>();
+        services.AddSingleton<IWorldService, WorldService>();
+        services.AddSingleton<IOutfitService, OutfitService>();
+
         // Register Scrim services
         services.AddSingleton<IScrimMessageBroadcastService, ScrimMessageBroadcastService>();
         services.AddSingleton<IScrimRulesetManager, ScrimRulesetManager>();
-        services.AddSingleton<IRulesetDataService, RulesetDataService>();
 
         services.AddSingleton<IScrimTeamsManager, ScrimTeamsManager>();
         services.AddSingleton<IScrimPlayersService, ScrimPlayersService>();
@@ -186,10 +185,12 @@ public class Program
         services.AddSingleton<IScrimMatchScorer, ScrimMatchScorer>();
         services.AddTransient<IScrimMatchReportDataService, ScrimMatchReportDataService>();
 
+        // Register Ruleset services
+        services.AddSingleton<IRulesetDataService, RulesetDataService>();
+        services.AddSingleton<IRulesetFileService, RulesetFileService>();
+
         services.AddTransient<IVehicleTypeService, VehicleTypeService>();
         services.AddSingleton<IConstructedTeamService, ConstructedTeamService>();
-
-
 
         services.AddSingleton<IApplicationDataLoader, ApplicationDataLoader>();
 

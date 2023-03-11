@@ -29,11 +29,8 @@ public class JsonRulesetItemCategoryRule
     public bool MaxIsBanned { get; set; }
     public int MaxPoints { get; set; }
 
-    public ICollection<JsonRulesetItemRule> RulesetItemRules { get; set; }
+    public ICollection<JsonRulesetItemRule>? RulesetItemRules { get; set; }
 
-    public JsonRulesetItemCategoryRule()
-    {
-    }
 
     public JsonRulesetItemCategoryRule(RulesetItemCategoryRule rule)
     {

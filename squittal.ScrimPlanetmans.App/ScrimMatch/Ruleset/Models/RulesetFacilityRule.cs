@@ -13,5 +13,5 @@ public class RulesetFacilityRule
     public int MapRegionId { get; set; }
 
     public Ruleset Ruleset { get; set; }
-    public MapRegion MapRegion { get; set; }
+    public MapRegion? MapRegion { get; set; }
 }

@@ -6,7 +6,6 @@ public static class CensusServiceExtensions
 {
     public static IServiceCollection AddCensusHelpers(this IServiceCollection services)
     {
-        services.AddSingleton<CensusFaction>();
         services.AddSingleton<CensusFacility>();
         services.AddSingleton<CensusVehicle>();
         services.AddSingleton<CensusWorld>();
