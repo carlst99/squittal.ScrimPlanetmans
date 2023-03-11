@@ -4,13 +4,15 @@
 @using System.Collections.Concurrent;
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models
+@using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 @using squittal.ScrimPlanetmans.App.Services.Rulesets.Interfaces
 
+@inject IItemCategoryService ItemCategoryService
 @inject IRulesetDataService RulesetDataService
 
 @implements IDisposable
 
-<div class="sq-mini-card-6 default" style="min-width: 420px; background-color: transparent; box-shadow: 0px 2px 5px 0px var(--sq-light-blue-gray); margin-right: 16px;  max-width: calc(50% - 8px);">
+<div class="sq-mini-card-6 default" style="min-width: 420px; background-color: transparent; box-shadow: 0 2px 5px 0 var(--sq-light-blue-gray); margin-right: 16px;  max-width: calc(50% - 8px);">
     <h5>Item Category Rules</h5>
 
     @if (_isLoadingRules)
@@ -43,10 +45,27 @@
                         </thead>
 
                         <tbody>
-                            @foreach (var itemCategoryRule in _itemCategoryRules.Where(r => r.ItemCategory.Domain == _selectedDomainView))
+                            @{
+                                IEnumerable<RulesetItemCategoryRule> rules = _itemCategoryRules.Where
+                                (
+                                    r => _itemCategories.TryGetValue(r.ItemCategoryId, out ItemCategory? category)
+                                        && category.Domain == _selectedDomainView
+                                );
+                            }
+                                                    
+                            @foreach (RulesetItemCategoryRule itemCategoryRule in rules)
                             {
+                                uint categoryId = itemCategoryRule.ItemCategoryId;
+                                string categoryName = _itemCategories.TryGetValue
+                                    (
+                                        categoryId,
+                                        out ItemCategory? category
+                                    )
+                                    ? category.Name
+                                    : $"Unknown{categoryId}";
+
                                 <tr class="sans-serif-font">
-                                    <td style="color: var(--sq-black);">@itemCategoryRule.ItemCategory.Name <span class="mono-font" style="color: var(--sq-gray); font-size: smaller;">[@itemCategoryRule.ItemCategory.Id]</span></td>
+                                    <td style="color: var(--sq-black);">@categoryName <span class="mono-font" style="color: var(--sq-gray); font-size: smaller;">[@categoryId]</span></td>
                                     <td class="mono-font" style="opacity: @GetValueOpacity(itemCategoryRule.Points); text-align: right; width: 50px; color: var(--sq-black);">@itemCategoryRule.Points</td>
                                     <td style="color: var(--sq-black); opacity: @GetBoolValueOpacity(itemCategoryRule.IsBanned);">@itemCategoryRule.IsBanned</td>
                                     <td style="color: var(--sq-black); opacity: @GetBoolValueOpacity(itemCategoryRule.DeferToPlanetsideClassSettings);">@itemCategoryRule.DeferToPlanetsideClassSettings</td>
@@ -55,9 +74,9 @@
                                     <td style="padding-right: 8px;">
                                         @if (itemCategoryRule.DeferToPlanetsideClassSettings)
                                         {
-                                            @if (GetPlanetsideClassIsExtended(itemCategoryRule.ItemCategoryId))
+                                            @if (GetPlanetsideClassIsExtended(categoryId))
                                             {
-                                                <button @onclick="() => OnTogglePlanetsideClassExtension(itemCategoryRule.ItemCategoryId)" type="submit" style="padding: 0 4px; font-size: smaller; vertical-align: baseline; background-color: transparent; border: none;" title="Collapse Planetside class settings">
+                                                <button @onclick="() => OnTogglePlanetsideClassExtension(categoryId)" type="submit" style="padding: 0 4px; font-size: smaller; vertical-align: baseline; background-color: transparent; border: none;" title="Collapse Planetside class settings">
                                                     <span class="oi oi-caret-bottom"></span>
                                                 </button>
                                             }
@@ -72,7 +91,7 @@
 
                                 </tr>
 
-                                @if (itemCategoryRule.DeferToPlanetsideClassSettings && GetPlanetsideClassIsExtended(itemCategoryRule.ItemCategoryId))
+                                @if (itemCategoryRule.DeferToPlanetsideClassSettings && GetPlanetsideClassIsExtended(categoryId))
                                 {
                                     <tr class="sans-serif-font">
                                         <td style="color: var(--sq-black); padding-left: 24px;">
@@ -179,23 +198,30 @@
     public int i_rulesetId { get; set; }
     private int _renderedRulesetId { get; set; }
 
-    private IEnumerable<RulesetItemCategoryRule> _itemCategoryRules { get; set; }
+    private IEnumerable<RulesetItemCategoryRule>? _itemCategoryRules { get; set; }
+    private Dictionary<uint, ItemCategory> _itemCategories { get; set; }
 
     bool _isLoadingRules { get; set; } = false;
 
-    private CancellationTokenSource cts;
+    private CancellationTokenSource? _cts;
 
     private ItemCategoryDomain _selectedDomainView { get; set; } = ItemCategoryDomain.Infantry;
 
-    private ConcurrentDictionary<int, bool> _extendablePlanetsideClasses { get; set; } = new ConcurrentDictionary<int, bool>();
+    private ConcurrentDictionary<uint, bool> _extendablePlanetsideClasses { get; set; } = new();
 
     #region Initializtion Methods
+
+    public ViewRulesetItemCategoryRules()
+    {
+        _itemCategories = new Dictionary<uint, ItemCategory>();
+    }
+
     public void Dispose()
     {
-        if (cts != null)
+        if (_cts != null)
         {
-            cts.Cancel();
-            cts.Dispose();
+            _cts.Cancel();
+            _cts.Dispose();
         }
     }
 
@@ -207,6 +233,10 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadRulesAsync();
+
+        IEnumerable<ItemCategory>? getCategories = await ItemCategoryService.GetAllAsync();
+        if (getCategories is not null)
+            _itemCategories = getCategories.ToDictionary(x => x.Id, x => x);
     }
 
     protected override async Task OnParametersSetAsync()
@@ -233,20 +263,20 @@
         InvokeAsyncStateHasChanged();
 
         // If a process is already underway, cancel it
-        if (cts != null)
+        if (_cts != null)
         {
-            cts.Cancel();
+            _cts.Cancel();
         }
 
         // Set ctsRulesets to cancel the current process if another table refresh is requested
         CancellationTokenSource newCTS = new CancellationTokenSource();
-        cts = newCTS;
+        _cts = newCTS;
 
         try
         {
-            _itemCategoryRules = await RulesetDataService.GetRulesetItemCategoryRulesAsync(_renderedRulesetId, cts.Token);
+            _itemCategoryRules = await RulesetDataService.GetRulesetItemCategoryRulesAsync(_renderedRulesetId, _cts.Token);
 
-            cts.Token.ThrowIfCancellationRequested();
+            _cts.Token.ThrowIfCancellationRequested();
 
             foreach (var rule in _itemCategoryRules.Where(r => r.DeferToPlanetsideClassSettings && !r.DeferToItemRules))
             {
@@ -259,9 +289,9 @@
         }
 
         // When the process is complete, signal that another process can proceed
-        if (cts == newCTS)
+        if (_cts == newCTS)
         {
-            cts = null;
+            _cts = null;
         }
 
         _isLoadingRules = false;
@@ -270,76 +300,37 @@
 
     #region UI Controls
 
-    private bool GetPlanetsideClassIsExtended(int itemCategoryId)
-    {
-        if (_extendablePlanetsideClasses.TryGetValue(itemCategoryId, out var currentIsExtended))
-        {
-            return currentIsExtended;
-        }
-        else
-        {
-            return false;
-        }
-    }
+    private bool GetPlanetsideClassIsExtended(uint itemCategoryId)
+        => _extendablePlanetsideClasses.TryGetValue(itemCategoryId, out bool isExtendable) && isExtendable;
 
-    private void OnTogglePlanetsideClassExtension(int itemCategoryId)
+    private void OnTogglePlanetsideClassExtension(uint itemCategoryId)
     {
-        if (_extendablePlanetsideClasses.TryGetValue(itemCategoryId, out var currentIsExtended))
-        {
+        if (_extendablePlanetsideClasses.TryGetValue(itemCategoryId, out bool currentIsExtended))
             _extendablePlanetsideClasses.TryUpdate(itemCategoryId, !currentIsExtended, currentIsExtended);
-        }
     }
 
     #endregion UI Controls
 
     private string GetItemCategoryDomainDescription(ItemCategoryDomain domain)
-    {
-        var name = Enum.GetName(typeof(ItemCategoryDomain), domain);
-
-        return Regex.Replace(name, @"(\p{Ll})(\p{Lu})", "$1 $2");
-    }
+        => Regex.Replace(domain.ToString(), @"(\p{Ll})(\p{Lu})", "$1 $2");
 
     private string GetViewTabStyle(ItemCategoryDomain thisView)
-    {
-        if (_selectedDomainView == thisView)
-        {
-            return $"view-visible";
-        }
-        else
-        {
-            return $"view-hidden";
-        }
-    }
+        => _selectedDomainView == thisView
+            ? "view-visible"
+            : "view-hidden";
 
     private void OnSelectNewView(ItemCategoryDomain newView)
     {
         if (newView != _selectedDomainView)
-        {
             _selectedDomainView = newView;
-        }
     }
 
-    #region Helpers
     private double GetValueOpacity(int value)
-    {
-        return (value != 0)
-            ? 1.0
-            : 0.5;
-    }
+        => value != 0 ? 1.0 : 0.5;
 
     private double GetBoolValueOpacity(bool value)
-    {
-        return (value == true)
-            ? 1.0
-            : 0.5;
-    }
+        => value ? 1.0 : 0.5;
 
     private void InvokeAsyncStateHasChanged()
-    {
-        InvokeAsync(() =>
-        {
-            StateHasChanged();
-        });
-    }
-    #endregion Helpers
+        => InvokeAsync(StateHasChanged);
 }

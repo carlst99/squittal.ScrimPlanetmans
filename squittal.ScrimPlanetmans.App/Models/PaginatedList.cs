@@ -9,14 +9,14 @@ namespace squittal.ScrimPlanetmans.App.Models;
 
 public class PaginatedList<T>
 {
-    public int PageIndex { get; set; }
-    public int PageCount { get; set; }
-    public List<T> Contents { get; set; }
+    public int PageIndex { get; }
+    public int PageCount { get; }
+    public List<T> Contents { get; }
 
     public bool HasPreviousPage => PageIndex > 1;
     public bool HasNextPage => PageIndex < PageCount;
 
-    public PaginatedList(List<T> contents, int count, int pageIndex = 1, int pageSize = 10)
+    public PaginatedList(IEnumerable<T> contents, int count, int pageIndex = 1, int pageSize = 10)
     {
         PageCount = (int)Math.Ceiling(count / (double)pageSize);
 
@@ -37,30 +37,20 @@ public class PaginatedList<T>
         Contents.AddRange(contents);
     }
 
-    public static async Task<PaginatedList<T>> CreateAsync(IQueryable<T> source, int pageIndex, int pageSize, CancellationToken cancellationToken)
+    public static async Task<PaginatedList<T>> CreateAsync
+    (
+        IQueryable<T> source,
+        int pageIndex,
+        int pageSize,
+        CancellationToken cancellationToken
+    )
     {
-        try
-        {
+        int count = await source.CountAsync(cancellationToken);
 
-            var count = await source.CountAsync(cancellationToken);
+        List<T> items = await source.Skip((pageIndex - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
 
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var items = await source.Skip((pageIndex - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync(cancellationToken);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            return new PaginatedList<T>(items, count, pageIndex, pageSize);
-        }
-        catch (OperationCanceledException)
-        {
-            return null;
-        }
-        catch
-        {
-            return null;
-        }
+        return new PaginatedList<T>(items, count, pageIndex, pageSize);
     }
 }

@@ -27,7 +27,7 @@ public class ScrimVehicleDestruction
     public ScrimActionType ActionType { get; init; }
     public DeathEventType DeathType { get; init; }
 
-    public int? WeaponId { get; init; }
+    public uint? WeaponId { get; init; }
 
     public int Points { get; init; }
 }

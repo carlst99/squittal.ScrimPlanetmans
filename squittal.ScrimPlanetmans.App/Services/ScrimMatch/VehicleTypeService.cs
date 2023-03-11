@@ -71,9 +71,7 @@ public class VehicleTypeService : IVehicleTypeService
         }
 
         if (createdEntities.Any())
-        {
-            await dbContext.VehicleClasses.AddRangeAsync(createdEntities);
-        }
+            dbContext.VehicleClasses.AddRange(createdEntities);
 
         await dbContext.SaveChangesAsync();
 

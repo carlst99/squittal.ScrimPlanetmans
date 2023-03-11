@@ -5,16 +5,15 @@ using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
 using DbgCensus.EventStream.EventHandlers.Abstractions;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
-using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.CensusEventStreamHandlers;
@@ -23,7 +22,7 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
 {
     private readonly ILogger<DeathEventHandler> _logger;
     private readonly IEventFilterService _eventFilter;
-    private readonly IItemService _itemService;
+    private readonly ICensusItemService _itemService;
     private readonly IScrimTeamsManager _teamsManager;
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly IScrimMatchScorer _scorer;
@@ -35,7 +34,7 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
     (
         ILogger<DeathEventHandler> logger,
         IEventFilterService eventFilter,
-        IItemService itemService,
+        ICensusItemService itemService,
         IScrimTeamsManager teamsManager,
         IScrimMessageBroadcastService messageService,
         IScrimMatchScorer scorer,
@@ -75,21 +74,21 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
             return;
 
         ScrimActionWeaponInfo weapon;
-        Item? weaponItem = await _itemService.GetWeaponItemAsync((int)payload.AttackerWeaponID);
+        CensusItem? weaponItem = await _itemService.GetWeaponAsync(payload.AttackerWeaponID, ct);
 
         if (weaponItem is not null)
         {
             weapon = new ScrimActionWeaponInfo
             (
-                weaponItem.Id,
+                weaponItem.ItemId,
                 weaponItem.ItemCategoryId,
-                weaponItem.Name ?? "Unknown weapon",
+                weaponItem.Name.English.HasValue ? weaponItem.Name.English.Value : "Unknown weapon",
                 weaponItem.IsVehicleWeapon
             );
         }
         else
         {
-            weapon = new ScrimActionWeaponInfo((int)payload.AttackerWeaponID, null, null, null);
+            weapon = new ScrimActionWeaponInfo(payload.AttackerWeaponID, null, null, null);
         }
 
         ScrimDeathActionEvent deathEvent = new()

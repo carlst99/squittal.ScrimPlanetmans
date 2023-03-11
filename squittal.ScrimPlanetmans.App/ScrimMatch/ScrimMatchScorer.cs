@@ -52,7 +52,7 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
 
     public async Task SetActiveRulesetAsync(CancellationToken ct = default)
     {
-        _activeRuleset = await _rulesets.GetActiveRulesetAsync();
+        _activeRuleset = await _rulesets.GetActiveRulesetAsync(ct: ct);
     }
 
     #region Death Events
@@ -116,8 +116,8 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
             death.Weapon.Id,
             death.AttackerLoadoutId
         );
-        int points = scoringResult.Points;
 
+        int points = scoringResult.Points;
         ScrimEventAggregate victimUpdate = new()
         {
             Points = points,
@@ -134,9 +134,15 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
 
     private async Task<ScrimEventScoringResult> ScoreTeamkillAsync(ScrimDeathActionEvent death)
     {
-        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints(death.ActionType, death.Weapon?.ItemCategoryId, death.Weapon?.Id, death.AttackerLoadoutId);
-        int points = scoringResult.Points;
+        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints
+        (
+            death.ActionType,
+            death.Weapon.ItemCategoryId,
+            death.Weapon.Id,
+            death.AttackerLoadoutId
+        );
 
+        int points = scoringResult.Points;
         ScrimEventAggregate attackerUpdate = new()
         {
             Points = points,
@@ -172,31 +178,35 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
 
     private async Task<ScrimEventScoringResult> ScoreVehicleDestruction(ScrimVehicleDestructionActionEvent destruction)
     {
-        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints(destruction.ActionType, destruction.Weapon?.ItemCategoryId, destruction.Weapon?.Id, destruction.AttackerLoadoutId);
-        int points = scoringResult.Points;
+        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints
+        (
+            destruction.ActionType,
+            destruction.Weapon.ItemCategoryId,
+            destruction.Weapon.Id,
+            destruction.AttackerLoadoutId
+        );
 
+        int points = scoringResult.Points;
         ScrimEventAggregate attackerUpdate = new()
         {
             Points = points,
             NetScore = points,
         };
 
-        attackerUpdate.Add(GetVehicleDestroyedEventAggregate(destruction.VictimVehicle.Type));
-
         ScrimEventAggregate victimUpdate = new()
         {
             NetScore = -points,
         };
 
-        victimUpdate.Add(GetVehicleLostEventAggregate(destruction.VictimVehicle.Type));
+        if (destruction.VictimVehicle is not null)
+        {
+            attackerUpdate.Add(GetVehicleDestroyedEventAggregate(destruction.VictimVehicle.Type));
+            victimUpdate.Add(GetVehicleLostEventAggregate(destruction.VictimVehicle.Type));
+        }
 
         // Player Stats update automatically updates the appropriate team's stats
-        await _teamsManager.UpdatePlayerStats(destruction.AttackerPlayer.Id, attackerUpdate);
-
-        if (destruction.VictimPlayer != null)
-        {
-            await _teamsManager.UpdatePlayerStats(destruction.VictimPlayer.Id, victimUpdate);
-        }
+        await _teamsManager.UpdatePlayerStats(destruction.AttackerCharacterId, attackerUpdate);
+        await _teamsManager.UpdatePlayerStats(destruction.VictimCharacterId, victimUpdate);
 
         return scoringResult;
 
@@ -204,39 +214,55 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
 
     private async Task<ScrimEventScoringResult> ScoreVehicleSuicideDestruction(ScrimVehicleDestructionActionEvent destruction)
     {
-        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints(destruction.ActionType, destruction.Weapon?.ItemCategoryId, destruction.Weapon?.Id, destruction.AttackerLoadoutId);
-        int points = scoringResult.Points;
+        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints
+        (
+            destruction.ActionType,
+            destruction.Weapon.ItemCategoryId,
+            destruction.Weapon.Id,
+            destruction.AttackerLoadoutId
+        );
 
+        int points = scoringResult.Points;
         ScrimEventAggregate victimUpdate = new()
         {
             Points = points,
             NetScore = points,
         };
 
-        victimUpdate.Add(GetVehicleLostEventAggregate(destruction.VictimVehicle.Type));
+        if (destruction.VictimVehicle is not null)
+            victimUpdate.Add(GetVehicleLostEventAggregate(destruction.VictimVehicle.Type));
 
         // Player Stats update automatically updates the appropriate team's stats
-        await _teamsManager.UpdatePlayerStats(destruction.VictimPlayer.Id, victimUpdate);
+        await _teamsManager.UpdatePlayerStats(destruction.VictimCharacterId, victimUpdate);
 
         return scoringResult;
     }
 
     private async Task<ScrimEventScoringResult> ScoreVehicleTeamDestruction(ScrimVehicleDestructionActionEvent destruction)
     {
-        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints(destruction.ActionType, destruction.Weapon?.ItemCategoryId, destruction.Weapon?.Id, destruction.AttackerLoadoutId);
-        int points = scoringResult.Points;
+        ScrimEventScoringResult scoringResult = GetDeathOrDestructionEventPoints
+        (
+            destruction.ActionType,
+            destruction.Weapon.ItemCategoryId,
+            destruction.Weapon.Id,
+            destruction.AttackerLoadoutId
+        );
 
+        int points = scoringResult.Points;
         ScrimEventAggregate attackerUpdate = new()
         {
             Points = points,
             NetScore = points,
         };
 
-        ScrimEventAggregate victimUpdate = GetVehicleLostEventAggregate(destruction.VictimVehicle.Type);
-
         // Player Stats update automatically updates the appropriate team's stats
-        await _teamsManager.UpdatePlayerStats(destruction.AttackerPlayer.Id, attackerUpdate);
-        await _teamsManager.UpdatePlayerStats(destruction.VictimPlayer.Id, victimUpdate);
+        await _teamsManager.UpdatePlayerStats(destruction.AttackerCharacterId, attackerUpdate);
+
+        if (destruction.VictimVehicle is not null)
+        {
+            ScrimEventAggregate victimUpdate = GetVehicleLostEventAggregate(destruction.VictimVehicle.Type);
+            await _teamsManager.UpdatePlayerStats(destruction.VictimCharacterId, victimUpdate);
+        }
 
         return scoringResult;
     }
@@ -306,8 +332,8 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
         };
 
         // Player Stats update automatically updates the appropriate team's stats
-        await _teamsManager.UpdatePlayerStats(revive.MedicPlayer.Id, medicUpdate);
-        await _teamsManager.UpdatePlayerStats(revive.RevivedPlayer.Id, revivedUpdate);
+        await _teamsManager.UpdatePlayerStats(revive.MedicCharacterId, medicUpdate);
+        await _teamsManager.UpdatePlayerStats(revive.RevivedCharacterId, revivedUpdate);
 
         return scoringResult;
     }
@@ -376,12 +402,9 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
         }
 
         // Player Stats update automatically updates the appropriate team's stats
-        await _teamsManager.UpdatePlayerStats(assist.AttackerPlayer.Id, attackerUpdate);
-
-        if (assist.VictimPlayer != null)
-        {
-            await _teamsManager.UpdatePlayerStats(assist.VictimPlayer.Id, victimUpdate);
-        }
+        await _teamsManager.UpdatePlayerStats(assist.AttackerCharacterId, attackerUpdate);
+        if (assist.VictimCharacterId is not null)
+            await _teamsManager.UpdatePlayerStats(assist.VictimCharacterId.Value, victimUpdate);
 
         return scoringResult;
     }
@@ -411,7 +434,7 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
         }
 
         // Player Stats update automatically updates the appropriate team's stats
-        await _teamsManager.UpdatePlayerStats(objective.Player.Id, playerUpdate);
+        await _teamsManager.UpdatePlayerStats(objective.PlayerCharacterId, playerUpdate);
 
         return scoringResult;
     }
@@ -470,7 +493,13 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
     #endregion Misc. Non-Scored Events
 
     #region Rule Handling
-    private ScrimEventScoringResult GetDeathOrDestructionEventPoints(ScrimActionType actionType, int? itemCategoryId, int? itemId, int? attackerLoadoutId)
+    private ScrimEventScoringResult GetDeathOrDestructionEventPoints
+    (
+        ScrimActionType actionType,
+        uint? itemCategoryId,
+        uint itemId,
+        int attackerLoadoutId
+    )
     {
         /* Action Rules */
         RulesetActionRule? actionRule = GetActionRule(actionType);
@@ -486,37 +515,42 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
         }
 
         /* Item Category Rules */
-        RulesetItemCategoryRule? itemCategoryRule = GetItemCategoryRule((int)itemCategoryId);
-
+        RulesetItemCategoryRule? itemCategoryRule = GetItemCategoryRule(itemCategoryId.Value);
         if (itemCategoryRule == null)
-        {
             return new ScrimEventScoringResult(ScrimEventScorePointsSource.ActionTypeRule, actionRule.Points, false);
-        }
 
         if (itemCategoryRule.IsBanned)
         {
-            return new ScrimEventScoringResult(ScrimEventScorePointsSource.ItemCategoryRule, itemCategoryRule.Points, itemCategoryRule.IsBanned);
+            return new ScrimEventScoringResult
+            (
+                ScrimEventScorePointsSource.ItemCategoryRule,
+                itemCategoryRule.Points,
+                itemCategoryRule.IsBanned
+            );
         }
 
         if (itemCategoryRule.DeferToPlanetsideClassSettings)
         {
-            if (attackerLoadoutId == null)
-            {
-                return new ScrimEventScoringResult(ScrimEventScorePointsSource.ItemCategoryRule, itemCategoryRule.Points, itemCategoryRule.IsBanned); // Placeholder. TO-DO: determine better backup
-            }
-            else
-            {
-                return GetPlanetsideClassSettingPoints((int)attackerLoadoutId, itemCategoryRule.GetPlanetsideClassRuleSettings(), ScrimEventScorePointsSource.ItemCategoryRulePlanetsideClassSetting);
-            }
+            return GetPlanetsideClassSettingPoints
+            (
+                attackerLoadoutId,
+                itemCategoryRule.GetPlanetsideClassRuleSettings(),
+                ScrimEventScorePointsSource.ItemCategoryRulePlanetsideClassSetting
+            );
         }
 
-        if (!itemCategoryRule.DeferToItemRules || itemId == null)
+        if (!itemCategoryRule.DeferToItemRules)
         {
-            return new ScrimEventScoringResult(ScrimEventScorePointsSource.ItemCategoryRule, itemCategoryRule.Points, itemCategoryRule.IsBanned);
+            return new ScrimEventScoringResult
+            (
+                ScrimEventScorePointsSource.ItemCategoryRule,
+                itemCategoryRule.Points,
+                itemCategoryRule.IsBanned
+            );
         }
 
         /* Item Rules */
-        RulesetItemRule? itemRule = GetItemRule((int)itemId);
+        RulesetItemRule? itemRule = GetItemRule(itemId);
 
         if (itemRule == null)
         {
@@ -525,56 +559,45 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
 
         if (itemRule.DeferToPlanetsideClassSettings)
         {
-            if (attackerLoadoutId == null)
-            {
-                return new ScrimEventScoringResult(ScrimEventScorePointsSource.ItemRule, itemRule.Points, itemRule.IsBanned); // Placeholder. TO-DO: determine better backup
-            }
-            else
-            {
-                return GetPlanetsideClassSettingPoints((int)attackerLoadoutId, itemRule.GetPlanetsideClassRuleSettings(), ScrimEventScorePointsSource.ItemRulePlanetsideClassSetting);
-            }
+            return GetPlanetsideClassSettingPoints
+            (
+                attackerLoadoutId,
+                itemRule.GetPlanetsideClassRuleSettings(),
+                ScrimEventScorePointsSource.ItemRulePlanetsideClassSetting
+            );
         }
 
         return new ScrimEventScoringResult(ScrimEventScorePointsSource.ItemRule, itemRule.Points, itemRule.IsBanned);
     }
 
-    private RulesetActionRule GetActionRule(ScrimActionType actionType)
-    {
-        return _activeRuleset.RulesetActionRules
-            .Where(rule => rule.ScrimActionType == actionType)
-            .FirstOrDefault();
-    }
+    private RulesetActionRule? GetActionRule(ScrimActionType actionType)
+        => _activeRuleset?.RulesetActionRules?
+            .FirstOrDefault(rule => rule.ScrimActionType == actionType);
 
-    private RulesetItemCategoryRule GetItemCategoryRule(int itemCategoryId)
-    {
-        return _activeRuleset.RulesetItemCategoryRules
-            .Where(rule => rule.ItemCategoryId == itemCategoryId)
-            .FirstOrDefault();
-    }
+    private RulesetItemCategoryRule? GetItemCategoryRule(uint itemCategoryId)
+        => _activeRuleset?.RulesetItemCategoryRules?
+            .FirstOrDefault(rule => rule.ItemCategoryId == itemCategoryId);
 
-    private RulesetItemRule GetItemRule(int itemId)
-    {
-        return _activeRuleset.RulesetItemRules
-            .Where(rule => rule.ItemId == itemId)
-            .FirstOrDefault();
-    }
+    private RulesetItemRule? GetItemRule(uint itemId)
+        => _activeRuleset?.RulesetItemRules?
+            .FirstOrDefault(rule => rule.ItemId == itemId);
 
     private ScrimEventScoringResult GetActionRulePoints(ScrimActionType actionType)
     {
-        RulesetActionRule? actionRule = _activeRuleset.RulesetActionRules
-            .Where(rule => rule.ScrimActionType == actionType)
-            .FirstOrDefault();
+        RulesetActionRule? actionRule = _activeRuleset?.RulesetActionRules?
+            .FirstOrDefault(rule => rule.ScrimActionType == actionType);
 
-        if (actionRule == null)
-        {
-            return new ScrimEventScoringResult(ScrimEventScorePointsSource.Default, 0, false);
-
-        }
-
-        return new ScrimEventScoringResult(ScrimEventScorePointsSource.ActionTypeRule, actionRule.Points, false);
+        return actionRule == null
+            ? new ScrimEventScoringResult(ScrimEventScorePointsSource.Default, 0, false)
+            : new ScrimEventScoringResult(ScrimEventScorePointsSource.ActionTypeRule, actionRule.Points, false);
     }
 
-    private ScrimEventScoringResult GetPlanetsideClassSettingPoints(int attackerLoadoutId, PlanetsideClassRuleSettings classSettings, ScrimEventScorePointsSource scoreSource)
+    private static ScrimEventScoringResult GetPlanetsideClassSettingPoints
+    (
+        int attackerLoadoutId,
+        PlanetsideClassRuleSettings classSettings,
+        ScrimEventScorePointsSource scoreSource
+    )
     {
         PlanetsideClass planetsideClass = PlanetsideClassLoadoutTranslator.GetPlanetsideClass(attackerLoadoutId);
 
@@ -583,6 +606,7 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
 
         return new ScrimEventScoringResult(scoreSource, points, isBanned);
     }
+
     #endregion Rule Handling
 
     /// <inheritdoc />

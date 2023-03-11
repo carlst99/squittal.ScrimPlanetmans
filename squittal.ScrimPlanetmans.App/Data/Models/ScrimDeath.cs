@@ -29,6 +29,6 @@ public class ScrimDeath
     public TeamDefinition? VictimTeamOrdinal { get; init; }
     public bool IsHeadshot { get; init; }
     public int Points { get; init; }
-    public int? WeaponId { get; init; }
+    public uint? WeaponId { get; init; }
     public int? AttackerVehicleId { get; init; }
 }

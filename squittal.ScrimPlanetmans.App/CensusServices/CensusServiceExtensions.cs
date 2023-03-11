@@ -8,8 +8,6 @@ public static class CensusServiceExtensions
     {
         services.AddSingleton<CensusFaction>();
         services.AddSingleton<CensusFacility>();
-        services.AddSingleton<CensusItem>();
-        services.AddSingleton<CensusItemCategory>();
         services.AddSingleton<CensusVehicle>();
         services.AddSingleton<CensusWorld>();
         services.AddSingleton<CensusZone>();

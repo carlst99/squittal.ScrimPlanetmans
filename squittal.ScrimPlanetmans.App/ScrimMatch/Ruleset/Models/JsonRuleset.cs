@@ -14,19 +14,15 @@ public class JsonRuleset
 
     public string FileName { get; set; }
 
-    public string DefaultMatchTitle { get; set; } = string.Empty;
-    public int DefaultRoundLength { get; set; } = 900;
-    public bool DefaultEndRoundOnFacilityCapture { get; set; } = false;
+    public string DefaultMatchTitle { get; set; }
+    public int DefaultRoundLength { get; set; }
+    public bool DefaultEndRoundOnFacilityCapture {get; set; }
 
-    public ICollection<JsonRulesetActionRule> RulesetActionRules { get; set; }
-    public ICollection<JsonRulesetItemCategoryRule> RulesetItemCategoryRules { get; set; }
-    public ICollection<JsonRulesetFacilityRule> RulesetFacilityRules { get; set; }
+    public ICollection<JsonRulesetActionRule>? RulesetActionRules { get; set; }
+    public ICollection<JsonRulesetItemCategoryRule>? RulesetItemCategoryRules { get; set; }
+    public ICollection<JsonRulesetFacilityRule>? RulesetFacilityRules { get; set; }
 
-    public JsonRulesetOverlayConfiguration RulesetOverlayConfiguration { get; set; }
-
-    public JsonRuleset()
-    {
-    }
+    public JsonRulesetOverlayConfiguration? RulesetOverlayConfiguration { get; set; }
 
     public JsonRuleset(Ruleset ruleset, string fileName)
     {
@@ -39,17 +35,25 @@ public class JsonRuleset
         DefaultRoundLength = ruleset.DefaultRoundLength;
         DefaultEndRoundOnFacilityCapture = ruleset.DefaultEndRoundOnFacilityCapture;
 
-        if (ruleset.RulesetActionRules.Any())
+        if (ruleset.RulesetActionRules?.Any() is true)
         {
             RulesetActionRules = ruleset.RulesetActionRules.Select(r => new JsonRulesetActionRule(r)).ToArray();
         }
 
-        if (ruleset.RulesetItemCategoryRules.Any())
+        if (ruleset.RulesetItemCategoryRules?.Any() is true)
         {
-            RulesetItemCategoryRules = ruleset.RulesetItemCategoryRules.Select(r => new JsonRulesetItemCategoryRule(r, GetItemCategoryJsonItemRules(ruleset.RulesetItemRules, r.ItemCategoryId))).ToArray();
+            RulesetItemCategoryRules = ruleset.RulesetItemCategoryRules.Select
+                (
+                    r => new JsonRulesetItemCategoryRule
+                        (
+                            r,
+                            GetItemCategoryJsonItemRules(ruleset.RulesetItemRules, r.ItemCategoryId)
+                        )
+                )
+                .ToArray();
         }
-            
-        if (ruleset.RulesetFacilityRules.Any())
+
+        if (ruleset.RulesetFacilityRules?.Any() is true)
         {
             RulesetFacilityRules = ruleset.RulesetFacilityRules.Select(r => new JsonRulesetFacilityRule(r)).ToArray();
         }
@@ -60,12 +64,14 @@ public class JsonRuleset
         }
     }
 
-    private ICollection<JsonRulesetItemRule> GetItemCategoryJsonItemRules(ICollection<RulesetItemRule> allItemRules, int itemCategoryId)
+    private ICollection<JsonRulesetItemRule> GetItemCategoryJsonItemRules
+    (
+        ICollection<RulesetItemRule>? allItemRules,
+        uint itemCategoryId
+    )
     {
-        if (allItemRules == null || !allItemRules.Any(r => r.ItemCategoryId == itemCategoryId))
-        {
-            return new List<JsonRulesetItemRule>().ToArray();
-        }
+        if (allItemRules is null || allItemRules.All(r => r.ItemCategoryId != itemCategoryId))
+            return Array.Empty<JsonRulesetItemRule>();
 
         return allItemRules.Where(r => r.ItemCategoryId == itemCategoryId).Select(r => new JsonRulesetItemRule(r)).ToArray();
     }

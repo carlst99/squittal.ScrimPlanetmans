@@ -2745,7 +2745,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
             if (createdAdjustments.Any())
             {
-                await dbContext.ScrimMatchTeamPointAdjustments.AddRangeAsync(createdAdjustments);
+                dbContext.ScrimMatchTeamPointAdjustments.AddRange(createdAdjustments);
             }
 
             await dbContext.SaveChangesAsync();

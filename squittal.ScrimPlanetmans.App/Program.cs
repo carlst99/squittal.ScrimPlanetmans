@@ -78,6 +78,8 @@ public class Program
 
         IServiceCollection services = builder.Services;
 
+        services.AddMediatR(c => c.RegisterServicesFromAssemblyContaining<Program>());
+
         services.AddRazorPages();
         services.AddServerSideBlazor();
         services.AddSignalR();
@@ -112,8 +114,26 @@ public class Program
         builder.Services.Configure<CensusQueryOptions>(builder.Configuration.GetSection(nameof(CensusQueryOptions)))
             .Configure<CensusQueryOptions>(o => o.LanguageCode = CensusLanguage.English);
 
+        // Configure a second query options to point towards Sanctuary.Census
+        services.Configure<CensusQueryOptions>
+            (
+                "sanctuary",
+                builder.Configuration.GetSection(nameof(CensusQueryOptions))
+            )
+            .Configure<CensusQueryOptions>
+            (
+                "sanctuary",
+                o =>
+                {
+                    o.RootEndpoint = "https://census.lithafalcon.cc";
+                    o.LanguageCode = CensusLanguage.English;
+                }
+            );
+
         services.AddCensusRestServices()
             .AddTransient<ICensusCharacterService, CensusCharacterService>()
+            .AddTransient<ICensusItemService, CensusItemService>()
+            .AddTransient<ICensusItemCategoryService, CensusItemCategoryService>()
             .AddTransient<ICensusLoadoutService, CensusLoadoutService>()
             .AddTransient<ICensusOutfitService, CensusOutfitService>()
             .AddTransient<ICensusProfileService, CensusProfileService>();
@@ -127,7 +147,6 @@ public class Program
         // Register Census helper services
         services.AddTransient<ILoadoutService, LoadoutService>();
         services.AddSingleton<IZoneService, ZoneService>();
-        services.AddSingleton<IItemService, ItemService>();
         services.AddSingleton<IItemCategoryService, ItemCategoryService>();
         services.AddSingleton<IFacilityService, FacilityService>();
         services.AddTransient<IVehicleService, VehicleService>();
@@ -156,25 +175,26 @@ public class Program
         // Register Scrim services
         services.AddSingleton<IScrimMessageBroadcastService, ScrimMessageBroadcastService>();
         services.AddSingleton<IScrimRulesetManager, ScrimRulesetManager>();
-        services.AddSingleton<IScrimMatchDataService, ScrimMatchDataService>();
+        services.AddSingleton<IRulesetDataService, RulesetDataService>();
 
         services.AddSingleton<IScrimTeamsManager, ScrimTeamsManager>();
         services.AddSingleton<IScrimPlayersService, ScrimPlayersService>();
 
         services.AddSingleton<IStatefulTimer, StatefulTimer>();
+        services.AddSingleton<IScrimMatchDataService, ScrimMatchDataService>();
         services.AddSingleton<IScrimMatchEngine, ScrimMatchEngine>();
         services.AddSingleton<IScrimMatchScorer, ScrimMatchScorer>();
+        services.AddTransient<IScrimMatchReportDataService, ScrimMatchReportDataService>();
 
-        services.AddTransient<IDeathEventTypeService, DeathEventTypeService>();
         services.AddTransient<IVehicleTypeService, VehicleTypeService>();
         services.AddSingleton<IConstructedTeamService, ConstructedTeamService>();
 
-        services.AddSingleton<IRulesetDataService, RulesetDataService>();
 
-        services.AddTransient<IScrimMatchReportDataService, ScrimMatchReportDataService>();
 
         services.AddSingleton<IApplicationDataLoader, ApplicationDataLoader>();
+
         services.AddHostedService<ApplicationDataLoaderHostedService>();
+        services.AddHostedService<StoreRefreshWorker>();
 
         WebApplication app = builder.Build();
 

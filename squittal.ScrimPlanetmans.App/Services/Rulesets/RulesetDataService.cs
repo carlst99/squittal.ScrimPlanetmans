@@ -8,10 +8,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Logging;
 using squittal.ScrimPlanetmans.App.Models;
+using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.Models.Forms;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
@@ -26,7 +28,7 @@ public class RulesetDataService : IRulesetDataService
 {
     private readonly IDbContextHelper _dbContextHelper;
     private readonly IFacilityService _facilityService;
-    private readonly IItemService _itemService;
+    private readonly ICensusItemService _itemService;
     private readonly IItemCategoryService _itemCategoryService;
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly ILogger<RulesetDataService> _logger;
@@ -41,22 +43,27 @@ public class RulesetDataService : IRulesetDataService
 
     public int DefaultRulesetId { get; } = 1;
 
-    private readonly KeyedSemaphoreSlim _rulesetLock = new KeyedSemaphoreSlim();
-    private readonly KeyedSemaphoreSlim _overlayConfigurationLock = new KeyedSemaphoreSlim();
-    private readonly KeyedSemaphoreSlim _actionRulesLock = new KeyedSemaphoreSlim();
-    private readonly KeyedSemaphoreSlim _itemCategoryRulesLock = new KeyedSemaphoreSlim();
-    private readonly KeyedSemaphoreSlim _itemRulesLock = new KeyedSemaphoreSlim();
-    private readonly KeyedSemaphoreSlim _facilityRulesLock = new KeyedSemaphoreSlim();
+    private readonly KeyedSemaphoreSlim _rulesetLock = new();
+    private readonly KeyedSemaphoreSlim _overlayConfigurationLock = new();
+    private readonly KeyedSemaphoreSlim _actionRulesLock = new();
+    private readonly KeyedSemaphoreSlim _itemCategoryRulesLock = new();
+    private readonly KeyedSemaphoreSlim _itemRulesLock = new();
+    private readonly KeyedSemaphoreSlim _facilityRulesLock = new();
+    private readonly KeyedSemaphoreSlim _rulesetExportLock = new();
+    private readonly AutoResetEvent _defaultRulesetAutoEvent = new(true);
 
-    private readonly KeyedSemaphoreSlim _rulesetExportLock = new KeyedSemaphoreSlim();
-
-    public AutoResetEvent _defaultRulesetAutoEvent = new AutoResetEvent(true);
-
-    public static Regex RulesetNameRegex { get; } = new Regex("^([A-Za-z0-9()\\[\\]\\-_'.][ ]{0,1}){1,49}[A-Za-z0-9()\\[\\]\\-_'.]$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    public static Regex RulesetNameRegex { get; } = new("^([A-Za-z0-9()\\[\\]\\-_'.][ ]{0,1}){1,49}[A-Za-z0-9()\\[\\]\\-_'.]$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     public static Regex RulesetDefaultMatchTitleRegex => RulesetNameRegex; //(^(?!.)$|^([A-Za-z0-9()\[\]\-_'.][ ]{0,1}){1,49}[A-Za-z0-9()\[\]\-_'.]$)
 
-    public RulesetDataService(IDbContextHelper dbContextHelper, IFacilityService facilityService, IItemService itemService, IItemCategoryService itemCategoryService,
-        IScrimMessageBroadcastService messageService, ILogger<RulesetDataService> logger)
+    public RulesetDataService
+    (
+        IDbContextHelper dbContextHelper,
+        IFacilityService facilityService,
+        ICensusItemService itemService,
+        IItemCategoryService itemCategoryService,
+        IScrimMessageBroadcastService messageService,
+        ILogger<RulesetDataService> logger
+    )
     {
         _dbContextHelper = dbContextHelper;
         _facilityService = facilityService;
@@ -64,196 +71,159 @@ public class RulesetDataService : IRulesetDataService
         _itemCategoryService = itemCategoryService;
         _messageService = messageService;
         _logger = logger;
-
-        _itemCategoryService.RaiseStoreRefreshEvent += HandleItemCategoryStoreRefreshEvent;
-        _itemService.RaiseStoreRefreshEvent += HandleItemStoreRefreshEvent;
     }
 
-    #region Collection Refresh Event Handling
-    private void HandleItemCategoryStoreRefreshEvent(object? sender, StoreRefreshMessageEventArgs e)
+    public async Task RefreshRulesetsAsync(CancellationToken ct = default)
     {
-        string? refreshSource = Enum.GetName(typeof(StoreRefreshSource), e.RefreshSource);
-        _logger.LogInformation("Updating rulesets post-Item Category Store Refresh. Source: {Source}", refreshSource);
-
-        try
-        {
-            Task.Run(async () =>
-            {
-                int[] storeItemCategoryIds = (await _itemCategoryService.GetWeaponItemCategoryIdsAsync()).ToArray();
-                Ruleset[] storeRulesets = (await GetAllRulesetsAsync(e.CancellationToken)).ToArray();
-
-                if (storeRulesets.Length is 0)
-                {
-                    _logger.LogInformation
-                    (
-                        "Finished updating rulesets post-Item Category Store Refresh. No store rulesets found. Source: {Source}",
-                        refreshSource
-                    );
-
-                    return;
-                }
-
-                foreach (Ruleset ruleset in storeRulesets)
-                {
-                    IEnumerable<RulesetItemCategoryRule>? rulesetItemCategoryRules
-                        = await GetRulesetItemCategoryRulesAsync(ruleset.Id, e.CancellationToken);
-
-                    int[] missingItemCategoryIds = storeItemCategoryIds
-                        .Where(id => rulesetItemCategoryRules.All(rule => rule.ItemCategoryId != id))
-                        .ToArray();
-
-                    if (missingItemCategoryIds.Length is 0)
-                        continue;
-
-                    RulesetItemCategoryRule[] newRules = missingItemCategoryIds.Select
-                        (
-                            id => BuildRulesetItemCategoryRule(ruleset.Id, id)
-                        )
-                        .ToArray();
-                    await SaveRulesetItemCategoryRules(ruleset.Id, newRules);
-
-                    _logger.LogInformation
-                    (
-                        "Updated Item Category Rules for Ruleset {ID} post-Item Category Store Refresh. " +
-                        "Source: {Source}. New Rules: {Count}",
-                        ruleset.Id,
-                        refreshSource,
-                        newRules.Length
-                    );
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to handle an item category store refresh event");
-        }
-
-        _logger.LogInformation("Finished updating rulesets post-Item Category Store Refresh. Source: {Source}", refreshSource);
+        await RefreshItemCategoriesAsync(ct);
+        await RefreshItemsAsync(ct);
     }
 
-    private void HandleItemStoreRefreshEvent(object? sender, StoreRefreshMessageEventArgs e)
+    private async Task RefreshItemCategoriesAsync(CancellationToken ct)
     {
-        string? refreshSource = Enum.GetName(typeof(StoreRefreshSource), e.RefreshSource);
-        _logger.LogInformation("Updating rulesets post-Item Store Refresh. Source: {Source}", refreshSource);
+        _logger.LogInformation("Updating rulesets post-Item Category Store Refresh");
 
-        try
-        {
-            Task.Run(async () =>
+            IEnumerable<uint>? getWeaponItemCategoryIds = await _itemCategoryService.GetWeaponItemCategoryIdsAsync
+            (
+                ct
+            );
+            if (getWeaponItemCategoryIds is null)
+                return;
+
+            uint[] weaponItemCategoryIds = getWeaponItemCategoryIds.ToArray();
+
+            Ruleset[] storeRulesets = (await GetAllRulesetsAsync(ct)).ToArray();
+
+            if (storeRulesets.Length is 0)
             {
-                Item[] storeWeapons = (await _itemService.GetAllWeaponItemsAsync()).ToArray();
-                Ruleset[] storeRulesets = (await GetAllRulesetsAsync(e.CancellationToken)).ToArray();
+                _logger.LogInformation
+                (
+                    "Finished updating rulesets post-Item Category Store Refresh. No store rulesets found"
+                );
 
-                if (storeRulesets.Length is 0)
-                {
-                    _logger.LogInformation
-                    (
-                        "Finished updating rulesets post-Item Store Refresh. No store rulesets found. Source: {Source}",
-                        refreshSource
-                    );
-                    return;
-                }
-
-                foreach (Ruleset ruleset in storeRulesets)
-                {
-                    ItemCategory[] deferredItemCategoryRules
-                        = (await GetItemCategoriesDeferringToItemRules(ruleset.Id, e.CancellationToken))
-                            .ToArray();
-
-                    if (!deferredItemCategoryRules.Any())
-                        continue;
-
-                    List<Item> deferredToWeapons = storeWeapons.Where
-                        (
-                            w => deferredItemCategoryRules.Any(rule => rule.Id == w.ItemCategoryId)
-                        )
-                        .ToList();
-
-                    IEnumerable<RulesetItemRule>? rulesetItemRules = await GetRulesetItemRulesAsync
-                    (
-                        ruleset.Id,
-                        CancellationToken.None
-                    );
-
-                    List<Item> missingItemIds = deferredToWeapons.Where
-                        (
-                            w => rulesetItemRules.All(rule => rule.ItemId != w.Id)
-                        )
-                        .ToList();
-
-                    if (!missingItemIds.Any())
-                        continue;
-
-                    RulesetItemRule[] newRules = missingItemIds.Select
-                        (
-                            w => BuildRulesetItemRule(ruleset.Id, w.Id, w.ItemCategoryId ?? 0)
-                        )
-                        .ToArray();
-                    await SaveRulesetItemRules(ruleset.Id, newRules);
-
-                    _logger.LogInformation
-                    (
-                        "Updated Item Rules for Ruleset {ID} post-Item Category Store Refresh. " +
-                        "Source: {Source}. New Rules: {Count}",
-                        ruleset.Id,
-                        refreshSource,
-                        newRules.Length
-                    );
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to handle an item store refresh event");
-        }
-
-        _logger.LogInformation("Finished updating rulesets post-Item Store Refresh. Source: {Source}", refreshSource);
-    }
-    #endregion Collection Refresh Event Handling
-
-
-    #region GET methods
-    public async Task<PaginatedList<Ruleset>> GetRulesetListAsync(int? pageIndex, CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
-
-            var rulesetsQuery = dbContext.Rulesets
-                .AsQueryable()
-                .AsNoTracking()
-                .OrderByDescending(r => r.Id == ActiveRulesetId)
-                .ThenByDescending(r => r.IsCustomDefault)
-                .ThenByDescending(r => r.IsDefault)
-                .ThenBy(r => r.Name);
-
-            var paginatedList = await PaginatedList<Ruleset>.CreateAsync(rulesetsQuery, pageIndex ?? 1, _rulesetBrowserPageSize, cancellationToken);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (paginatedList == null)
-            {
-                return null;
+                return;
             }
 
-            return paginatedList;
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation($"Task Request cancelled: GetRulesetsAsync page {pageIndex}");
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation($"Request cancelled: GetRulesetsAsync page {pageIndex}");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"{ex}");
+            foreach (Ruleset ruleset in storeRulesets)
+            {
+                IEnumerable<RulesetItemCategoryRule> rulesetItemCategoryRules
+                    = await GetRulesetItemCategoryRulesAsync(ruleset.Id, ct);
 
-            return null;
-        }
+                uint[] missingItemCategoryIds = weaponItemCategoryIds
+                    .Where(id => rulesetItemCategoryRules.All(rule => rule.ItemCategoryId != id))
+                    .ToArray();
+
+                if (missingItemCategoryIds.Length is 0)
+                    continue;
+
+                RulesetItemCategoryRule[] newRules = missingItemCategoryIds.Select
+                    (
+                        id => BuildRulesetItemCategoryRule(ruleset.Id, id)
+                    )
+                    .ToArray();
+                await SaveRulesetItemCategoryRules(ruleset.Id, newRules);
+
+                _logger.LogInformation
+                (
+                    "Updated Item Category Rules for Ruleset {ID} post-Item Category Store Refresh. " +
+                    "New Rules: {Count}",
+                    ruleset.Id,
+                    newRules.Length
+                );
+            }
+
+        _logger.LogInformation("Finished updating rulesets post-Item Category Store Refresh");
+    }
+
+    private async Task RefreshItemsAsync(CancellationToken ct)
+    {
+        _logger.LogInformation("Updating rulesets post-Item Store Refresh");
+
+            IReadOnlyList<CensusItem>? allWeaponItems = await _itemService.GetAllWeaponsAsync(ct);
+            if (allWeaponItems is null)
+                return;
+
+            Ruleset[] storeRulesets = (await GetAllRulesetsAsync(ct)).ToArray();
+
+            if (storeRulesets.Length is 0)
+            {
+                _logger.LogInformation
+                (
+                    "Finished updating rulesets post-Item Store Refresh. No store rulesets found"
+                );
+                return;
+            }
+
+            foreach (Ruleset ruleset in storeRulesets)
+            {
+                IEnumerable<ItemCategory>? getDeferredItemCategoryRules
+                    = await GetItemCategoriesDeferringToItemRulesAsync(ruleset.Id, ct);
+
+                if (getDeferredItemCategoryRules is null)
+                    continue;
+                ItemCategory[] deferredItemCategoryRules = getDeferredItemCategoryRules.ToArray();
+
+                if (!deferredItemCategoryRules.Any())
+                    continue;
+
+                IEnumerable<RulesetItemRule> rulesetItemRules = await GetRulesetItemRulesAsync
+                (
+                    ruleset.Id,
+                    ct
+                );
+                HashSet<uint> rulesetItems = new(rulesetItemRules.Select(x => x.ItemId));
+
+                List<CensusItem> missingItemIds = allWeaponItems.Where
+                    (
+                        w => deferredItemCategoryRules.Any(rule => rule.Id == w.ItemCategoryId)
+                            && !rulesetItems.Contains(w.ItemId)
+                    )
+                    .ToList();
+
+                if (!missingItemIds.Any())
+                    continue;
+
+                RulesetItemRule[] newRules = missingItemIds.Select
+                    (
+                        w => BuildRulesetItemRule(ruleset.Id, w.ItemId, w.ItemCategoryId)
+                    )
+                    .ToArray();
+                await SaveRulesetItemRules(ruleset.Id, newRules);
+
+                _logger.LogInformation
+                (
+                    "Updated Item Rules for Ruleset {ID} post-Item Category Store Refresh. " +
+                    "New Rules: {Count}",
+                    ruleset.Id,
+                    newRules.Length
+                );
+            }
+
+        _logger.LogInformation("Finished updating rulesets post-Item Store Refresh");
+    }
+
+    #region GET methods
+
+    public async Task<PaginatedList<Ruleset>> GetRulesetListAsync(int? pageIndex, CancellationToken cancellationToken)
+    {
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
+
+        IOrderedQueryable<Ruleset> rulesetsQuery = dbContext.Rulesets
+            .OrderByDescending(r => r.Id == ActiveRulesetId)
+            .ThenByDescending(r => r.IsCustomDefault)
+            .ThenByDescending(r => r.IsDefault)
+            .ThenBy(r => r.Name);
+
+        PaginatedList<Ruleset> paginatedList = await PaginatedList<Ruleset>.CreateAsync
+        (
+            rulesetsQuery,
+            pageIndex ?? 1,
+            _rulesetBrowserPageSize,
+            cancellationToken
+        );
+
+        return paginatedList;
     }
 
     public async Task<IEnumerable<Ruleset>> GetAllRulesetsAsync(CancellationToken cancellationToken)
@@ -288,16 +258,16 @@ public class RulesetDataService : IRulesetDataService
 
             if (includeCollections)
             {
-                var actionRulesTask = GetRulesetActionRulesAsync(rulesetId, cancellationToken);
-                var itemCategoryRulesTask = GetRulesetItemCategoryRulesAsync(rulesetId, cancellationToken);
-                var itemRulesTask = GetRulesetItemRulesAsync(rulesetId, cancellationToken);
-                var facilityRulesTask = GetRulesetFacilityRulesAsync(rulesetId, cancellationToken);
+                Task<IEnumerable<RulesetActionRule>> actionRulesTask = GetRulesetActionRulesAsync(rulesetId, cancellationToken);
+                Task<IEnumerable<RulesetItemCategoryRule>> itemCategoryRulesTask = GetRulesetItemCategoryRulesAsync(rulesetId, cancellationToken);
+                Task<IEnumerable<RulesetItemRule>> itemRulesTask = GetRulesetItemRulesAsync(rulesetId, cancellationToken);
+                Task<IEnumerable<RulesetFacilityRule>> facilityRulesTask = GetRulesetFacilityRulesAsync(rulesetId, cancellationToken);
                 await Task.WhenAll(actionRulesTask, itemCategoryRulesTask, itemRulesTask, facilityRulesTask);
 
-                ruleset.RulesetActionRules = (await actionRulesTask)?.ToList();
-                ruleset.RulesetItemCategoryRules = (await itemCategoryRulesTask)?.ToList();
-                ruleset.RulesetItemRules = (await itemRulesTask)?.ToList();
-                ruleset.RulesetFacilityRules = (await facilityRulesTask)?.ToList();
+                ruleset.RulesetActionRules = (await actionRulesTask).ToList();
+                ruleset.RulesetItemCategoryRules = (await itemCategoryRulesTask).ToList();
+                ruleset.RulesetItemRules = (await itemRulesTask).ToList();
+                ruleset.RulesetFacilityRules = (await facilityRulesTask).ToList();
             }
 
             if (includeOverlayConfiguration)
@@ -327,280 +297,111 @@ public class RulesetDataService : IRulesetDataService
         }
     }
 
-    public async Task<Ruleset?> GetRulesetWithFacilityRules(int rulesetId, CancellationToken cancellationToken)
+    public Task<Ruleset?> GetRulesetWithFacilityRules(int rulesetId, CancellationToken cancellationToken)
     {
-        try
-        {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            return await dbContext.Rulesets
-                .Where(r => r.Id == rulesetId)
-                .Include("RulesetFacilityRules")
-                .Include("RulesetFacilityRules.MapRegion")
-                .FirstOrDefaultAsync(cancellationToken);
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation("Task Request cancelled: GetRulesetWithFacilityRules rulesetId {ID}", rulesetId);
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("Request cancelled: GetRulesetWithFacilityRules rulesetId {ID}", rulesetId);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get ruleset with facility rules");
+        Ruleset? ruleset =  dbContext.Rulesets
+            .Where(r => r.Id == rulesetId)
+            .Include("RulesetFacilityRules")
+            .Include("RulesetFacilityRules.MapRegion")
+            .FirstOrDefault();
 
-            return null;
-        }
+        return Task.FromResult(ruleset);
     }
 
-    public async Task<RulesetOverlayConfiguration> GetRulesetOverlayConfigurationAsync(int rulesetId, CancellationToken cancellationToken)
+    public Task<RulesetOverlayConfiguration?> GetRulesetOverlayConfigurationAsync(int rulesetId, CancellationToken ct)
     {
-        try
-        {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var configuration = await dbContext.RulesetOverlayConfigurations
-                .Where(c => c.RulesetId == rulesetId)
-                .FirstOrDefaultAsync(cancellationToken);
+        RulesetOverlayConfiguration? configuration = dbContext.RulesetOverlayConfigurations
+            .FirstOrDefault(c => c.RulesetId == rulesetId);
 
-            cancellationToken.ThrowIfCancellationRequested();
-
-            return configuration;
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation($"Task Requeset cancelled: GetRulesetOverlayConfigurationAsync rulesetId {rulesetId}");
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation($"Request cancelled: GetRulesetOverlayConfigurationAsync rulesetId {rulesetId}");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"{ex}");
-
-            return null;
-        }
+        return Task.FromResult(configuration);
     }
 
     #region GET Ruleset Rules
-    public async Task<IEnumerable<RulesetActionRule>?> GetRulesetActionRulesAsync(int rulesetId, CancellationToken cancellationToken)
+
+    public Task<IEnumerable<RulesetActionRule>> GetRulesetActionRulesAsync(int rulesetId, CancellationToken ct)
     {
-        try
-        {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            return await dbContext.RulesetActionRules
-                .Where(r => r.RulesetId == rulesetId)
-                .ToListAsync(cancellationToken);
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation("Task Request cancelled: GetRulesetActionRulesAsync rulesetId {ID}", rulesetId);
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("Request cancelled: GetRulesetActionRulesAsync rulesetId {ID}", rulesetId);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get ruleset action rules");
+        IEnumerable<RulesetActionRule> result = dbContext.RulesetActionRules
+            .Where(r => r.RulesetId == rulesetId);
 
-            return null;
-        }
+        return Task.FromResult(result);
     }
 
-    public async Task<IEnumerable<RulesetItemCategoryRule>?> GetRulesetItemCategoryRulesAsync(int rulesetId, CancellationToken cancellationToken)
+    public Task<IEnumerable<RulesetItemCategoryRule>> GetRulesetItemCategoryRulesAsync
+    (
+        int rulesetId,
+        CancellationToken ct
+    )
     {
-        try
-        {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            return await dbContext.RulesetItemCategoryRules
-                .Where(r => r.RulesetId == rulesetId)
-                .Include("ItemCategory")
-                .OrderBy(r => r.ItemCategory.Domain)
-                .ThenBy(r => r.ItemCategory.Name)
-                .ToListAsync(cancellationToken);
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation("Task Request cancelled: GetRulesetItemCategoryRulesAsync rulesetId {ID}", rulesetId);
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("Request cancelled: GetRulesetItemCategoryRulesAsync rulesetId {ID}", rulesetId);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get ruleset item category fules");
+        IEnumerable<RulesetItemCategoryRule> result = dbContext.RulesetItemCategoryRules
+            .Where(r => r.RulesetId == rulesetId);
 
-            return null;
-        }
+        return Task.FromResult(result);
     }
 
-    public async Task<IEnumerable<RulesetItemRule>?> GetRulesetItemRulesAsync(int rulesetId, CancellationToken cancellationToken)
+    public Task<IEnumerable<RulesetItemRule>> GetRulesetItemRulesAsync(int rulesetId, CancellationToken ct)
     {
-        try
-        {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            return await dbContext.RulesetItemRules
-                .Where(r => r.RulesetId == rulesetId)
-                .Include("Item")
-                .OrderBy(r => r.Item.FactionId ?? 0)
-                .ThenBy(r => r.Item.Name)
-                .ToListAsync(cancellationToken);
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation("Task Request cancelled: GetRulesetItemRulesAsync rulesetId {ID}", rulesetId);
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("Request cancelled: GetRulesetItemRulesAsync rulesetId {ID}", rulesetId);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get ruleset item rules");
+        IEnumerable<RulesetItemRule> result =  dbContext.RulesetItemRules
+            .Where(r => r.RulesetId == rulesetId);
 
-            return null;
-        }
+        return Task.FromResult(result);
     }
 
-    public async Task<IEnumerable<RulesetItemRule>?> GetRulesetItemRulesForItemCategoryIdAsync(int rulesetId, int itemCategoryId, CancellationToken cancellationToken)
+    public IEnumerable<RulesetItemRule> GetRulesetItemRulesForItemCategoryId
+    (
+        int rulesetId,
+        uint itemCategoryId
+    )
     {
-        try
-        {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            return await dbContext.RulesetItemRules
-                .Where(r => r.RulesetId == rulesetId && r.ItemCategoryId == itemCategoryId)
-                .Include("Item")
-                .OrderBy(r => r.Item.FactionId)
-                .ThenBy(r => r.Item.Name)
-                .ToListAsync(cancellationToken);
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation
-            (
-                "Task Request cancelled: GetRulesetItemRulesForItemCategoryIdAsync rulesetId {RulesetId} itemCategoryId {ItemCategoryId}",
-                rulesetId,
-                itemCategoryId
-            );
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation
-            (
-                "Request cancelled: GetRulesetItemRulesForItemCategoryIdAsync rulesetId {RulesetId} itemCategoryId {ItemCategoryId}",
-                rulesetId,
-                itemCategoryId
-            );
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get ruleset item rules for an item category");
-
-            return null;
-        }
+        return dbContext.RulesetItemRules
+            .Where(r => r.RulesetId == rulesetId && r.ItemCategoryId == itemCategoryId);
     }
 
-    public async Task<IEnumerable<RulesetFacilityRule>?> GetRulesetFacilityRulesAsync(int rulesetId, CancellationToken cancellationToken)
+    public Task<IEnumerable<RulesetFacilityRule>> GetRulesetFacilityRulesAsync(int rulesetId, CancellationToken ct)
     {
-        try
-        {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            return await dbContext.RulesetFacilityRules
-                .Where(r => r.RulesetId == rulesetId)
-                .Include("MapRegion")
-                .OrderBy(r => r.MapRegion.ZoneId)
-                .ThenBy(r => r.MapRegion.FacilityName)
-                .ToListAsync(cancellationToken);
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation("Task Request cancelled: GetRulesetFacilityRulesAsync rulesetId {ID}", rulesetId);
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("Request cancelled: GetRulesetFacilityRulesAsync rulesetId {ID}", rulesetId);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get ruleset facility rules");
+        IEnumerable<RulesetFacilityRule> result = dbContext.RulesetFacilityRules
+            .Where(r => r.RulesetId == rulesetId)
+            .Include("MapRegion")
+            .OrderBy(r => r.MapRegion.ZoneId)
+            .ThenBy(r => r.MapRegion.FacilityName);
 
-            return null;
-        }
+        return Task.FromResult(result);
     }
 
-    public async Task<IEnumerable<RulesetFacilityRule>> GetUnusedRulesetFacilityRulesAsync(int rulesetId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<RulesetFacilityRule>> GetUnusedRulesetFacilityRulesAsync(int rulesetId, CancellationToken ct)
     {
-        try
-        {
-            var usedFacilities = await GetRulesetFacilityRulesAsync(rulesetId, cancellationToken);
+        IEnumerable<RulesetFacilityRule> usedFacilities = await GetRulesetFacilityRulesAsync(rulesetId, ct);
 
-            cancellationToken.ThrowIfCancellationRequested();
+        IEnumerable<MapRegion> allFacilities = await _facilityService.GetScrimmableMapRegionsAsync();
+        allFacilities = allFacilities.Where(f => f is { IsDeprecated: false, IsCurrent: true });
 
-            var allFacilities = await _facilityService.GetScrimmableMapRegionsAsync();
-
-            allFacilities = allFacilities?.Where(f => !f.IsDeprecated && f.IsCurrent);
-
-            if (usedFacilities == null)
-            {
-                return allFacilities?.Select(a => ConvertToFacilityRule(rulesetId, a)).ToList();
-            }
-
-            return allFacilities?.Where(a => !usedFacilities.Any(u => u.FacilityId == a.FacilityId))
-                .Select(a => ConvertToFacilityRule(rulesetId, a))
-                .OrderBy(r => r.MapRegion.ZoneId)
-                .ThenBy(r => r.MapRegion.FacilityName)
-                .ToList();
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation($"Task Request cancelled: GetRulesetFacilityRulesAsync rulesetId {rulesetId}");
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation($"Request cancelled: GetRulesetFacilityRulesAsync rulesetId {rulesetId}");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"{ex}");
-
-            return null;
-        }
+        return allFacilities.Where(a => usedFacilities.All(u => u.FacilityId != a.FacilityId))
+            .Select(a => ConvertToFacilityRule(rulesetId, a))
+            .OrderBy(r => r.MapRegion.ZoneId)
+            .ThenBy(r => r.MapRegion.FacilityName);
     }
 
-    private RulesetFacilityRule ConvertToFacilityRule(int rulesetId, MapRegion mapRegion)
+    private static RulesetFacilityRule ConvertToFacilityRule(int rulesetId, MapRegion mapRegion)
     {
         return new RulesetFacilityRule
         {
@@ -611,122 +412,90 @@ public class RulesetDataService : IRulesetDataService
         };
     }
 
-    public async Task<IEnumerable<ItemCategory>> GetItemCategoriesDeferringToItemRules(int rulesetId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ItemCategory>?> GetItemCategoriesDeferringToItemRulesAsync
+    (
+        int rulesetId,
+        CancellationToken cancellationToken
+    )
     {
-        try
-        {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+        IEnumerable<uint> categoryIds = GetItemCategoryIdsDeferringToItemRulesAsync(rulesetId);
 
-            var itemCategoryIds = await dbContext.RulesetItemCategoryRules
-                .Where(r => r.RulesetId == rulesetId && r.DeferToItemRules)
-                .Select(r => r.ItemCategoryId)
-                .ToListAsync(cancellationToken);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            return await _itemCategoryService.GetItemCategoriesFromIdsAsync(itemCategoryIds);
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation($"Task Request cancelled: GetRulesetItemCategoryRulesDeferringToItemRules rulesetId {rulesetId}");
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation($"Request cancelled: GetRulesetItemCategoryRulesDeferringToItemRules rulesetId {rulesetId}");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"{ex}");
-
-            return null;
-        }
+        return await _itemCategoryService.GetItemCategoriesFromIdsAsync(categoryIds, cancellationToken);
     }
 
-    public async Task<IEnumerable<RulesetItemCategoryRule>> GetRulesetItemCategoryRulesDeferringToItemRules(int rulesetId, CancellationToken cancellationToken)
+    private IEnumerable<uint> GetItemCategoryIdsDeferringToItemRulesAsync(int rulesetId)
     {
-        try
-        {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var rules = await dbContext.RulesetItemCategoryRules
-                .Where(r => r.RulesetId == rulesetId && r.DeferToItemRules)
-                .Include("ItemCategory")
-                .OrderBy(r => r.ItemCategory.Domain)
-                .ThenBy(r => r.ItemCategory.Name)
-                .ToListAsync(cancellationToken);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            return rules;
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation($"Task Request cancelled: GetRulesetItemCategoryRulesDeferringToItemRules rulesetId {rulesetId}");
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation($"Request cancelled: GetRulesetItemCategoryRulesDeferringToItemRules rulesetId {rulesetId}");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"{ex}");
-
-            return null;
-        }
+        return dbContext.RulesetItemCategoryRules
+            .Where(r => r.RulesetId == rulesetId && r.DeferToItemRules)
+            .Select(r => r.ItemCategoryId);
     }
+
+    public Task<IEnumerable<RulesetItemCategoryRule>> GetRulesetItemCategoryRulesDeferringToItemRules
+    (
+        int rulesetId,
+        CancellationToken ct
+    )
+    {
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
+
+        IEnumerable<RulesetItemCategoryRule> rules = dbContext.RulesetItemCategoryRules
+            .Where(r => r.RulesetId == rulesetId && r.DeferToItemRules)
+            .Include("ItemCategory");
+
+        return Task.FromResult(rules);
+    }
+
     #endregion GET Ruleset Rules
 
     #endregion GET methods
 
-
     #region SAVE / UPDATE methods
-    public async Task<bool> UpdateRulesetInfo(Ruleset rulesetUpdate, CancellationToken cancellationToken)
+
+    public async Task<bool> UpdateRulesetInfo(Ruleset rulesetUpdate, CancellationToken ct)
     {
-        var updateId = rulesetUpdate.Id;
+        int updateId = rulesetUpdate.Id;
 
         if (updateId == DefaultRulesetId || rulesetUpdate.IsDefault)
         {
             return false;
         }
 
-        var updateName = rulesetUpdate.Name;
-        var updateRoundLength = rulesetUpdate.DefaultRoundLength;
-        var updateMatchTitle = rulesetUpdate.DefaultMatchTitle;
-        var updateEndRoundOnFacilityCapture = rulesetUpdate.DefaultEndRoundOnFacilityCapture;
+        string updateName = rulesetUpdate.Name;
+        int updateRoundLength = rulesetUpdate.DefaultRoundLength;
+        string updateMatchTitle = rulesetUpdate.DefaultMatchTitle;
+        bool updateEndRoundOnFacilityCapture = rulesetUpdate.DefaultEndRoundOnFacilityCapture;
 
-        Ruleset oldRuleset = new Ruleset();
+        Ruleset oldRuleset = new();
 
         if (!IsValidRulesetName(updateName))
         {
-            _logger.LogError($"Error updating Ruleset {updateId} info: invalid ruleset name");
+            _logger.LogError("Error updating Ruleset {ID} info: invalid ruleset name", updateId);
             return false;
         }
 
         if (!IsValidRulesetDefaultRoundLength(updateRoundLength))
         {
-            _logger.LogError($"Error updating Ruleset {updateId} info: invalid default round length");
+            _logger.LogError("Error updating Ruleset {ID} info: invalid default round length", updateId);
             return false;
         }
 
         if (!IsValidRulesetDefaultMatchTitle(updateMatchTitle))
         {
-            _logger.LogError($"Error updating Ruleset {updateId} info: invalid default match title");
+            _logger.LogError("Error updating Ruleset {ID} info: invalid default match title", updateId);
         }
 
-        using (await _rulesetLock.WaitAsync($"{updateId}"))
+        using (await _rulesetLock.WaitAsync($"{updateId}", ct))
         {
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeEntity = await GetRulesetFromIdAsync(updateId, cancellationToken, false, false);
+                Ruleset? storeEntity = await GetRulesetFromIdAsync(updateId, ct, false, false);
 
                 if (storeEntity == null)
                 {
@@ -747,20 +516,20 @@ public class RulesetDataService : IRulesetDataService
 
                 dbContext.Rulesets.Update(storeEntity);
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
 
-                await SetUpRulesetsMapAsync(cancellationToken);
+                await SetUpRulesetsMapAsync(ct);
 
-                var changeMessage = new RulesetSettingChangeMessage(storeEntity, oldRuleset);
+                RulesetSettingChangeMessage changeMessage = new(storeEntity, oldRuleset);
                 _messageService.BroadcastRulesetSettingChangeMessage(changeMessage);
 
-                _logger.LogInformation($"{changeMessage.Info}");
+                _logger.LogInformation(changeMessage.Info);
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error updating Ruleset {updateId} info: {ex}");
+                _logger.LogError(ex, "Error updating Ruleset {ID} info", updateId);
                 return false;
             }
         }
@@ -769,27 +538,27 @@ public class RulesetDataService : IRulesetDataService
     /*
      * Upsert New or Modified Overlay Configuration for a specific ruleset
      */
-    public async Task<bool> SaveRulesetOverlayConfiguration(int rulesetId, RulesetOverlayConfiguration rulesetOverlayConfiguration, CancellationToken cancellationToken)
+    public async Task<bool> SaveRulesetOverlayConfiguration(int rulesetId, RulesetOverlayConfiguration rulesetOverlayConfiguration, CancellationToken ct)
     {
         if (rulesetId == DefaultRulesetId)
         {
             return false;
         }
 
-        using (await _overlayConfigurationLock.WaitAsync($"{rulesetId}"))
+        using (await _overlayConfigurationLock.WaitAsync($"{rulesetId}", ct))
         {
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeConfiguration = await dbContext.RulesetOverlayConfigurations.Where(c => c.RulesetId == rulesetId).FirstOrDefaultAsync(cancellationToken);
+                RulesetOverlayConfiguration? storeConfiguration = await dbContext.RulesetOverlayConfigurations.Where(c => c.RulesetId == rulesetId).FirstOrDefaultAsync(ct);
 
-                cancellationToken.ThrowIfCancellationRequested();
+                ct.ThrowIfCancellationRequested();
 
-                var previousConfiguration = (storeConfiguration == null) ? null : BuildRulesetOverlayConfiguration(rulesetId, storeConfiguration.UseCompactLayout, storeConfiguration.StatsDisplayType, storeConfiguration.ShowStatusPanelScores);
+                RulesetOverlayConfiguration? previousConfiguration = (storeConfiguration == null) ? null : BuildRulesetOverlayConfiguration(rulesetId, storeConfiguration.UseCompactLayout, storeConfiguration.StatsDisplayType, storeConfiguration.ShowStatusPanelScores);
 
-                var newConfiguration = BuildRulesetOverlayConfiguration(rulesetId, rulesetOverlayConfiguration.UseCompactLayout, rulesetOverlayConfiguration.StatsDisplayType, rulesetOverlayConfiguration.ShowStatusPanelScores);
+                RulesetOverlayConfiguration newConfiguration = BuildRulesetOverlayConfiguration(rulesetId, rulesetOverlayConfiguration.UseCompactLayout, rulesetOverlayConfiguration.StatsDisplayType, rulesetOverlayConfiguration.ShowStatusPanelScores);
 
 
                 if (storeConfiguration == null)
@@ -802,25 +571,29 @@ public class RulesetDataService : IRulesetDataService
                     storeConfiguration = rulesetOverlayConfiguration;
                     dbContext.RulesetOverlayConfigurations.Update(storeConfiguration);
                 }
-                var storeRuleset = await GetRulesetFromIdAsync(rulesetId, cancellationToken, false, false);
+                Ruleset? storeRuleset = await GetRulesetFromIdAsync(rulesetId, ct, false, false);
                 if (storeRuleset != null)
                 {
                     storeRuleset.DateLastModified = DateTime.UtcNow;
                     dbContext.Rulesets.Update(storeRuleset);
                 }
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
 
-                var message = new RulesetOverlayConfigurationChangeMessage(storeRuleset, newConfiguration, previousConfiguration);
-                _messageService.BroadcastRulesetOverlayConfigurationChangeMessage(message);
+                if (storeRuleset is not null && previousConfiguration is not null)
+                {
+                    // TODO: Is this going to create issues because we're not sending updates going from no config to new config?
+                    RulesetOverlayConfigurationChangeMessage message = new(storeRuleset, newConfiguration, previousConfiguration);
+                    _messageService.BroadcastRulesetOverlayConfigurationChangeMessage(message);
+                }
 
-                _logger.LogInformation($"Saved Overlay Configuration updates for Ruleset {rulesetId}");
+                _logger.LogInformation("Saved Overlay Configuration updates for Ruleset {ID}", rulesetId);
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error saving RulesetOverlayConfiguration changes to database: {ex}");
+                _logger.LogError(ex, "Error saving RulesetOverlayConfiguration changes to database");
 
                 return false;
             }
@@ -828,19 +601,25 @@ public class RulesetDataService : IRulesetDataService
     }
 
     #region Save Ruleset Rules
+
     /*
      * Upsert New or Modified RulesetActionRules for a specific ruleset.
      */
-    public async Task SaveRulesetActionRules(int rulesetId, IEnumerable<RulesetActionRule> rules)
+    public async Task SaveRulesetActionRules
+    (
+        int rulesetId,
+        IEnumerable<RulesetActionRule> rules,
+        CancellationToken ct = default
+    )
     {
         if (rulesetId == DefaultRulesetId)
         {
             return;
         }
 
-        using (await _actionRulesLock.WaitAsync($"{rulesetId}"))
+        using (await _actionRulesLock.WaitAsync($"{rulesetId}", ct))
         {
-            var ruleUpdates = rules.Where(rule => rule.RulesetId == rulesetId).ToList();
+            List<RulesetActionRule> ruleUpdates = rules.Where(rule => rule.RulesetId == rulesetId).ToList();
 
             if (!ruleUpdates.Any())
             {
@@ -849,16 +628,18 @@ public class RulesetDataService : IRulesetDataService
 
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeRules = await dbContext.RulesetActionRules.Where(rule => rule.RulesetId == rulesetId).ToListAsync();
+                List<RulesetActionRule> storeRules = await dbContext.RulesetActionRules
+                    .Where(rule => rule.RulesetId == rulesetId)
+                    .ToListAsync(cancellationToken: ct);
 
-                var newEntities = new List<RulesetActionRule>();
+                List<RulesetActionRule> newEntities = new();
 
-                foreach (var rule in ruleUpdates)
+                foreach (RulesetActionRule rule in ruleUpdates)
                 {
-                    var storeEntity = storeRules.Where(r => r.ScrimActionType == rule.ScrimActionType).FirstOrDefault();
+                    RulesetActionRule? storeEntity = storeRules.FirstOrDefault(r => r.ScrimActionType == rule.ScrimActionType);
 
                     if (storeEntity == null)
                     {
@@ -876,23 +657,26 @@ public class RulesetDataService : IRulesetDataService
                     dbContext.RulesetActionRules.AddRange(newEntities);
                 }
 
-                var storeRuleset = await GetRulesetFromIdAsync(rulesetId, CancellationToken.None, false, false);
+                Ruleset? storeRuleset = await GetRulesetFromIdAsync(rulesetId, ct, false, false);
                 if (storeRuleset != null)
                 {
                     storeRuleset.DateLastModified = DateTime.UtcNow;
                     dbContext.Rulesets.Update(storeRuleset);
                 }
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
 
-                var message = new RulesetRuleChangeMessage(storeRuleset, RulesetRuleChangeType.ActionRule);
-                _messageService.BroadcastRulesetRuleChangeMessage(message);
+                if (storeRuleset is not null)
+                {
+                    RulesetRuleChangeMessage message = new(storeRuleset, RulesetRuleChangeType.ActionRule);
+                    _messageService.BroadcastRulesetRuleChangeMessage(message);
+                }
 
-                _logger.LogInformation($"Saved Action Rule updates for Ruleset {rulesetId}");
+                _logger.LogInformation("Saved Action Rule updates for Ruleset {ID}", rulesetId);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error saving RulesetActionRule changes to database: {ex}");
+                _logger.LogError(ex, "Error saving RulesetActionRule changes to database");
             }
         }
     }
@@ -900,16 +684,21 @@ public class RulesetDataService : IRulesetDataService
     /*
      * Upsert New or Modified RulesetItemCategoryRules for a specific ruleset.
      */
-    public async Task SaveRulesetItemCategoryRules(int rulesetId, IEnumerable<RulesetItemCategoryRule> rules)
+    public async Task SaveRulesetItemCategoryRules
+    (
+        int rulesetId,
+        IEnumerable<RulesetItemCategoryRule> rules,
+        CancellationToken ct = default
+    )
     {
         if (rulesetId == DefaultRulesetId)
         {
             return;
         }
 
-        using (await _itemCategoryRulesLock.WaitAsync($"{rulesetId}"))
+        using (await _itemCategoryRulesLock.WaitAsync($"{rulesetId}", ct))
         {
-            var ruleUpdates = rules.Where(rule => rule.RulesetId == rulesetId).ToList();
+            List<RulesetItemCategoryRule> ruleUpdates = rules.Where(rule => rule.RulesetId == rulesetId).ToList();
 
             if (!ruleUpdates.Any())
             {
@@ -918,22 +707,22 @@ public class RulesetDataService : IRulesetDataService
 
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeRules = await GetRulesetItemCategoryRulesAsync(rulesetId, CancellationToken.None);
+                IEnumerable<RulesetItemCategoryRule> storeRules = await GetRulesetItemCategoryRulesAsync(rulesetId, ct);
 
-                var newEntities = new List<RulesetItemCategoryRule>();
+                List<RulesetItemCategoryRule> newEntities = new();
 
-                foreach (var rule in ruleUpdates)
+                foreach (RulesetItemCategoryRule rule in ruleUpdates)
                 {
                     // Only allow deferring to either Planetside Class Settings or Item Rules. Give Preference to Item Rules
-                    if (rule.DeferToItemRules && rule.DeferToPlanetsideClassSettings)
+                    if (rule is { DeferToItemRules: true, DeferToPlanetsideClassSettings: true })
                     {
                         rule.DeferToPlanetsideClassSettings = false;
                     }
 
-                    var storeEntity = storeRules.Where(r => r.ItemCategoryId == rule.ItemCategoryId).FirstOrDefault();
+                    RulesetItemCategoryRule? storeEntity = storeRules.FirstOrDefault(r => r.ItemCategoryId == rule.ItemCategoryId);
 
                     if (storeEntity == null)
                     {
@@ -941,10 +730,7 @@ public class RulesetDataService : IRulesetDataService
                     }
                     else
                     {
-                        rule.ItemCategory = null;
-
                         storeEntity = rule;
-
                         dbContext.RulesetItemCategoryRules.Update(storeEntity);
                     }
                 }
@@ -954,7 +740,8 @@ public class RulesetDataService : IRulesetDataService
                     dbContext.RulesetItemCategoryRules.AddRange(newEntities);
                 }
 
-                var storeRuleset = await dbContext.Rulesets.Where(r => r.Id == rulesetId).FirstOrDefaultAsync();
+                Ruleset? storeRuleset = await dbContext.Rulesets.Where(r => r.Id == rulesetId)
+                    .FirstOrDefaultAsync(cancellationToken: ct);
 
                 if (storeRuleset != null)
                 {
@@ -963,26 +750,29 @@ public class RulesetDataService : IRulesetDataService
                 }
 
 
-                var TaskList = new List<Task>();
+                List<Task> TaskList = new();
 
-                foreach (var rule in dbContext.RulesetItemCategoryRules)
+                foreach (RulesetItemCategoryRule rule in dbContext.RulesetItemCategoryRules)
                 {
-                    var itemRulesTask = UpdateItemRulesForItemCategoryRule(rule);
+                    Task itemRulesTask = UpdateItemRulesForItemCategoryRule(rule);
                     TaskList.Add(itemRulesTask);
                 }
 
                 await Task.WhenAll(TaskList);
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
 
-                var message = new RulesetRuleChangeMessage(storeRuleset, RulesetRuleChangeType.ItemCategoryRule);
-                _messageService.BroadcastRulesetRuleChangeMessage(message);
+                if (storeRuleset is not null)
+                {
+                    RulesetRuleChangeMessage message = new(storeRuleset, RulesetRuleChangeType.ItemCategoryRule);
+                    _messageService.BroadcastRulesetRuleChangeMessage(message);
+                }
 
-                _logger.LogInformation($"Saved Item Category Rule updates for Ruleset {rulesetId}");
+                _logger.LogInformation("Saved Item Category Rule updates for Ruleset {ID}", rulesetId);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error saving RulesetItemCategoryRule changes to database: {ex}");
+                _logger.LogError(ex, "Error saving RulesetItemCategoryRule changes to database");
             }
         }
     }
@@ -990,16 +780,21 @@ public class RulesetDataService : IRulesetDataService
     /*
      * Upsert New or Modified RulesetItemRules for a specific ruleset.
      */
-    public async Task SaveRulesetItemRules(int rulesetId, IEnumerable<RulesetItemRule> rules)
+    public async Task SaveRulesetItemRules
+    (
+        int rulesetId,
+        IEnumerable<RulesetItemRule> rules,
+        CancellationToken ct = default
+    )
     {
         if (rulesetId == DefaultRulesetId)
         {
             return;
         }
 
-        using (await _itemRulesLock.WaitAsync($"{rulesetId}"))
+        using (await _itemRulesLock.WaitAsync($"{rulesetId}", ct))
         {
-            var ruleUpdates = rules.Where(rule => rule.RulesetId == rulesetId).ToList();
+            List<RulesetItemRule> ruleUpdates = rules.Where(rule => rule.RulesetId == rulesetId).ToList();
 
             if (!ruleUpdates.Any())
             {
@@ -1008,16 +803,16 @@ public class RulesetDataService : IRulesetDataService
 
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeRules = await GetRulesetItemRulesAsync(rulesetId, CancellationToken.None);
+                IEnumerable<RulesetItemRule> storeRules = await GetRulesetItemRulesAsync(rulesetId, ct);
 
-                var newEntities = new List<RulesetItemRule>();
+                List<RulesetItemRule> newEntities = new();
 
-                foreach (var rule in ruleUpdates)
+                foreach (RulesetItemRule rule in ruleUpdates)
                 {
-                    var storeEntity = storeRules.Where(r => r.ItemId == rule.ItemId).FirstOrDefault();
+                    RulesetItemRule? storeEntity = storeRules.FirstOrDefault(r => r.ItemId == rule.ItemId);
 
                     if (storeEntity == null)
                     {
@@ -1025,8 +820,6 @@ public class RulesetDataService : IRulesetDataService
                     }
                     else
                     {
-                        rule.Item = null;
-
                         storeEntity = rule;
 
                         dbContext.RulesetItemRules.Update(storeEntity);
@@ -1038,7 +831,8 @@ public class RulesetDataService : IRulesetDataService
                     dbContext.RulesetItemRules.AddRange(newEntities);
                 }
 
-                var storeRuleset = await dbContext.Rulesets.Where(r => r.Id == rulesetId).FirstOrDefaultAsync();
+                Ruleset? storeRuleset = await dbContext.Rulesets.Where(r => r.Id == rulesetId)
+                    .FirstOrDefaultAsync(cancellationToken: ct);
 
                 if (storeRuleset != null)
                 {
@@ -1046,16 +840,19 @@ public class RulesetDataService : IRulesetDataService
                     dbContext.Rulesets.Update(storeRuleset);
                 }
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
 
-                var message = new RulesetRuleChangeMessage(storeRuleset, RulesetRuleChangeType.ItemRule);
-                _messageService.BroadcastRulesetRuleChangeMessage(message);
+                if (storeRuleset is not null)
+                {
+                    RulesetRuleChangeMessage message = new(storeRuleset, RulesetRuleChangeType.ItemRule);
+                    _messageService.BroadcastRulesetRuleChangeMessage(message);
+                }
 
-                _logger.LogInformation($"Saved Item Rule updates for Ruleset {rulesetId}");
+                _logger.LogInformation("Saved Item Rule updates for Ruleset {ID}", rulesetId);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error saving RulesetItemRule changes to database: {ex}");
+                _logger.LogError(ex, "Error saving RulesetItemRule changes to database");
             }
         }
     }
@@ -1072,7 +869,7 @@ public class RulesetDataService : IRulesetDataService
 
         using (await _facilityRulesLock.WaitAsync($"{rulesetId}"))
         {
-            var ruleUpdates = rules.Where(rule => rule.RulesetFacilityRule.RulesetId == rulesetId).ToList();
+            List<RulesetFacilityRuleChange> ruleUpdates = rules.Where(rule => rule.RulesetFacilityRule.RulesetId == rulesetId).ToList();
 
             if (!ruleUpdates.Any())
             {
@@ -1081,16 +878,16 @@ public class RulesetDataService : IRulesetDataService
 
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeRules = await dbContext.RulesetFacilityRules.Where(rule => rule.RulesetId == rulesetId).ToListAsync();
+                List<RulesetFacilityRule> storeRules = await dbContext.RulesetFacilityRules.Where(rule => rule.RulesetId == rulesetId).ToListAsync();
 
-                var newEntities = new List<RulesetFacilityRule>();
+                List<RulesetFacilityRule> newEntities = new();
 
-                foreach (var rule in ruleUpdates)
+                foreach (RulesetFacilityRuleChange rule in ruleUpdates)
                 {
-                    var storeEntity = storeRules.Where(r => r.FacilityId == rule.RulesetFacilityRule.FacilityId).FirstOrDefault();
+                    RulesetFacilityRule? storeEntity = storeRules.FirstOrDefault(r => r.FacilityId == rule.RulesetFacilityRule.FacilityId);
 
                     if (storeEntity == null)
                     {
@@ -1120,7 +917,7 @@ public class RulesetDataService : IRulesetDataService
                     dbContext.RulesetFacilityRules.AddRange(newEntities);
                 }
 
-                var storeRuleset = await dbContext.Rulesets.Where(r => r.Id == rulesetId).FirstOrDefaultAsync();
+                Ruleset? storeRuleset = await dbContext.Rulesets.Where(r => r.Id == rulesetId).FirstOrDefaultAsync();
                 if (storeRuleset != null)
                 {
                     storeRuleset.DateLastModified = DateTime.UtcNow;
@@ -1129,84 +926,53 @@ public class RulesetDataService : IRulesetDataService
 
                 await dbContext.SaveChangesAsync();
 
-                var message = new RulesetRuleChangeMessage(storeRuleset, RulesetRuleChangeType.FacilityRule);
-                _messageService.BroadcastRulesetRuleChangeMessage(message);
+                if (storeRuleset is not null)
+                {
+                    RulesetRuleChangeMessage message = new(storeRuleset, RulesetRuleChangeType.FacilityRule);
+                    _messageService.BroadcastRulesetRuleChangeMessage(message);
+                }
 
-                _logger.LogInformation($"Saved Facility Rule updates for Ruleset {rulesetId}");
+                _logger.LogInformation("Saved Facility Rule updates for Ruleset {ID}", rulesetId);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error saving RulesetFacilityRule changes to database: {ex}");
+                _logger.LogError(ex, "Error saving RulesetFacilityRule changes to database");
             }
         }
     }
 
     #endregion Save Ruleset Rules
 
-    private async Task<Ruleset> UpdateRulesetDateLastModified(int rulesetId, DateTime dateLastModifiedUtc)
+    public async Task<Ruleset?> SaveNewRulesetAsync(Ruleset ruleset, CancellationToken ct = default)
     {
-        using (await _rulesetLock.WaitAsync($"{rulesetId}"))
-        {
-            try
-            {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+        Ruleset? created = await CreateRulesetAsync(ruleset, ct);
 
-                var storeRuleset = await GetRulesetFromIdAsync(rulesetId, CancellationToken.None, false, false);
-
-                if (storeRuleset == null)
-                {
-                    return null;
-                }
-
-                storeRuleset.DateLastModified = dateLastModifiedUtc;
-                dbContext.Rulesets.Update(storeRuleset);
-
-                await dbContext.SaveChangesAsync();
-
-                return storeRuleset;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error updating DateLastModified for ruleset ID {rulesetId}: {ex}");
-
-                return null;
-            }
-        }
-    }
-
-    public async Task<Ruleset> SaveNewRulesetAsync(Ruleset ruleset)
-    {
-        ruleset = await CreateRulesetAsync(ruleset);
-
-        if (ruleset == null)
-        {
+        if (created == null)
             return null;
-        }
 
-        var TaskList = new List<Task>();
+        List<Task> TaskList = new();
 
-        var overlayConfigurationTask = SeedNewRulesetDefaultOverlayConfiguration(ruleset.Id);
+        Task overlayConfigurationTask = SeedNewRulesetDefaultOverlayConfiguration(created.Id);
         TaskList.Add(overlayConfigurationTask);
 
-        var itemCategoryRulesTask = SeedNewRulesetDefaultItemCategoryRules(ruleset.Id);
+        Task itemCategoryRulesTask = SeedNewRulesetDefaultItemCategoryRules(created.Id);
         TaskList.Add(itemCategoryRulesTask);
 
-        var itemRulesTask = SeedNewRulesetDefaultItemRules(ruleset.Id);
+        Task itemRulesTask = SeedNewRulesetDefaultItemRules(created.Id);
         TaskList.Add(itemRulesTask);
 
-        var actionRulesTask = SeedNewRulesetDefaultActionRules(ruleset.Id);
+        Task actionRulesTask = SeedNewRulesetDefaultActionRules(created.Id);
         TaskList.Add(actionRulesTask);
 
-        var facilityRulesTask = SeedNewRulesetDefaultFacilityRules(ruleset.Id);
+        Task facilityRulesTask = SeedNewRulesetDefaultFacilityRules(created.Id);
         TaskList.Add(facilityRulesTask);
 
         await Task.WhenAll(TaskList);
 
-        return ruleset;
+        return created;
     }
 
-    private async Task<Ruleset> CreateRulesetAsync(Ruleset ruleset)
+    private async Task<Ruleset?> CreateRulesetAsync(Ruleset ruleset, CancellationToken ct)
     {
         if (!IsValidRulesetName(ruleset.Name) || ruleset.IsDefault
             || !IsValidRulesetDefaultRoundLength(ruleset.DefaultRoundLength) || !IsValidRulesetDefaultMatchTitle(ruleset.DefaultMatchTitle))
@@ -1214,29 +980,29 @@ public class RulesetDataService : IRulesetDataService
             return null;
         }
 
-        using (await _rulesetLock.WaitAsync($"{ruleset.Id}"))
+        using (await _rulesetLock.WaitAsync($"{ruleset.Id}", ct))
         {
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                if (ruleset.DateCreated == default(DateTime))
+                if (ruleset.DateCreated == default)
                 {
                     ruleset.DateCreated = DateTime.UtcNow;
                 }
 
                 dbContext.Rulesets.Add(ruleset);
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
 
-                await SetUpRulesetsMapAsync(CancellationToken.None);
+                await SetUpRulesetsMapAsync(ct);
 
                 return ruleset;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.ToString());
+                _logger.LogError(ex, "Failed to create a ruleset");
 
                 return null;
             }
@@ -1260,12 +1026,12 @@ public class RulesetDataService : IRulesetDataService
         {
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var defaultRulesetId = await dbContext.Rulesets.Where(r => r.IsDefault).Select(r => r.Id).FirstOrDefaultAsync();
+                int defaultRulesetId = await dbContext.Rulesets.Where(r => r.IsDefault).Select(r => r.Id).FirstOrDefaultAsync();
 
-                var defaultConfiguration = await dbContext.RulesetOverlayConfigurations.Where(c => c.RulesetId == defaultRulesetId).FirstOrDefaultAsync();
+                RulesetOverlayConfiguration? defaultConfiguration = await dbContext.RulesetOverlayConfigurations.Where(c => c.RulesetId == defaultRulesetId).FirstOrDefaultAsync();
 
                 if (defaultConfiguration == null)
                 {
@@ -1274,7 +1040,7 @@ public class RulesetDataService : IRulesetDataService
                     return;
                 }
 
-                var newConfiguration = BuildRulesetOverlayConfiguration(rulesetId, defaultConfiguration.UseCompactLayout, defaultConfiguration.StatsDisplayType, defaultConfiguration.ShowStatusPanelScores);
+                RulesetOverlayConfiguration newConfiguration = BuildRulesetOverlayConfiguration(rulesetId, defaultConfiguration.UseCompactLayout, defaultConfiguration.StatsDisplayType, defaultConfiguration.ShowStatusPanelScores);
 
                 dbContext.RulesetOverlayConfigurations.Add(newConfiguration);
 
@@ -1282,7 +1048,7 @@ public class RulesetDataService : IRulesetDataService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.ToString());
+                _logger.LogError(ex, "Failed to seed a default overlay configuration for a new ruleset");
 
                 return;
             }
@@ -1409,7 +1175,7 @@ public class RulesetDataService : IRulesetDataService
     private static RulesetItemCategoryRule BuildRulesetItemCategoryRule
     (
         int rulesetId,
-        int itemCategoryId,
+        uint itemCategoryId,
         int points = 0,
         bool isBanned = false,
         bool deferToItemRules = false,
@@ -1450,10 +1216,10 @@ public class RulesetDataService : IRulesetDataService
         {
             using (await _itemRulesLock.WaitAsync($"{rulesetId}"))
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeRulesCount =
+                int storeRulesCount =
                     await dbContext.RulesetItemRules.Where(r => r.RulesetId == rulesetId)
                         .CountAsync(); // TODO: what is this check for?
 
@@ -1462,7 +1228,7 @@ public class RulesetDataService : IRulesetDataService
                     return;
                 }
 
-                var defaultRulesetId = await dbContext.Rulesets.Where(r => r.IsDefault).Select(r => r.Id)
+                int defaultRulesetId = await dbContext.Rulesets.Where(r => r.IsDefault).Select(r => r.Id)
                     .FirstOrDefaultAsync();
 
                 List<RulesetItemRule> defaultRules = await dbContext.RulesetItemRules
@@ -1498,43 +1264,45 @@ public class RulesetDataService : IRulesetDataService
 
     private async Task UpdateItemRulesForItemCategoryRule(RulesetItemCategoryRule itemCategoryRule)
     {
-        var rulesetId = itemCategoryRule.RulesetId;
-        var itemCategoryId = itemCategoryRule.ItemCategoryId;
-        var itemCategoryPoints = itemCategoryRule.Points;
-        var isItemCategoryBanned = itemCategoryRule.IsBanned;
+        int rulesetId = itemCategoryRule.RulesetId;
+        uint itemCategoryId = itemCategoryRule.ItemCategoryId;
+        int itemCategoryPoints = itemCategoryRule.Points;
+        bool isItemCategoryBanned = itemCategoryRule.IsBanned;
 
         using (await _itemRulesLock.WaitAsync($"{rulesetId}"))
         {
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var defaultRulesetId = DefaultRulesetId;
-                var defaultItemRules = await GetRulesetItemRulesForItemCategoryIdAsync(defaultRulesetId, itemCategoryId, CancellationToken.None);
-                var storeItemRules = await GetRulesetItemRulesForItemCategoryIdAsync(rulesetId, itemCategoryId, CancellationToken.None);
-                var allStoreItems = await _itemService.GetItemsByCategoryIdAsync(itemCategoryId);
+                IEnumerable<RulesetItemRule> defaultItemRules = GetRulesetItemRulesForItemCategoryId(DefaultRulesetId, itemCategoryId);
+                IEnumerable<RulesetItemRule> storeItemRules = GetRulesetItemRulesForItemCategoryId(rulesetId, itemCategoryId);
 
-                var createdRules = new List<RulesetItemRule>();
+                IReadOnlyList<CensusItem>? allStoreItems = await _itemService.GetByCategoryAsync(itemCategoryId);
+                if (allStoreItems is null)
+                    return;
 
-                foreach (var item in allStoreItems)
+                List<RulesetItemRule> createdRules = new();
+
+                foreach (CensusItem item in allStoreItems)
                 {
-                    var defaultRule = defaultItemRules.FirstOrDefault(r => r.ItemId == item.Id);
-                    var storeRule = storeItemRules.FirstOrDefault(r => r.ItemId == item.Id);
+                    RulesetItemRule? defaultRule = defaultItemRules.FirstOrDefault(r => r.ItemId == item.ItemId);
+                    RulesetItemRule? storeRule = storeItemRules.FirstOrDefault(r => r.ItemId == item.ItemId);
 
                     if (storeRule == null)
                     {
                         if (defaultRule != null)
                         {
-                            var points = (itemCategoryPoints != 0 && defaultRule.Points != 0) ? itemCategoryPoints : defaultRule.Points;
-                            var isBanned = (isItemCategoryBanned) ? isItemCategoryBanned : defaultRule.IsBanned;
+                            int points = (itemCategoryPoints != 0 && defaultRule.Points != 0) ? itemCategoryPoints : defaultRule.Points;
+                            bool isBanned = (isItemCategoryBanned) ? isItemCategoryBanned : defaultRule.IsBanned;
 
-                            var newRule = BuildRulesetItemRule(rulesetId, item.Id, itemCategoryId, points, isBanned);
+                            RulesetItemRule newRule = BuildRulesetItemRule(rulesetId, item.ItemId, itemCategoryId, points, isBanned);
                             createdRules.Add(newRule);
                         }
                         else
                         {
-                            var newRule = BuildRulesetItemRule(rulesetId, item.Id, itemCategoryId, itemCategoryPoints, isItemCategoryBanned);
+                            RulesetItemRule newRule = BuildRulesetItemRule(rulesetId, item.ItemId, itemCategoryId, itemCategoryPoints, isItemCategoryBanned);
                             createdRules.Add(newRule);
                         }
                     }
@@ -1564,8 +1332,8 @@ public class RulesetDataService : IRulesetDataService
     private static RulesetItemRule BuildRulesetItemRule
     (
         int rulesetId,
-        int itemId,
-        int itemCategoryId,
+        uint itemId,
+        uint itemCategoryId,
         int points = 0,
         bool isBanned = false,
         bool deferToPlanetsideClassSettings = false,
@@ -1605,19 +1373,19 @@ public class RulesetDataService : IRulesetDataService
         {
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeRulesCount = await dbContext.RulesetFacilityRules.Where(r => r.RulesetId == rulesetId).CountAsync();
+                int storeRulesCount = await dbContext.RulesetFacilityRules.Where(r => r.RulesetId == rulesetId).CountAsync();
 
                 if (storeRulesCount > 0)
                 {
                     return;
                 }
 
-                var defaultRulesetId = await dbContext.Rulesets.Where(r => r.IsDefault).Select(r => r.Id).FirstOrDefaultAsync();
+                int defaultRulesetId = await dbContext.Rulesets.Where(r => r.IsDefault).Select(r => r.Id).FirstOrDefaultAsync();
 
-                var defaultRules = await dbContext.RulesetFacilityRules.Where(r => r.RulesetId == defaultRulesetId).ToListAsync();
+                List<RulesetFacilityRule> defaultRules = await dbContext.RulesetFacilityRules.Where(r => r.RulesetId == defaultRulesetId).ToListAsync();
 
                 dbContext.RulesetFacilityRules.AddRange(defaultRules.Select(r => BuildRulesetFacilityRule(rulesetId, r.FacilityId, r.MapRegionId)));
 
@@ -1643,33 +1411,31 @@ public class RulesetDataService : IRulesetDataService
     }
     #endregion SAVE / UPDATE methods
 
-    #region DELETE methods
-    public async Task<bool> DeleteRulesetAsync(int rulesetId)
+    public async Task<bool> DeleteRulesetAsync(int rulesetId, CancellationToken ct = default)
     {
-        using (await _rulesetLock.WaitAsync($"{rulesetId}"))
+        using (await _rulesetLock.WaitAsync($"{rulesetId}", ct))
         {
             try
             {
-                var storeRuleset = await GetRulesetFromIdAsync(rulesetId, CancellationToken.None, false, false);
+                Ruleset? storeRuleset = await GetRulesetFromIdAsync(rulesetId, ct, false, false);
 
                 if (storeRuleset == null || storeRuleset.IsDefault || storeRuleset.IsCustomDefault)
                 {
                     return false;
                 }
 
-                if (!(await CanDeleteRuleset(rulesetId, CancellationToken.None)))
+                if (!(await CanDeleteRuleset(rulesetId, ct)))
                 {
                     return false;
                 }
 
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
                 dbContext.Rulesets.Remove(storeRuleset);
 
-                await dbContext.SaveChangesAsync();
-
-                await SetUpRulesetsMapAsync(CancellationToken.None);
+                await dbContext.SaveChangesAsync(ct);
+                await SetUpRulesetsMapAsync(ct);
 
                 return true;
             }
@@ -1682,184 +1448,32 @@ public class RulesetDataService : IRulesetDataService
         }
     }
 
-    private async Task<bool> DeleteRulesetActionRulesAsync(int rulesetId)
-    {
-        using (await _actionRulesLock.WaitAsync($"{rulesetId}"))
-        {
-            try
-            {
-                var storeRules = await GetRulesetActionRulesAsync(rulesetId, CancellationToken.None);
-
-                if (storeRules == null || !storeRules.Any())
-                {
-                    return true;
-                }
-
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
-
-                foreach (var rule in storeRules)
-                {
-                    rule.Ruleset = null;
-                }
-
-                dbContext.RulesetActionRules.RemoveRange(storeRules);
-
-                await dbContext.SaveChangesAsync();
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error deleting Action Rules for ruleset {rulesetId}: {ex}");
-
-                return false;
-            }
-        }
-    }
-
-    private async Task<bool> DeleteRulesetItemCategoryRulesAsync(int rulesetId)
-    {
-        using (await _itemCategoryRulesLock.WaitAsync($"{rulesetId}"))
-        {
-            try
-            {
-                var storeRules = await GetRulesetItemCategoryRulesAsync(rulesetId, CancellationToken.None);
-
-                if (storeRules == null || !storeRules.Any())
-                {
-                    return true;
-                }
-
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
-
-                foreach (var rule in storeRules)
-                {
-                    rule.Ruleset = null;
-                    rule.ItemCategory = null;
-                }
-
-                dbContext.RulesetItemCategoryRules.RemoveRange(storeRules);
-
-                await dbContext.SaveChangesAsync();
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error deleting Item Category Rules for ruleset {rulesetId}: {ex}");
-
-                return false;
-            }
-        }
-    }
-
-    private async Task<bool> DeleteRulesetItemRulesAsync(int rulesetId)
-    {
-        using (await _itemRulesLock.WaitAsync($"{rulesetId}"))
-        {
-            try
-            {
-                var storeRules = await GetRulesetItemRulesAsync(rulesetId, CancellationToken.None);
-
-                if (storeRules == null || !storeRules.Any())
-                {
-                    return true;
-                }
-
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
-
-                foreach (var rule in storeRules)
-                {
-                    rule.Ruleset = null;
-                    rule.ItemCategory = null;
-                }
-
-                dbContext.RulesetItemRules.RemoveRange(storeRules);
-
-                await dbContext.SaveChangesAsync();
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error deleting Item Rules for ruleset {rulesetId}: {ex}");
-
-                return false;
-            }
-        }
-    }
-
-    private async Task<bool> DeleteRulesetFacilityRulesAsync(int rulesetId)
-    {
-        using (await _facilityRulesLock.WaitAsync($"{rulesetId}"))
-        {
-            try
-            {
-                var storeRules = await GetRulesetFacilityRulesAsync(rulesetId, CancellationToken.None);
-
-                if (storeRules == null || !storeRules.Any())
-                {
-                    return true;
-                }
-
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
-
-                foreach (var rule in storeRules)
-                {
-                    rule.Ruleset = null;
-                    rule.MapRegion = null;
-                }
-
-                dbContext.RulesetFacilityRules.RemoveRange(storeRules);
-
-                await dbContext.SaveChangesAsync();
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error deleting Facility Rules for ruleset {rulesetId}: {ex}");
-
-                return false;
-            }
-        }
-    }
-
-    #endregion DELETE methods
-
     #region Helper Methods
+
     private async Task SetUpRulesetsMapAsync(CancellationToken cancellationToken)
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var rulesets = await dbContext.Rulesets.ToListAsync(cancellationToken);
+            List<Ruleset> rulesets = await dbContext.Rulesets.ToListAsync(cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            var newMap = new ConcurrentDictionary<int, Ruleset>();
-
-            foreach (var rulesetId in _rulesetsMap.Keys)
+            foreach (int rulesetId in _rulesetsMap.Keys)
             {
-                if (!rulesets.Any(t => t.Id == rulesetId))
-                {
-                    _rulesetsMap.TryRemove(rulesetId, out var removeRuleset);
-                }
+                if (rulesets.All(t => t.Id != rulesetId))
+                    _rulesetsMap.TryRemove(rulesetId, out _);
             }
 
-            foreach (var ruleset in rulesets)
+            foreach (Ruleset ruleset in rulesets)
             {
                 _rulesetsMap.AddOrUpdate(ruleset.Id, ruleset, (key, oldValue) => ruleset);
             }
 
-            var customDefaultRuleset = rulesets.Where(r => r.IsCustomDefault).FirstOrDefault();
-            CustomDefaultRulesetId = customDefaultRuleset != null ? customDefaultRuleset.Id : DefaultRulesetId;
+            Ruleset? customDefaultRuleset = rulesets.FirstOrDefault(r => r.IsCustomDefault);
+            CustomDefaultRulesetId = customDefaultRuleset?.Id ?? DefaultRulesetId;
         }
         catch (Exception ex)
         {
@@ -1876,7 +1490,7 @@ public class RulesetDataService : IRulesetDataService
 
         try
         {
-            var hasBeenUsed = await HasRulesetBeenUsedAsync(rulesetId, cancellationToken);
+            bool hasBeenUsed = await HasRulesetBeenUsedAsync(rulesetId, cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -1894,10 +1508,10 @@ public class RulesetDataService : IRulesetDataService
     {
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var result = await dbContext.ScrimMatches.AnyAsync(m => m.RulesetId == rulesetId, cancellationToken);
+            bool result = await dbContext.ScrimMatches.AnyAsync(m => m.RulesetId == rulesetId, cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -1918,18 +1532,19 @@ public class RulesetDataService : IRulesetDataService
         ActiveRulesetId = rulesetId;
     }
 
-    public async Task<Ruleset> SetCustomDefaultRulesetAsync(int rulesetId)
+    public async Task<Ruleset?> SetCustomDefaultRulesetAsync(int rulesetId, CancellationToken ct = default)
     {
         _defaultRulesetAutoEvent.WaitOne();
 
         try
         {
-            using var factory = _dbContextHelper.GetFactory();
-            var dbContext = factory.GetDbContext();
+            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+            PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            var currentDefaultRuleset = await dbContext.Rulesets.FirstOrDefaultAsync(r => r.IsCustomDefault);
+            Ruleset? currentDefaultRuleset = await dbContext.Rulesets
+                .FirstOrDefaultAsync(r => r.IsCustomDefault, cancellationToken: ct);
 
-            var newDefaultRuleset = await GetRulesetFromIdAsync(rulesetId, CancellationToken.None, false, false);
+            Ruleset? newDefaultRuleset = await GetRulesetFromIdAsync(rulesetId, ct, false, false);
 
             if (newDefaultRuleset == null)
             {
@@ -1959,11 +1574,11 @@ public class RulesetDataService : IRulesetDataService
                 return currentDefaultRuleset;
             }
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(ct);
 
             _defaultRulesetAutoEvent.Set();
 
-            _logger.LogInformation($"Set ruleset {rulesetId} as new custom default ruleset");
+            _logger.LogInformation("Set ruleset {ID} as new custom default ruleset", rulesetId);
 
             CustomDefaultRulesetId = newDefaultRuleset.Id;
 
@@ -1971,7 +1586,7 @@ public class RulesetDataService : IRulesetDataService
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed setting ruleset {rulesetId} as new custom default ruleset: {ex}");
+            _logger.LogError("Failed setting ruleset {ID} as new custom default ruleset", rulesetId);
 
             _defaultRulesetAutoEvent.Set();
 
@@ -1983,69 +1598,67 @@ public class RulesetDataService : IRulesetDataService
     #region Import / Export JSON
     public async Task<bool> ExportRulesetToJsonFile(int rulesetId, CancellationToken cancellationToken)
     {
-        using (await _rulesetExportLock.WaitAsync($"{rulesetId}"))
+        using (await _rulesetExportLock.WaitAsync($"{rulesetId}", cancellationToken))
         {
             try
             {
-                var ruleset = await GetRulesetFromIdAsync(rulesetId, cancellationToken);
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (ruleset == null)
-                {
+                Ruleset? ruleset = await GetRulesetFromIdAsync(rulesetId, cancellationToken);
+                if (ruleset is null)
                     return false;
-                }
 
-                var fileName = GetRulesetFileName(rulesetId, ruleset.Name);
-
+                string fileName = GetRulesetFileName(rulesetId, ruleset.Name);
 
                 if (await RulesetFileHandler.WriteToJsonFile(fileName, new JsonRuleset(ruleset, fileName)))
                 {
-                    _logger.LogInformation($"Exported ruleset {rulesetId} to file {fileName}");
-
+                    _logger.LogInformation("Exported ruleset {ID} to file {FileName}", rulesetId, fileName);
                     return true;
                 }
-                else
-                {
-                    _logger.LogError($"Failed exporting ruleset {rulesetId} to JSON file");
 
-                    return false;
-                }
+                _logger.LogError("Failed exporting ruleset {ID} to JSON file", rulesetId);
+                return false;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Failed exporting ruleset {rulesetId} to JSON file: {ex}");
-
+                _logger.LogError(ex, "Failed exporting ruleset {ID} to JSON file", rulesetId);
                 return false;
             }
         }
     }
 
-    public async Task<Ruleset> ImportNewRulesetFromJsonFile(string fileName, bool returnCollections = false, bool returnOverlayConfiguration = false)
+    public async Task<Ruleset?> ImportNewRulesetFromJsonFile
+    (
+        string fileName,
+        bool returnCollections = false,
+        bool returnOverlayConfiguration = false,
+        CancellationToken ct = default
+    )
     {
         try
         {
-            var stopWatchReadJson = new Stopwatch();
-            var stopWatchMakeTasks = new Stopwatch();
-            var stopWatchRunTasks = new Stopwatch();
+            Stopwatch stopWatchReadJson = new();
+            Stopwatch stopWatchMakeTasks = new();
+            Stopwatch stopWatchRunTasks = new();
 
-            var stopWatchTotal = Stopwatch.StartNew();
+            Stopwatch stopWatchTotal = Stopwatch.StartNew();
             stopWatchReadJson.Start();
 
-            var jsonRuleset = await RulesetFileHandler.ReadFromJsonFile(fileName);
+            JsonRuleset? jsonRuleset = await RulesetFileHandler.ReadFromJsonFile(fileName);
 
             if (jsonRuleset == null)
             {
-                _logger.LogWarning($"Failed importing ruleset from file {fileName}: failed reading JSON file");
-
+                _logger.LogWarning("Failed importing ruleset from file {Name}: failed reading JSON file", fileName);
                 return null;
             }
 
-            var ruleset = await CreateRulesetAsync(ConvertToDbModel(jsonRuleset, fileName));
+            Ruleset? ruleset = await CreateRulesetAsync(ConvertToDbModel(jsonRuleset, fileName), ct);
 
             if (ruleset == null)
             {
-                _logger.LogWarning($"Failed importing ruleset from file {fileName}: failed creating new ruleset entity");
+                _logger.LogWarning
+                (
+                    "Failed importing ruleset from file {Name}: failed creating new ruleset entity",
+                    fileName
+                );
 
                 return null;
             }
@@ -2053,44 +1666,44 @@ public class RulesetDataService : IRulesetDataService
             stopWatchReadJson.Stop();
             stopWatchMakeTasks.Start();
 
-            var TaskList = new List<Task>();
+            List<Task> TaskList = new();
 
             if (jsonRuleset.RulesetOverlayConfiguration != null)
             {
                 ruleset.RulesetOverlayConfiguration = ConvertToDbModel(ruleset.Id, jsonRuleset.RulesetOverlayConfiguration);
-                var overlayConfigurationTask = SaveRulesetOverlayConfiguration(ruleset.Id, ruleset.RulesetOverlayConfiguration, CancellationToken.None);
+                Task<bool> overlayConfigurationTask = SaveRulesetOverlayConfiguration(ruleset.Id, ruleset.RulesetOverlayConfiguration, ct);
                 TaskList.Add(overlayConfigurationTask);
             }
             else
             {
-                var defaultOverlayConfiguration = BuildRulesetOverlayConfiguration(ruleset.Id);
+                RulesetOverlayConfiguration defaultOverlayConfiguration = BuildRulesetOverlayConfiguration(ruleset.Id);
                 ruleset.RulesetOverlayConfiguration = defaultOverlayConfiguration;
-                var overlayConfigurationTask = SaveRulesetOverlayConfiguration(ruleset.Id, ruleset.RulesetOverlayConfiguration, CancellationToken.None);
+                Task<bool> overlayConfigurationTask = SaveRulesetOverlayConfiguration(ruleset.Id, ruleset.RulesetOverlayConfiguration, ct);
                 TaskList.Add(overlayConfigurationTask);
             }
 
             if (jsonRuleset.RulesetActionRules != null && jsonRuleset.RulesetActionRules.Any())
             {
                 ruleset.RulesetActionRules = jsonRuleset.RulesetActionRules.Select(r => ConvertToDbModel(ruleset.Id, r)).ToList();
-                var actionRulesTask = SaveRulesetActionRules(ruleset.Id, ruleset.RulesetActionRules);
+                Task actionRulesTask = SaveRulesetActionRules(ruleset.Id, ruleset.RulesetActionRules, ct);
                 TaskList.Add(actionRulesTask);
             }
 
             if (jsonRuleset.RulesetItemCategoryRules != null && jsonRuleset.RulesetItemCategoryRules.Any())
             {
                 ruleset.RulesetItemCategoryRules = jsonRuleset.RulesetItemCategoryRules.Select(r => ConvertToDbModel(ruleset.Id, r)).ToList();
-                var itemCategoryRulesTask = SaveRulesetItemCategoryRules(ruleset.Id, ruleset.RulesetItemCategoryRules);
+                Task itemCategoryRulesTask = SaveRulesetItemCategoryRules(ruleset.Id, ruleset.RulesetItemCategoryRules, ct);
                 TaskList.Add(itemCategoryRulesTask);
 
-                var rulesetItemRules = new List<RulesetItemRule>();
+                List<RulesetItemRule> rulesetItemRules = new();
 
-                foreach (var jsonItemCategoryRule in jsonRuleset.RulesetItemCategoryRules)
+                foreach (JsonRulesetItemCategoryRule jsonItemCategoryRule in jsonRuleset.RulesetItemCategoryRules)
                 {
                     if (jsonItemCategoryRule.RulesetItemRules != null && jsonItemCategoryRule.RulesetItemRules.Any())
                     {
-                        foreach (var jsonItemRule in jsonItemCategoryRule.RulesetItemRules)
+                        foreach (JsonRulesetItemRule jsonItemRule in jsonItemCategoryRule.RulesetItemRules)
                         {
-                            if (!rulesetItemRules.Any(r => r.ItemId == jsonItemRule.ItemId))
+                            if (rulesetItemRules.All(r => r.ItemId != jsonItemRule.ItemId))
                             {
                                 rulesetItemRules.Add(ConvertToDbModel(ruleset.Id, jsonItemRule, jsonItemCategoryRule.ItemCategoryId));
                             }
@@ -2100,14 +1713,14 @@ public class RulesetDataService : IRulesetDataService
 
                 ruleset.RulesetItemRules = new List<RulesetItemRule>(rulesetItemRules);
 
-                var itemRulesTask = SaveRulesetItemRules(ruleset.Id, ruleset.RulesetItemRules);
+                Task itemRulesTask = SaveRulesetItemRules(ruleset.Id, ruleset.RulesetItemRules, ct);
                 TaskList.Add(itemRulesTask);
             }
 
             if (jsonRuleset.RulesetFacilityRules != null && jsonRuleset.RulesetFacilityRules.Any())
             {
                 ruleset.RulesetFacilityRules = jsonRuleset.RulesetFacilityRules.Select(r => ConvertToDbModel(ruleset.Id, r)).ToList();
-                var facilityRulesTask = SaveRulesetFacilityRules(ruleset.Id, ruleset.RulesetFacilityRules);
+                Task facilityRulesTask = SaveRulesetFacilityRules(ruleset.Id, ruleset.RulesetFacilityRules);
                 TaskList.Add(facilityRulesTask);
             }
 
@@ -2120,7 +1733,7 @@ public class RulesetDataService : IRulesetDataService
                 await Task.WhenAll(TaskList);
             }
 
-            _logger.LogInformation($"Created ruleset {ruleset.Id} from file {fileName}");
+            _logger.LogInformation("Created ruleset {ID} from file {File}", ruleset.Id, fileName);
 
             if (!returnCollections)
             {
@@ -2138,10 +1751,10 @@ public class RulesetDataService : IRulesetDataService
             stopWatchRunTasks.Stop();
             stopWatchTotal.Stop();
 
-            var stopWatchTotalString = $"Imported Ruleset {fileName}: {stopWatchTotal.ElapsedMilliseconds / 1000.0}s";
-            var stopWatchReadJsonString = $"\n\t\t   Read JSON: {stopWatchReadJson.ElapsedMilliseconds / 1000.0}s";
-            var stopWatchMakeTasksString = $"\n\t\t   Make Tasks: {stopWatchMakeTasks.ElapsedMilliseconds / 1000.0}s";
-            var stopWatchRunTasksString = $"\n\t\t   Run Tasks: {stopWatchRunTasks.ElapsedMilliseconds / 1000.0}s";
+            string stopWatchTotalString = $"Imported Ruleset {fileName}: {stopWatchTotal.ElapsedMilliseconds / 1000.0}s";
+            string stopWatchReadJsonString = $"\n\t\t   Read JSON: {stopWatchReadJson.ElapsedMilliseconds / 1000.0}s";
+            string stopWatchMakeTasksString = $"\n\t\t   Make Tasks: {stopWatchMakeTasks.ElapsedMilliseconds / 1000.0}s";
+            string stopWatchRunTasksString = $"\n\t\t   Run Tasks: {stopWatchRunTasks.ElapsedMilliseconds / 1000.0}s";
 
             _logger.LogInformation($"{stopWatchTotalString}{stopWatchReadJsonString}{stopWatchMakeTasksString}{stopWatchRunTasksString}");
 
@@ -2166,7 +1779,7 @@ public class RulesetDataService : IRulesetDataService
 
         using (await _facilityRulesLock.WaitAsync($"{rulesetId}"))
         {
-            var ruleUpdates = rules.Where(rule => rule.RulesetId == rulesetId).ToList();
+            List<RulesetFacilityRule> ruleUpdates = rules.Where(rule => rule.RulesetId == rulesetId).ToList();
 
             if (!ruleUpdates.Any())
             {
@@ -2175,19 +1788,19 @@ public class RulesetDataService : IRulesetDataService
 
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeRules = await dbContext.RulesetFacilityRules.Where(rule => rule.RulesetId == rulesetId).ToListAsync();
-                var allRules = new List<RulesetFacilityRule>(storeRules);
+                List<RulesetFacilityRule> storeRules = await dbContext.RulesetFacilityRules.Where(rule => rule.RulesetId == rulesetId).ToListAsync();
+                List<RulesetFacilityRule> allRules = new(storeRules);
                 allRules.AddRange(ruleUpdates);
 
-                var newEntities = new List<RulesetFacilityRule>();
+                List<RulesetFacilityRule> newEntities = new();
 
-                foreach (var rule in allRules)
+                foreach (RulesetFacilityRule rule in allRules)
                 {
-                    var storeEntity = storeRules.Where(r => r.FacilityId == rule.FacilityId).FirstOrDefault();
-                    var updateRule = ruleUpdates.Where(r => r.FacilityId == rule.FacilityId).FirstOrDefault();
+                    RulesetFacilityRule? storeEntity = storeRules.FirstOrDefault(r => r.FacilityId == rule.FacilityId);
+                    RulesetFacilityRule? updateRule = ruleUpdates.FirstOrDefault(r => r.FacilityId == rule.FacilityId);
 
                     if (storeEntity == null)
                     {
@@ -2209,24 +1822,23 @@ public class RulesetDataService : IRulesetDataService
                     dbContext.RulesetFacilityRules.AddRange(newEntities);
                 }
 
-                var storeRuleset = await dbContext.Rulesets.Where(r => r.Id == rulesetId).FirstOrDefaultAsync();
+                Ruleset? storeRuleset = await dbContext.Rulesets.Where(r => r.Id == rulesetId).FirstOrDefaultAsync();
                 if (storeRuleset != null)
                 {
                     storeRuleset.DateLastModified = DateTime.UtcNow;
                     dbContext.Rulesets.Update(storeRuleset);
+
+                    RulesetRuleChangeMessage message = new(storeRuleset, RulesetRuleChangeType.ItemCategoryRule);
+                    _logger.LogInformation(message.Info);
+                    _messageService.BroadcastRulesetRuleChangeMessage(message);
                 }
 
                 await dbContext.SaveChangesAsync();
-
-                var message = new RulesetRuleChangeMessage(storeRuleset, RulesetRuleChangeType.ItemCategoryRule);
-                _messageService.BroadcastRulesetRuleChangeMessage(message);
-
-                _logger.LogInformation($"{message.Info}");
                 //_logger.LogInformation($"Saved Facility Rule updates for Ruleset {rulesetId}");
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error saving SaveRulesetFacilityRules to database: {ex}");
+                _logger.LogError(ex, "Error saving SaveRulesetFacilityRules to database");
             }
         }
     }
@@ -2265,8 +1877,8 @@ public class RulesetDataService : IRulesetDataService
 
     private RulesetOverlayConfiguration ConvertToDbModel(int rulesetId, JsonRulesetOverlayConfiguration jsonConfiguration)
     {
-        var useCompactLayout = jsonConfiguration.UseCompactLayout ?? false;
-        var statsDisplayType = jsonConfiguration.StatsDisplayType ?? OverlayStatsDisplayType.InfantryScores;
+        bool useCompactLayout = jsonConfiguration.UseCompactLayout ?? false;
+        OverlayStatsDisplayType statsDisplayType = jsonConfiguration.StatsDisplayType ?? OverlayStatsDisplayType.InfantryScores;
 
         return BuildRulesetOverlayConfiguration(rulesetId, useCompactLayout, statsDisplayType, jsonConfiguration.UseCompactLayout);
     }
@@ -2281,10 +1893,17 @@ public class RulesetDataService : IRulesetDataService
         return BuildRulesetItemCategoryRule(rulesetId, jsonRule.ItemCategoryId, jsonRule.Points, jsonRule.IsBanned, jsonRule.DeferToItemRules, jsonRule.DeferToPlanetsideClassSettings, new PlanetsideClassRuleSettings(jsonRule));
     }
 
-    private RulesetItemRule ConvertToDbModel(int rulesetId, JsonRulesetItemRule jsonRule, int itemCategoryId)
-    {
-        return BuildRulesetItemRule(rulesetId, jsonRule.ItemId, itemCategoryId, jsonRule.Points, jsonRule.IsBanned, jsonRule.DeferToPlanetsideClassSettings, new PlanetsideClassRuleSettings(jsonRule));
-    }
+    private static RulesetItemRule ConvertToDbModel(int rulesetId, JsonRulesetItemRule jsonRule, uint itemCategoryId)
+        => BuildRulesetItemRule
+        (
+            rulesetId,
+            jsonRule.ItemId,
+            itemCategoryId,
+            jsonRule.Points,
+            jsonRule.IsBanned,
+            jsonRule.DeferToPlanetsideClassSettings,
+            new PlanetsideClassRuleSettings(jsonRule)
+        );
 
     private RulesetFacilityRule ConvertToDbModel(int rulesetID, JsonRulesetFacilityRule jsonRule)
     {

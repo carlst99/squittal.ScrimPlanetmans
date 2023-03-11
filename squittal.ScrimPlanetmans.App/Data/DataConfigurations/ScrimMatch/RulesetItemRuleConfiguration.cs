@@ -16,15 +16,9 @@ public class RulesetItemRuleConfiguration : IEntityTypeConfiguration<RulesetItem
             e.ItemId
         });
 
-        builder.Ignore(e => e.Item);
-        builder.Ignore(e => e.ItemCategory);
-
         builder.HasOne(rule => rule.Ruleset)
             .WithMany(ruleset => ruleset.RulesetItemRules)
             .HasForeignKey(rule => rule.RulesetId);
-
-        builder.HasOne(rule => rule.Item)
-            .WithOne();
 
         builder.Property(e => e.Points).HasDefaultValue(0);
         builder.Property(e => e.IsBanned).HasDefaultValue(false);

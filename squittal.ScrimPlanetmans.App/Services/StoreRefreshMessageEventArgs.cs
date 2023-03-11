@@ -1,22 +1,12 @@
 ﻿using System;
-using System.Threading;
 
 namespace squittal.ScrimPlanetmans.App.Services;
 
 public class StoreRefreshMessageEventArgs : EventArgs
 {
-    public StoreRefreshSource RefreshSource { get; set; }
-    public CancellationToken CancellationToken { get; set; }
+    public static readonly StoreRefreshMessageEventArgs Default = new();
 
-    public StoreRefreshMessageEventArgs(StoreRefreshSource refreshSource, CancellationToken cancellationToken)
+    private StoreRefreshMessageEventArgs()
     {
-        RefreshSource = refreshSource;
-        CancellationToken = cancellationToken;
     }
-}
-
-public enum StoreRefreshSource
-{
-    CensusApi,
-    BackupSqlScript
 }

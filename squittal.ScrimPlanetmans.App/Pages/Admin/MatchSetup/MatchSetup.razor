@@ -17,8 +17,6 @@
 
 @inject IScrimMessageBroadcastService MessageService
 @inject IScrimMatchEngine ScrimMatchEngine
-@inject IScrimMatchScorer MatchScorer
-@inject IItemService ItemService
 @inject IFacilityService FacilityService
 @inject IZoneService ZoneService
 @inject IWorldService WorldService
@@ -628,18 +626,17 @@
             return;
         }
 
-        var newActiveRuleset = await RulesetManager.ActivateRulesetAsync(rulesetId);
-
-        if (newActiveRuleset == null || newActiveRuleset.Id == _activeRuleset.Id)
+        bool newActiveRuleset = await RulesetManager.ActivateRulesetAsync(rulesetId);
+        if (RulesetManager.ActiveRuleset is not { } ruleset || ruleset.Id == _activeRuleset.Id)
         {
             _isChangingRuleset = false;
             InvokeAsyncStateHasChanged();
             return;
         }
 
-        _activeRuleset = newActiveRuleset;
-        _selectedRuleset = newActiveRuleset;
-        _inputSelectRulesetStringId = newActiveRuleset.Id.ToString();
+        _activeRuleset = ruleset;
+        _selectedRuleset = ruleset;
+        _inputSelectRulesetStringId = ruleset.Id.ToString();
 
         await SetUpActiveRulesetConfigAsync();
 

@@ -1,16 +1,20 @@
 ﻿@using squittal.ScrimPlanetmans.App.Pages.Shared;
 @using System.Collections.Concurrent;
+@using System.Diagnostics.CodeAnalysis
 @using System.Text.RegularExpressions;
 @using System.Threading;
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
+@using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models
 @using squittal.ScrimPlanetmans.App.Services.Rulesets.Interfaces
 
+@inject ICensusItemService CensusItemService
 @inject IRulesetDataService RulesetDataService
 
 @implements IDisposable
 
-<div class="sq-mini-card-6 default" style="min-width: 420px; background-color: transparent; box-shadow: 0px 2px 5px 0px var(--sq-light-blue-gray); max-width: calc(50% - 8px);">
+<div class="sq-mini-card-6 default" style="min-width: 420px; background-color: transparent; box-shadow: 0 2px 5px 0 var(--sq-light-blue-gray); max-width: calc(50% - 8px);">
     <h5>Item Rules</h5>
 
     @if (_isLoadingRules)
@@ -73,8 +77,13 @@
                             <tbody>
                                 @foreach (var itemRule in _itemRules.Where(r => r.ItemCategoryId == _selectedItemCategoryId))
                                 {
+                                    _items.TryGetValue(itemRule.ItemId, out CensusItem? item);
+                                    string itemName = item?.Name.English.HasValue is true
+                                        ? item.Name.English.Value
+                                        : $"Item{itemRule.ItemId}";
+
                                     <tr class="sans-serif-font">
-                                        <td style="color: var(--sq-black);">@itemRule.Item.Name <span class="mono-font" style="color: var(--sq-gray); font-size: smaller;">[@itemRule.ItemId]</span></td>
+                                        <td style="color: var(--sq-black);">@itemName <span class="mono-font" style="color: var(--sq-gray); font-size: smaller;">[@itemRule.ItemId]</span></td>
                                         <td class="mono-font" style="opacity: @GetValueOpacity(itemRule.Points); text-align: right; width: 50px; color: var(--sq-black);">@itemRule.Points</td>
                                         <td style="color: var(--sq-black); opacity: @GetBoolValueOpacity(itemRule.IsBanned);">@itemRule.IsBanned</td>
                                         <td style="color: var(--sq-black); opacity: @GetBoolValueOpacity(itemRule.DeferToPlanetsideClassSettings);">@itemRule.DeferToPlanetsideClassSettings</td>
@@ -208,30 +217,34 @@
     public int i_rulesetId { get; set; }
     private int _renderedRulesetId { get; set; }
 
-    private IEnumerable<RulesetItemRule> _itemRules { get; set; }
+    private IEnumerable<RulesetItemRule>? _itemRules { get; set; }
+    private Dictionary<uint, CensusItem> _items { get; set; }
 
-    private IEnumerable<ItemCategory> _deferredItemCategories { get; set; }
-    private IEnumerable<ItemCategoryDomain> _itemCategoryDomains { get; set; }
+    private IEnumerable<ItemCategory>? _deferredItemCategories { get; set; }
+    private IEnumerable<ItemCategoryDomain>? _itemCategoryDomains { get; set; }
 
     bool _isLoadingRules { get; set; } = false;
 
     private string _selectedItemCategoryIdString { get; set; } = "0";
     private int _selectedItemCategoryId { get; set; } = 0;
-
     private int _noSelectedItemCategoryValue = 0;
-
-    private CancellationTokenSource cts;
-
-    private ConcurrentDictionary<int, bool> _extendablePlanetsideClasses { get; set; } = new ConcurrentDictionary<int, bool>();
+    private CancellationTokenSource? _cts;
+    private ConcurrentDictionary<uint, bool> _extendablePlanetsideClasses { get; set; } = new();
 
 
     #region Initializtion Methods
+
+    public ViewRulesetItemRules()
+    {
+        _items = new Dictionary<uint, CensusItem>();
+    }
+
     public void Dispose()
     {
-        if (cts != null)
+        if (_cts != null)
         {
-            cts.Cancel();
-            cts.Dispose();
+            _cts.Cancel();
+            _cts.Dispose();
         }
     }
 
@@ -243,6 +256,13 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadRulesAsync();
+
+        foreach (RulesetItemRule rule in _itemRules)
+        {
+            CensusItem? item = await CensusItemService.GetByIdAsync(rule.ItemId);
+            if (item is not null)
+                _items.Add(item.ItemId, item);
+        }
     }
 
     protected override async Task OnParametersSetAsync()
@@ -263,44 +283,40 @@
         }
     }
 
+    [MemberNotNull(nameof(_itemRules))]
     private async Task LoadRulesAsync()
     {
         _isLoadingRules = true;
         InvokeAsyncStateHasChanged();
 
         // If a process is already underway, cancel it
-        if (cts != null)
-        {
-            cts.Cancel();
-        }
+        _cts?.Cancel();
 
         // Set ctsRulesets to cancel the current process if another table refresh is requested
-        CancellationTokenSource newCTS = new CancellationTokenSource();
-        cts = newCTS;
+        CancellationTokenSource newCTS = new();
+        _cts = newCTS;
 
         try
         {
             var TaskList = new List<Task>();
 
-            var itemRulesTask = RulesetDataService.GetRulesetItemRulesAsync(_renderedRulesetId, cts.Token);
+            var itemRulesTask = RulesetDataService.GetRulesetItemRulesAsync(_renderedRulesetId, _cts.Token);
             TaskList.Add(itemRulesTask);
 
-            var deferredItemCategoriesTask = RulesetDataService.GetItemCategoriesDeferringToItemRules(_renderedRulesetId, cts.Token);
+            var deferredItemCategoriesTask = RulesetDataService.GetItemCategoriesDeferringToItemRulesAsync(_renderedRulesetId, _cts.Token);
             TaskList.Add(deferredItemCategoriesTask);
 
             await Task.WhenAll(TaskList);
 
-            cts.Token.ThrowIfCancellationRequested();
-
             _itemRules = itemRulesTask.Result.ToList();
-            _deferredItemCategories = deferredItemCategoriesTask.Result.OrderBy(c => c.Name).ToList();
+            _deferredItemCategories = deferredItemCategoriesTask.Result?.OrderBy(c => c.Name).ToList();
 
             if (_deferredItemCategories != null)
             {
                 _itemCategoryDomains = _deferredItemCategories.Select(c => c.Domain).Distinct().ToList();
             }
 
-            if (!_deferredItemCategories.Any(e => e.Id == _selectedItemCategoryId))
+            if (_deferredItemCategories?.Any(e => e.Id == _selectedItemCategoryId) is false)
             {
                 OnSelectItemCategoryId(_noSelectedItemCategoryValue.ToString());
             }
@@ -312,13 +328,13 @@
         }
         catch
         {
-            // Ignore
+            _itemRules = Array.Empty<RulesetItemRule>();
         }
 
         // When the process is complete, signal that another process can proceed
-        if (cts == newCTS)
+        if (_cts == newCTS)
         {
-            cts = null;
+            _cts = null;
         }
 
         _isLoadingRules = false;
@@ -326,25 +342,16 @@
     #endregion Initializtion Methods
 
     #region UI Controls
-    private bool GetPlanetsideClassIsExtended(int ItemId)
+
+    private bool GetPlanetsideClassIsExtended(uint itemCategoryId)
+        => _extendablePlanetsideClasses.TryGetValue(itemCategoryId, out bool isExtendable) && isExtendable;
+
+    private void OnTogglePlanetsideClassExtension(uint ItemId)
     {
-        if (_extendablePlanetsideClasses.TryGetValue(ItemId, out var currentIsExtended))
-        {
-            return currentIsExtended;
-        }
-        else
-        {
-            return false;
-        }
+        if (_extendablePlanetsideClasses.TryGetValue(ItemId, out bool currentIsExtended))
+            _extendablePlanetsideClasses.TryUpdate(ItemId, !currentIsExtended, currentIsExtended);
     }
 
-    private void OnTogglePlanetsideClassExtension(int ItemId)
-    {
-        if (_extendablePlanetsideClasses.TryGetValue(ItemId, out var currentIsExtended))
-        {
-            _extendablePlanetsideClasses.TryUpdate(ItemId, !currentIsExtended, currentIsExtended);
-        }
-    }
     #endregion UI Controls
 
     private void OnSelectItemCategoryId(string itemCategoryIdString)
@@ -362,34 +369,14 @@
     }
 
     private string GetItemCategoryDomainDescription(ItemCategoryDomain domain)
-    {
-        var name = Enum.GetName(typeof(ItemCategoryDomain), domain);
+        => Regex.Replace(domain.ToString(), @"(\p{Ll})(\p{Lu})", "$1 $2");
 
-        return Regex.Replace(name, @"(\p{Ll})(\p{Lu})", "$1 $2");
-    }
-
-
-    #region Helpers
     private double GetValueOpacity(int value)
-    {
-        return (value != 0)
-            ? 1.0
-            : 0.5;
-    }
+        => value != 0 ? 1.0 : 0.5;
 
     private double GetBoolValueOpacity(bool value)
-    {
-        return (value == true)
-            ? 1.0
-            : 0.5;
-    }
+        => value ? 1.0 : 0.5;
 
     private void InvokeAsyncStateHasChanged()
-    {
-        InvokeAsync(() =>
-        {
-            StateHasChanged();
-        });
-    }
-    #endregion Helpers
+        => InvokeAsync(StateHasChanged);
 }

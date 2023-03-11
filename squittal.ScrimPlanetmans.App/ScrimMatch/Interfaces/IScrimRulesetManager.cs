@@ -1,21 +1,22 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using MRuleset = squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models.Ruleset;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 
 public interface IScrimRulesetManager
 {
-    Ruleset.Models.Ruleset? ActiveRuleset { get; }
+    MRuleset? ActiveRuleset { get; }
 
-    Task<Ruleset.Models.Ruleset?> GetActiveRulesetAsync(bool forceRefresh = false);
-    Task<Ruleset.Models.Ruleset?> GetDefaultRulesetAsync();
+    Task<IEnumerable<MRuleset>> GetRulesetsAsync(CancellationToken ct = default);
+    Task<MRuleset?> GetActiveRulesetAsync(bool forceRefresh = false, CancellationToken ct = default);
+    Task<MRuleset?> GetDefaultRulesetAsync(CancellationToken ct = default);
 
-    Task<Ruleset.Models.Ruleset?> ActivateRulesetAsync(int rulesetId);
-    Task SetUpActiveRulesetAsync();
+    Task<bool> ActivateRulesetAsync(int rulesetId, CancellationToken ct = default);
+    Task<bool> ActivateDefaultRulesetAsync(CancellationToken ct = default);
 
-    Task SeedDefaultRuleset();
-    Task SeedScrimActionModels();
-    Task<IEnumerable<Ruleset.Models.Ruleset>> GetRulesetsAsync(CancellationToken cancellationToken);
-    Task<Ruleset.Models.Ruleset?> ActivateDefaultRulesetAsync();
+    Task SetUpActiveRulesetAsync(CancellationToken ct = default);
+    Task SeedDefaultRulesetAsync(CancellationToken ct = default);
+    Task SeedScrimActionModelsAsync(CancellationToken ct = default);
 }

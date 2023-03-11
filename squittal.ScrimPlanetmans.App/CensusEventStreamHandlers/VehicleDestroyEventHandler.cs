@@ -5,6 +5,7 @@ using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
 using DbgCensus.EventStream.EventHandlers.Abstractions;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Models;
@@ -23,7 +24,7 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
 {
     private readonly ILogger<VehicleDestroyEventHandler> _logger;
     private readonly IEventFilterService _eventFilter;
-    private readonly IItemService _itemService;
+    private readonly ICensusItemService _itemService;
     private readonly IVehicleService _vehicleService;
     private readonly IScrimTeamsManager _teamsManager;
     private readonly IScrimMessageBroadcastService _messageService;
@@ -36,7 +37,7 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
     (
         ILogger<VehicleDestroyEventHandler> logger,
         IEventFilterService eventFilter,
-        IItemService itemService,
+        ICensusItemService itemService,
         IVehicleService vehicleService,
         IScrimTeamsManager teamsManager,
         IScrimMessageBroadcastService messageService,
@@ -74,21 +75,21 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
         bool involvesBenchedPlayer = false;
 
         ScrimActionWeaponInfo weapon;
-        Item? weaponItem = await _itemService.GetWeaponItemAsync((int)payload.AttackerWeaponID);
+        CensusItem? weaponItem = await _itemService.GetWeaponAsync(payload.AttackerWeaponID, ct);
 
         if (weaponItem != null)
         {
             weapon = new ScrimActionWeaponInfo
             (
-                weaponItem.Id,
+                weaponItem.ItemId,
                 weaponItem.ItemCategoryId,
-                weaponItem.Name ?? "Unknown weapon",
+                weaponItem.Name.English.HasValue ? weaponItem.Name.English.Value : "Unknown weapon",
                 weaponItem.IsVehicleWeapon
             );
         }
         else
         {
-            weapon = new ScrimActionWeaponInfo((int)payload.AttackerWeaponID, null, null, null);
+            weapon = new ScrimActionWeaponInfo(payload.AttackerWeaponID, null, null, null);
         }
 
         ScrimVehicleDestructionActionEvent destructionEvent = new()

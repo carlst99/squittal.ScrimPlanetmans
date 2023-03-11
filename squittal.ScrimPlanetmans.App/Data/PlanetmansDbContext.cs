@@ -18,8 +18,6 @@ public class PlanetmansDbContext : DbContext
     }
 
     #region Census DbSets
-    public DbSet<Item> Items { get; set; }
-    public DbSet<ItemCategory> ItemCategories { get; set; }
     public DbSet<MapRegion> MapRegions { get; set; }
     //public DbSet<Outfit> Outfits { get; set; }
     //public DbSet<OutfitMember> OutfitMembers { get; set; }
@@ -42,8 +40,6 @@ public class PlanetmansDbContext : DbContext
     public DbSet<RulesetItemCategoryRule> RulesetItemCategoryRules { get; set; }
     public DbSet<RulesetItemRule> RulesetItemRules { get; set; }
     public DbSet<RulesetFacilityRule> RulesetFacilityRules { get; set; }
-
-    public DbSet<DeathType> DeathTypes { get; set; }
     public DbSet<VehicleClass> VehicleClasses { get; set; }
 
     public DbSet<Models.ScrimMatch> ScrimMatches { get; set; }
@@ -84,8 +80,6 @@ public class PlanetmansDbContext : DbContext
         base.OnModelCreating(builder);
 
         #region Census Configuration
-        builder.ApplyConfiguration(new ItemConfiguration());
-        builder.ApplyConfiguration(new ItemCategoryConfiguration());
         builder.ApplyConfiguration(new MapRegionConfiguration());
         builder.ApplyConfiguration(new VehicleConfiguration());
         builder.ApplyConfiguration(new WorldConfiguration());
@@ -107,7 +101,6 @@ public class PlanetmansDbContext : DbContext
         builder.ApplyConfiguration(new RulesetItemRuleConfiguration());
         builder.ApplyConfiguration(new RulesetFacilityRuleConfiguration());
 
-        builder.ApplyConfiguration(new DeathTypeConfiguration());
         builder.ApplyConfiguration(new VehicleClassConfiguration());
 
         builder.ApplyConfiguration(new ScrimMatchConfiguration());

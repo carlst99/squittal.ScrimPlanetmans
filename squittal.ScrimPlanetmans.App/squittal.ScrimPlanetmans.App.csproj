@@ -98,8 +98,9 @@
 
   <ItemGroup>
     <PackageReference Include="DaybreakGames.Census" Version="3.2.4" />
-    <PackageReference Include="DbgCensus.EventStream.EventHandlers" Version="3.3.0" />
-    <PackageReference Include="DbgCensus.Rest" Version="3.3.0" />
+    <PackageReference Include="DbgCensus.EventStream.EventHandlers" Version="3.4.0" />
+    <PackageReference Include="DbgCensus.Rest" Version="3.4.0" />
+    <PackageReference Include="MediatR" Version="12.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="7.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.3">
       <PrivateAssets>all</PrivateAssets>
@@ -116,12 +117,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Data\SQL\CensusBackups\dbo.Item.Table.sql">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Data\SQL\CensusBackups\dbo.ItemCategory.Table.sql">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="Data\SQL\CensusBackups\dbo.MapRegion.Table.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

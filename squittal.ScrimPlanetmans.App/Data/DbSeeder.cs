@@ -14,44 +14,35 @@ namespace squittal.ScrimPlanetmans.App.Data;
 public class DbSeeder : IDbSeeder
 {
     private readonly IWorldService _worldService;
-    private readonly IItemService _itemService;
-    private readonly IItemCategoryService _itemCategoryService;
     private readonly IZoneService _zoneService;
     private readonly IScrimRulesetManager _rulesetManager;
     private readonly IFacilityService _facilityService;
     private readonly IFacilityTypeService _facilityTypeService;
     private readonly IVehicleService _vehicleService;
     private readonly IVehicleTypeService _vehicleTypeService;
-    private readonly IDeathEventTypeService _deathTypeService;
     private readonly ISqlScriptRunner _sqlScriptRunner;
     private readonly ILogger<DbSeeder> _logger;
 
     public DbSeeder
     (
         IWorldService worldService,
-        IItemService itemService,
-        IItemCategoryService itemCategoryService,
         IZoneService zoneService,
         IScrimRulesetManager rulesetManager,
         IFacilityService facilityService,
         IFacilityTypeService facilityTypeService,
         IVehicleService vehicleService,
         IVehicleTypeService vehicleTypeService,
-        IDeathEventTypeService deathTypeService,
         ISqlScriptRunner sqlScriptRunner,
         ILogger<DbSeeder> logger
     )
     {
         _worldService = worldService;
-        _itemService = itemService;
-        _itemCategoryService = itemCategoryService;
         _zoneService = zoneService;
         _rulesetManager = rulesetManager;
         _facilityService = facilityService;
         _facilityTypeService = facilityTypeService;
         _vehicleService = vehicleService;
         _vehicleTypeService = vehicleTypeService;
-        _deathTypeService = deathTypeService;
         _sqlScriptRunner = sqlScriptRunner;
         _logger = logger;
     }
@@ -65,16 +56,10 @@ public class DbSeeder : IDbSeeder
             Task worldsTask = _worldService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(worldsTask);
 
-            Task itemsTask = _itemService.RefreshStoreAsync(true, true, cancellationToken);
-            TaskList.Add(itemsTask);
-
-            Task itemCategoriesTask = _itemCategoryService.RefreshStoreAsync(true, true, cancellationToken);
-            TaskList.Add(itemCategoriesTask);
-
             Task zoneTask = _zoneService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(zoneTask);
 
-            Task scrimActionTask = _rulesetManager.SeedScrimActionModels();
+            Task scrimActionTask = _rulesetManager.SeedScrimActionModelsAsync(cancellationToken);
             TaskList.Add(scrimActionTask);
 
             Task facilitiesTask = _facilityService.RefreshStoreAsync(true, true, cancellationToken);
@@ -88,9 +73,6 @@ public class DbSeeder : IDbSeeder
 
             Task vehicleTypeTask = _vehicleTypeService.SeedVehicleClasses();
             TaskList.Add(vehicleTypeTask);
-
-            Task deathTypeTask = _deathTypeService.SeedDeathTypes();
-            TaskList.Add(deathTypeTask);
 
             await Task.WhenAll(TaskList);
 

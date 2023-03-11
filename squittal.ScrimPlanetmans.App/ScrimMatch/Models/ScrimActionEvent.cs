@@ -187,8 +187,8 @@ public class ScrimFacilityControlActionEvent : ScrimActionEvent
 
 public record ScrimActionWeaponInfo
 (
-    int Id,
-    int? ItemCategoryId,
+    uint Id,
+    uint? ItemCategoryId,
     string? Name,
     bool? IsVehicleWeapon
 );

@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
@@ -9,7 +8,7 @@ public class RulesetItemCategoryRule
     public int RulesetId { get; set; }
 
     [Required]
-    public int ItemCategoryId { get; set; }
+    public uint ItemCategoryId { get; set; }
 
     public int Points { get; set; }
 
@@ -38,7 +37,6 @@ public class RulesetItemCategoryRule
     public int MaxPoints { get; set; }
 
     public Ruleset Ruleset { get; set; }
-    public ItemCategory ItemCategory { get; set; }
 
     public void SetPlanetsideClassSettings(PlanetsideClassRuleSettings settings)
     {

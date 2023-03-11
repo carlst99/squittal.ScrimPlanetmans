@@ -2,8 +2,7 @@
 
 public class JsonRulesetItemRule
 {
-    public int ItemId { get; set; }
-    public string ItemName { get; set; }
+    public uint ItemId { get; set; }
     public int Points { get; set; }
     public bool IsBanned { get; set; }
 
@@ -27,14 +26,9 @@ public class JsonRulesetItemRule
     public bool MaxIsBanned { get; set; }
     public int MaxPoints { get; set; }
 
-    public JsonRulesetItemRule()
-    {
-    }
-
     public JsonRulesetItemRule(RulesetItemRule rule)
     {
         ItemId = rule.ItemId;
-        ItemName = rule.Item.Name;
         Points = rule.Points;
         IsBanned = rule.IsBanned;
 

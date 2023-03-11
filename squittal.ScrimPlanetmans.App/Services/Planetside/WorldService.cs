@@ -181,7 +181,7 @@ public class WorldService : IWorldService
 
         if (createdEntities.Any())
         {
-            await dbContext.Worlds.AddRangeAsync(createdEntities);
+            dbContext.Worlds.AddRange(createdEntities);
         }
 
         await dbContext.SaveChangesAsync();

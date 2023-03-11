@@ -167,7 +167,7 @@ public class ZoneService : IZoneService
         }
 
         if (createdEntities.Any())
-            await dbContext.Zones.AddRangeAsync(createdEntities);
+            dbContext.Zones.AddRange(createdEntities);
 
         await dbContext.SaveChangesAsync();
         _logger.LogInformation("Refreshed Zones store");

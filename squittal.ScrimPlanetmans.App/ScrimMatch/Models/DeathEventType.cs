@@ -1,15 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
-
-public class DeathType
-{
-    [Required]
-    public DeathEventType Type { get; set; }
-
-    [Required]
-    public string Name { get; set; }
-}
+﻿namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 public enum DeathEventType
 {

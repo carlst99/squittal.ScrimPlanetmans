@@ -10,67 +10,35 @@ namespace squittal.ScrimPlanetmans.App.Services;
 
 public class DatabaseMaintenanceService
 {
-    private readonly IFacilityTypeService _facilityTypeService;
-    private readonly IFacilityService _facilityService;
-    private readonly IItemService _itemService;
-    private readonly IItemCategoryService _itemCategoryService;
-    private readonly IZoneService _zoneService;
-    private readonly IWorldService _worldService;
-    private readonly IVehicleService _vehicleService;
-
     private readonly ISqlScriptRunner _adhocScriptRunner;
 
-    private readonly CensusStoreDataComparisonRow _mapRegions;
-    private readonly CensusStoreDataComparisonRow _facilityTypes;
-    private readonly CensusStoreDataComparisonRow _items;
-    private readonly CensusStoreDataComparisonRow _itemCategories;
-    private readonly CensusStoreDataComparisonRow _profiles;
-    private readonly CensusStoreDataComparisonRow _loadouts;
-    private readonly CensusStoreDataComparisonRow _zones;
-    private readonly CensusStoreDataComparisonRow _worlds;
-    private readonly CensusStoreDataComparisonRow _vehicles;
+    private bool _isInitialLoadComplete;
 
-    public List<CensusStoreDataComparisonRow> Comparisons { get; private set; } = new List<CensusStoreDataComparisonRow>();
+    public List<CensusStoreDataComparisonRow> Comparisons { get; } = new();
 
-    private bool _isInitialLoadComplete = false;
-
-    public DatabaseMaintenanceService(
+    public DatabaseMaintenanceService
+    (
         IFacilityTypeService facilityTypeService,
         IFacilityService facilityService,
-        IItemService itemService,
-        IItemCategoryService itemCategoryService,
         IZoneService zoneService,
         IWorldService worldService,
         IVehicleService vehicleService,
         ISqlScriptRunner adhocScriptRunner
     )
     {
-        _facilityService = facilityService;
-        _facilityTypeService = facilityTypeService;
-        _itemService = itemService;
-        _itemCategoryService = itemCategoryService;
-        _zoneService = zoneService;
-        _worldService = worldService;
-        _vehicleService = vehicleService;
         _adhocScriptRunner = adhocScriptRunner;
 
-        _mapRegions = new CensusStoreDataComparisonRow("Map Regions", _facilityService);
-        _facilityTypes = new CensusStoreDataComparisonRow("Facility Types", _facilityTypeService);
-        _items = new CensusStoreDataComparisonRow("Items", _itemService);
-        _itemCategories = new CensusStoreDataComparisonRow("Item Categories", _itemCategoryService);
-        _zones = new CensusStoreDataComparisonRow("Zones", _zoneService);
-        _worlds = new CensusStoreDataComparisonRow("Worlds", _worldService);
-        _vehicles = new CensusStoreDataComparisonRow("Vehicles", _vehicleService);
+        CensusStoreDataComparisonRow mapRegions = new("Map Regions", facilityService);
+        CensusStoreDataComparisonRow facilityTypes = new("Facility Types", facilityTypeService);
+        CensusStoreDataComparisonRow zones = new("Zones", zoneService);
+        CensusStoreDataComparisonRow worlds = new("Worlds", worldService);
+        CensusStoreDataComparisonRow vehicles = new("Vehicles", vehicleService);
 
-        Comparisons.Add(_mapRegions);
-        Comparisons.Add(_facilityTypes);
-        Comparisons.Add(_items);
-        Comparisons.Add(_itemCategories);
-        Comparisons.Add(_profiles);
-        Comparisons.Add(_loadouts);
-        Comparisons.Add(_zones);
-        Comparisons.Add(_worlds);
-        Comparisons.Add(_vehicles);
+        Comparisons.Add(mapRegions);
+        Comparisons.Add(facilityTypes);
+        Comparisons.Add(zones);
+        Comparisons.Add(worlds);
+        Comparisons.Add(vehicles);
     }
 
     public async Task InitializeCounts()

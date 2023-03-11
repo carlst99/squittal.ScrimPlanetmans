@@ -4,8 +4,7 @@ namespace squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
 public class JsonRulesetItemCategoryRule
 {
-    public string ItemCategoryName { get; set; }
-    public int ItemCategoryId { get; set; }
+    public uint ItemCategoryId { get; set; }
     public int Points { get; set; }
     public bool IsBanned { get; set; }
     public bool DeferToItemRules { get; set; }
@@ -38,7 +37,6 @@ public class JsonRulesetItemCategoryRule
 
     public JsonRulesetItemCategoryRule(RulesetItemCategoryRule rule)
     {
-        ItemCategoryName = rule.ItemCategory.Name;
         ItemCategoryId = rule.ItemCategoryId;
         Points = rule.Points;
         IsBanned = rule.IsBanned;
@@ -61,7 +59,6 @@ public class JsonRulesetItemCategoryRule
 
     public JsonRulesetItemCategoryRule(RulesetItemCategoryRule rule, ICollection<JsonRulesetItemRule> itemCategoryItemRules)
     {
-        ItemCategoryName = rule.ItemCategory.Name;
         ItemCategoryId = rule.ItemCategoryId;
         Points = rule.Points;
         IsBanned = rule.IsBanned;

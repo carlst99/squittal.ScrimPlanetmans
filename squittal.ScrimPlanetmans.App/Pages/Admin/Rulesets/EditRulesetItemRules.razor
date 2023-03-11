@@ -2,13 +2,16 @@
 @using System.Text.RegularExpressions;
 @using System.Threading;
 @using System.Collections.Concurrent;
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
 @using squittal.ScrimPlanetmans.App.Models
+@using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models
 @using squittal.ScrimPlanetmans.App.Services.Rulesets.Interfaces
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 
+@inject ICensusItemService CensusItemService
 @inject IRulesetDataService RulesetDataService
 @inject IScrimMessageBroadcastService MessageService
 
@@ -109,8 +112,13 @@
                                 <tbody>
                                     @foreach (var itemRule in _itemRules.Where(r => r.ItemCategoryId == _selectedItemCategoryId))
                                     {
+                                        _items.TryGetValue(itemRule.ItemId, out CensusItem? item);
+                                        string itemName = item?.Name.English.HasValue is true
+                                            ? item.Name.English.Value
+                                            : $"Item{itemRule.ItemId}";
+
                                         <tr class="sans-serif-font">
-                                            <td style="color: var(--sq-black);">@itemRule.Item.Name <span class="mono-font" style="color: var(--sq-gray); font-size: smaller;">[@itemRule.ItemId]</span></td>
+                                            <td style="color: var(--sq-black);">@itemName <span class="mono-font" style="color: var(--sq-gray); font-size: smaller;">[@itemRule.ItemId]</span></td>
                                             <td class="mono-font" style="opacity: @GetValueOpacity(itemRule.Points);">
                                                 <InputNumber Value="@itemRule.Points" ValueChanged="@((int p) => OnChangeRulePoints(itemRule, p))" ValueExpression="@(() => itemRule.Points)" style="text-align: right; width: 50px; color: var(--sq-black); border: 1px solid transparent; background-color: transparent;" />
                                             </td>
@@ -254,6 +262,7 @@
     private int _renderedRulesetId { get; set; }
 
     private IEnumerable<RulesetItemRule> _itemRules { get; set; }
+    private Dictionary<uint, CensusItem> _items { get; set; }
 
     private IEnumerable<ItemCategory> _deferredItemCategories { get; set; }
     private IEnumerable<ItemCategoryDomain> _itemCategoryDomains { get; set; }
@@ -266,12 +275,12 @@
 
     private CancellationTokenSource cts;
 
-    private ConcurrentDictionary<int, RulesetItemRule> _changedRules { get; set; } = new ConcurrentDictionary<int, RulesetItemRule>();
-    private ConcurrentDictionary<int, int> _originalRulePoints { get; set; } = new ConcurrentDictionary<int, int>();
-    private ConcurrentDictionary<int, bool> _originalRuleBans { get; set; } = new ConcurrentDictionary<int, bool>();
+    private ConcurrentDictionary<uint, RulesetItemRule> _changedRules { get; set; } = new();
+    private ConcurrentDictionary<uint, int> _originalRulePoints { get; set; } = new();
+    private ConcurrentDictionary<uint, bool> _originalRuleBans { get; set; } = new();
 
-    private ConcurrentDictionary<int, bool> _originalRuleDeferToPlanetsideClasses { get; set; } = new ConcurrentDictionary<int, bool>();
-    private ConcurrentDictionary<int, PlanetsideClassRuleSettings> _originalRulePlanetsideClassSettings { get; set; } = new ConcurrentDictionary<int, PlanetsideClassRuleSettings>();
+    private ConcurrentDictionary<uint, bool> _originalRuleDeferToPlanetsideClasses { get; set; } = new();
+    private ConcurrentDictionary<uint, PlanetsideClassRuleSettings> _originalRulePlanetsideClassSettings { get; set; } = new();
 
     private int _changesCount { get; set; } = 0;
 
@@ -280,10 +289,16 @@
 
     private int _noSelectedItemCategoryValue = 0;
 
-    private ConcurrentDictionary<int, bool> _extendablePlanetsideClasses { get; set; } = new ConcurrentDictionary<int, bool>();
+    private ConcurrentDictionary<uint, bool> _extendablePlanetsideClasses { get; set; } = new();
 
 
     #region Initializtion Methods
+
+    public EditRulesetItemRules()
+    {
+        _items = new Dictionary<uint, CensusItem>();
+    }
+
     public void Dispose()
     {
         if (cts != null)
@@ -305,6 +320,13 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadRulesAsync();
+
+        foreach (RulesetItemRule rule in _itemRules)
+        {
+            CensusItem? item = await CensusItemService.GetByIdAsync(rule.ItemId);
+            if (item is not null)
+                _items.Add(item.ItemId, item);
+        }
     }
 
     protected override async Task OnParametersSetAsync()
@@ -347,7 +369,7 @@
             var itemRulesTask = RulesetDataService.GetRulesetItemRulesAsync(_renderedRulesetId, cts.Token);
             TaskList.Add(itemRulesTask);
 
-            var deferredItemCategoriesTask = RulesetDataService.GetItemCategoriesDeferringToItemRules(_renderedRulesetId, cts.Token);
+            var deferredItemCategoriesTask = RulesetDataService.GetItemCategoriesDeferringToItemRulesAsync(_renderedRulesetId, cts.Token);
             TaskList.Add(deferredItemCategoriesTask);
 
             await Task.WhenAll(TaskList);
@@ -648,24 +670,24 @@
         InvokeAsyncStateHasChanged();
     }
 
-    private bool RuleHasAnyChanges(int itemId)
+    private bool RuleHasAnyChanges(uint itemId)
     {
         return RuleHasPointChange(itemId)
                 || RuleHasBanChange(itemId)
                 || RuleHasPlanetsideClassSettingsChange(itemId);
     }
 
-    private bool RuleHasPointChange(int itemId)
+    private bool RuleHasPointChange(uint itemId)
     {
         return _originalRulePoints.ContainsKey(itemId);
     }
 
-    private bool RuleHasBanChange(int itemId)
+    private bool RuleHasBanChange(uint itemId)
     {
         return _originalRuleBans.ContainsKey(itemId);
     }
 
-    private bool RuleHasPlanetsideClassSettingsChange(int itemId)
+    private bool RuleHasPlanetsideClassSettingsChange(uint itemId)
     {
         return _originalRulePlanetsideClassSettings.ContainsKey(itemId);
     }
@@ -715,7 +737,7 @@
 
         foreach (var idPointsPair in _originalRulePoints)
         {
-            _itemRules.Where(r => r.ItemId == idPointsPair.Key).FirstOrDefault().Points = idPointsPair.Value;
+            _itemRules.FirstOrDefault(r => r.ItemId == idPointsPair.Key).Points = idPointsPair.Value;
         }
 
         foreach (var idBanPair in _originalRuleBans)
@@ -772,7 +794,7 @@
     #endregion Form Handling
 
     #region UI Controls
-    private bool GetPlanetsideClassIsExtended(int ItemId)
+    private bool GetPlanetsideClassIsExtended(uint ItemId)
     {
         if (_extendablePlanetsideClasses.TryGetValue(ItemId, out var currentIsExtended))
         {
@@ -784,7 +806,7 @@
         }
     }
 
-    private void OnTogglePlanetsideClassExtension(int ItemId)
+    private void OnTogglePlanetsideClassExtension(uint ItemId)
     {
         if (_extendablePlanetsideClasses.TryGetValue(ItemId, out var currentIsExtended))
         {

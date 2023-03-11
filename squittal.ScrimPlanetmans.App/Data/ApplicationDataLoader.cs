@@ -11,7 +11,6 @@ namespace squittal.ScrimPlanetmans.App.Data;
 
 public class ApplicationDataLoader : IApplicationDataLoader
 {
-    private readonly IItemCategoryService _itemCategoryService;
     private readonly IScrimRulesetManager _rulesetManager;
     private readonly IScrimMatchScorer _matchScorer;
     private readonly IFacilityService _facilityService;
@@ -22,7 +21,6 @@ public class ApplicationDataLoader : IApplicationDataLoader
 
 
     public ApplicationDataLoader(
-        IItemCategoryService itemCategoryService,
         IScrimRulesetManager rulesetManager,
         IScrimMatchScorer matchScorer,
         IFacilityService facilityService,
@@ -31,7 +29,6 @@ public class ApplicationDataLoader : IApplicationDataLoader
         IDbSeeder dbSeeder,
         ILogger<ApplicationDataLoader> logger)
     {
-        _itemCategoryService = itemCategoryService;
         _rulesetManager = rulesetManager;
         _matchScorer = matchScorer;
         _facilityService = facilityService;
@@ -52,11 +49,8 @@ public class ApplicationDataLoader : IApplicationDataLoader
 
             List<Task> TaskList = new List<Task>();
 
-            var seedDefaultRulesetTask = _rulesetManager.SeedDefaultRuleset();
+            var seedDefaultRulesetTask = _rulesetManager.SeedDefaultRulesetAsync();
             TaskList.Add(seedDefaultRulesetTask);
-
-            var weaponCategoriesListTask = _itemCategoryService.SetUpWeaponCategoriesListAsync();
-            TaskList.Add(weaponCategoriesListTask);
 
             var scrimmableMapRegionsTask = _facilityService.SetUpScrimmableMapRegionsAsync();
             TaskList.Add(scrimmableMapRegionsTask);
@@ -71,9 +65,9 @@ public class ApplicationDataLoader : IApplicationDataLoader
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            await _rulesetManager.ActivateDefaultRulesetAsync();
+            await _rulesetManager.ActivateDefaultRulesetAsync(cancellationToken);
 
-            await _rulesetManager.SetUpActiveRulesetAsync();
+            await _rulesetManager.SetUpActiveRulesetAsync(cancellationToken);
 
             await _matchScorer.SetActiveRulesetAsync(cancellationToken);
         }

@@ -1,15 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿namespace squittal.ScrimPlanetmans.App.Models.Planetside;
 
-namespace squittal.ScrimPlanetmans.App.Models.Planetside;
-
-public class ItemCategory
-{
-    [Required]
-    public int Id { get; set; }
-
-    public string Name { get; set; }
-
-    public bool IsWeaponCategory { get; set; }
-
-    public ItemCategoryDomain Domain { get; set; }
-}
+public record ItemCategory(uint Id, string Name, bool IsWeaponCategory, ItemCategoryDomain Domain);
+// {
+//     [Required]
+//     public required int Id { get; init; }
+//
+//     public required string Name { get; init; }
+//
+//     public bool IsWeaponCategory { get; set; }
+//
+//     public ItemCategoryDomain Domain { get; set; }
+// }
