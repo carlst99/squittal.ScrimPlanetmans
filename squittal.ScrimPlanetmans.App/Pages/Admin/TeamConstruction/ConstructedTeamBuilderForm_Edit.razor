@@ -208,8 +208,6 @@
 
     private List<string> _processingInputs { get; set; } = new List<string>();
 
-    private ConcurrentQueue<ConstructedTeamCharacterChange> _characterEditQueue { get; set; } = new ConcurrentQueue<ConstructedTeamCharacterChange>();
-
     private ConcurrentQueue<ConstructedTeamMemberChangeMessage> _changeMessagesQueue { get; set; } = new ConcurrentQueue<ConstructedTeamMemberChangeMessage>();
 
     private IEnumerable<World> _worlds;

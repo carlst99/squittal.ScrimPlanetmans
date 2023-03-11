@@ -1,17 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
-
-public class VehicleClass
-{
-    [Required]
-    public VehicleType Class { get; set; }
-
-    [Required]
-    public string Name { get; set; }
-
-    public string Description { get; set; }
-}
+﻿namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
 public enum VehicleType
 {

@@ -5,7 +5,6 @@ using squittal.ScrimPlanetmans.App.Data.DataConfigurations.ScrimMatchReports;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
-using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
 namespace squittal.ScrimPlanetmans.App.Data;
@@ -40,7 +39,6 @@ public class PlanetmansDbContext : DbContext
     public DbSet<RulesetItemCategoryRule> RulesetItemCategoryRules { get; set; }
     public DbSet<RulesetItemRule> RulesetItemRules { get; set; }
     public DbSet<RulesetFacilityRule> RulesetFacilityRules { get; set; }
-    public DbSet<VehicleClass> VehicleClasses { get; set; }
 
     public DbSet<Models.ScrimMatch> ScrimMatches { get; set; }
     public DbSet<ScrimMatchRoundConfiguration> ScrimMatchRoundConfigurations { get; set; }
@@ -100,8 +98,6 @@ public class PlanetmansDbContext : DbContext
         builder.ApplyConfiguration(new RulesetItemCategoryRuleConfiguration());
         builder.ApplyConfiguration(new RulesetItemRuleConfiguration());
         builder.ApplyConfiguration(new RulesetFacilityRuleConfiguration());
-
-        builder.ApplyConfiguration(new VehicleClassConfiguration());
 
         builder.ApplyConfiguration(new ScrimMatchConfiguration());
         builder.ApplyConfiguration(new ScrimMatchRoundConfigurationConfiguration());

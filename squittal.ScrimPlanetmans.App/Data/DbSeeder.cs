@@ -7,7 +7,6 @@ using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
-using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.Data;
 
@@ -17,9 +16,7 @@ public class DbSeeder : IDbSeeder
     private readonly IZoneService _zoneService;
     private readonly IScrimRulesetManager _rulesetManager;
     private readonly IFacilityService _facilityService;
-    private readonly IFacilityTypeService _facilityTypeService;
     private readonly IVehicleService _vehicleService;
-    private readonly IVehicleTypeService _vehicleTypeService;
     private readonly ISqlScriptRunner _sqlScriptRunner;
     private readonly ILogger<DbSeeder> _logger;
 
@@ -29,9 +26,7 @@ public class DbSeeder : IDbSeeder
         IZoneService zoneService,
         IScrimRulesetManager rulesetManager,
         IFacilityService facilityService,
-        IFacilityTypeService facilityTypeService,
         IVehicleService vehicleService,
-        IVehicleTypeService vehicleTypeService,
         ISqlScriptRunner sqlScriptRunner,
         ILogger<DbSeeder> logger
     )
@@ -40,9 +35,7 @@ public class DbSeeder : IDbSeeder
         _zoneService = zoneService;
         _rulesetManager = rulesetManager;
         _facilityService = facilityService;
-        _facilityTypeService = facilityTypeService;
         _vehicleService = vehicleService;
-        _vehicleTypeService = vehicleTypeService;
         _sqlScriptRunner = sqlScriptRunner;
         _logger = logger;
     }
@@ -65,14 +58,8 @@ public class DbSeeder : IDbSeeder
             Task facilitiesTask = _facilityService.RefreshStoreAsync(true, true, cancellationToken);
             TaskList.Add(facilitiesTask);
 
-            Task facilityTypesTask = _facilityTypeService.RefreshStoreAsync(true, true, cancellationToken);
-            TaskList.Add(facilityTypesTask);
-
             Task vehicleTask = _vehicleService.RefreshStoreAsync(true, false, cancellationToken);
             TaskList.Add(vehicleTask);
-
-            Task vehicleTypeTask = _vehicleTypeService.SeedVehicleClasses();
-            TaskList.Add(vehicleTypeTask);
 
             await Task.WhenAll(TaskList);
 

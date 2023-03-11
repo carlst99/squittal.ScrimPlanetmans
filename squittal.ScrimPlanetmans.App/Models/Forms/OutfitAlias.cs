@@ -20,18 +20,17 @@ public class OutfitAlias
     }
 }
 
-public class OutfitAliasValidation
+public partial class OutfitAliasValidation
 {
-    private static Regex Regex = new Regex("[A-Za-z0-9]{1,4}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex Regex = AliasRegex();
 
-    public static ValidationResult OutfitAliasValidate(string alias)
+    public static ValidationResult? OutfitAliasValidate(string alias)
     {
-        Match match = Regex.Match(alias);
-        if (!match.Success)
-        {
-            return new ValidationResult("Invalid outfit alias");
-        }
-
-        return ValidationResult.Success;
+        return Regex.Match(alias).Success
+            ? ValidationResult.Success
+            : new ValidationResult("Invalid outfit alias");
     }
+
+    [GeneratedRegex("[A-Za-z0-9]{1,4}", RegexOptions.IgnoreCase | RegexOptions.Compiled, "en-NZ")]
+    private static partial Regex AliasRegex();
 }

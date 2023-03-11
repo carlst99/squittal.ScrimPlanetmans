@@ -189,7 +189,6 @@ public class Program
         services.AddSingleton<IRulesetDataService, RulesetDataService>();
         services.AddSingleton<IRulesetFileService, RulesetFileService>();
 
-        services.AddTransient<IVehicleTypeService, VehicleTypeService>();
         services.AddSingleton<IConstructedTeamService, ConstructedTeamService>();
 
         services.AddSingleton<IApplicationDataLoader, ApplicationDataLoader>();
