@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using DbgCensus.Core.Objects;
 using squittal.ScrimPlanetmans.App.Models;
@@ -31,7 +32,7 @@ public interface IScrimTeamsManager
     void UpdateTeamStats(TeamDefinition teamOrdinal, ScrimEventAggregate updates);
     Task AdjustTeamPoints(TeamDefinition teamOrdinal, PointAdjustment adjustment);
     Task RemoveTeamPointAdjustment(TeamDefinition teamOrdinal, PointAdjustment adjustment);
-    Task<bool> RemoveOutfitFromTeamAndDb(string aliasLower);
+    Task<bool> RemoveOutfitFromTeamAndDbAsync(string aliasLower, CancellationToken ct = default);
     Task<bool> RemoveCharacterFromTeamAndDb(ulong characterId);
     int GetTeamScoreDisplay(TeamDefinition teamOrdinal);
     Task<bool> UpdatePlayerTemporaryAliasAsync(ulong playerId, string newAlias);

@@ -21,7 +21,7 @@ public interface IScrimMatchReportDataService
     Task<IEnumerable<ScrimMatchReportInfantryPlayerWeaponStats>> GetHistoricalScrimMatchInfantryPlayerWeaponStatsAsync(string scrimMatchId, string characterId, CancellationToken cancellationToken);
     Task<IEnumerable<ScrimMatchReportInfantryTeamRoundStats>> GetHistoricalScrimMatchInfantryTeamRoundStatsAsync(string scrimMatchId, CancellationToken cancellationToken);
     Task<IEnumerable<ScrimMatchReportInfantryTeamStats>> GetHistoricalScrimMatchInfantryTeamStatsAsync(string scrimMatchId, CancellationToken cancellationToken);
-    Task<ScrimMatchInfo> GetHistoricalScrimMatchInfoAsync(string scrimMatchId, CancellationToken cancellationToken);
+    Task<ScrimMatchInfo?> GetHistoricalScrimMatchInfoAsync(string scrimMatchId, CancellationToken cancellationToken);
     Task<IEnumerable<uint>> GetScrimMatchBrowserFacilityIdsListAsync(CancellationToken cancellationToken);
     Task<IEnumerable<Ruleset>> GetScrimMatchBrowseRulesetIdsListAsync(CancellationToken cancellationToken);
 }

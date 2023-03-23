@@ -78,7 +78,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     {
         bool isDefaultFilter = searchFilter.IsDefaultFilter;
 
-        Expression<Func<ScrimMatchInfo, bool>> whereExpression = null;
+        Expression<Func<ScrimMatchInfo, bool>>? whereExpression;
 
         if (isDefaultFilter)
         {
@@ -88,35 +88,33 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
             Expression<Func<ScrimMatchInfo, bool>> recentMatchExpression = m => m.StartTime >= twoHoursAgo;
 
             roundExpression = roundExpression.Or(recentMatchExpression);
-
-            whereExpression = whereExpression == null ? roundExpression : whereExpression.And(roundExpression);
+            whereExpression = roundExpression;
         }
         else
         {
             Expression<Func<ScrimMatchInfo, bool>> roundExpression = m => m.RoundCount >= searchFilter.MinimumRoundCount;
-
-            whereExpression = whereExpression == null ? roundExpression : whereExpression.And(roundExpression);
+            whereExpression = roundExpression;
         }
 
         if (searchFilter.SearchStartDate != null)
         {
             Expression<Func<ScrimMatchInfo, bool>> startDateExpression = m => m.StartTime >= searchFilter.SearchStartDate;
 
-            whereExpression = whereExpression == null ? startDateExpression : whereExpression.And(startDateExpression);
+            whereExpression = whereExpression.And(startDateExpression);
         }
 
         if (searchFilter.SearchEndDate != null)
         {
             Expression<Func<ScrimMatchInfo, bool>> endDateExpression = m => m.StartTime <= searchFilter.SearchEndDate;
 
-            whereExpression = whereExpression == null ? endDateExpression : whereExpression.And(endDateExpression);
+            whereExpression = whereExpression.And(endDateExpression);
         }
 
         if (searchFilter.RulesetId != 0)
         {
             Expression<Func<ScrimMatchInfo, bool>> rulesetExpression = m => m.RulesetId == searchFilter.RulesetId;
 
-            whereExpression = whereExpression == null ? rulesetExpression : whereExpression.And(rulesetExpression);
+            whereExpression = whereExpression.And(rulesetExpression);
         }
 
         if (searchFilter.FacilityId != -1)
@@ -132,29 +130,26 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
                 facilityExpression = m => m.FacilityId == searchFilter.FacilityId;
             }
 
-            whereExpression = whereExpression == null ? facilityExpression : whereExpression.And(facilityExpression);
+            whereExpression = whereExpression.And(facilityExpression);
         }
 
         if (searchFilter.WorldId != 0)
         {
             Expression<Func<ScrimMatchInfo, bool>> worldExpression = m => m.WorldId == searchFilter.WorldId;
 
-            whereExpression = whereExpression == null ? worldExpression : whereExpression.And(worldExpression);
+            whereExpression = whereExpression.And(worldExpression);
         }
 
         if (searchFilter.SearchTermsList.Any() || searchFilter.AliasSearchTermsList.Any())
         {
-            Expression<Func<ScrimMatchInfo, bool>> termsExpresion = null;
-            Expression<Func<ScrimMatchInfo, bool>> searchTermsExpression = null;
-            Expression<Func<ScrimMatchInfo, bool>> aliasTermsExpression = null;
+            Expression<Func<ScrimMatchInfo, bool>>? searchTermsExpression = null;
+            Expression<Func<ScrimMatchInfo, bool>>? aliasTermsExpression = null;
 
             foreach (string term in searchFilter.SearchTermsList)
             {
                 Expression<Func<ScrimMatchInfo, bool>> exp = m => m.Title.Contains(term); // DbFunctionsExtensions.Like(EF.Functions, m.Title, "%" + term + "%");
                 searchTermsExpression = searchTermsExpression == null ? exp : searchTermsExpression.Or(exp);
             }
-
-            termsExpresion = searchTermsExpression;
 
 
             foreach (string term in searchFilter.AliasSearchTermsList)
@@ -163,61 +158,43 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
                 aliasTermsExpression = aliasTermsExpression == null ? exp : aliasTermsExpression.And(exp);
             }
 
-            termsExpresion = termsExpresion == null ? aliasTermsExpression : termsExpresion.Or(aliasTermsExpression);
+            if (aliasTermsExpression is not null)
+            {
+                searchTermsExpression = searchTermsExpression == null
+                    ? aliasTermsExpression
+                    : searchTermsExpression.Or(aliasTermsExpression);
+            }
 
-            whereExpression = whereExpression == null ? termsExpresion : whereExpression.And(termsExpresion);
+            if (searchTermsExpression is not null)
+                whereExpression = whereExpression.And(searchTermsExpression);
         }
 
         return whereExpression;
     }
 
-    public async Task<ScrimMatchInfo> GetHistoricalScrimMatchInfoAsync(string scrimMatchId, CancellationToken cancellationToken)
-    {
-        try
-        {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
-
-            ScrimMatchInfo? scrimMatchInfo = await dbContext.ScrimMatchInfo.Where(m => m.ScrimMatchId == scrimMatchId).FirstOrDefaultAsync(cancellationToken);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (scrimMatchInfo != null)
-            {
-                scrimMatchInfo.SetTeamAliases();
-            }
-
-            return scrimMatchInfo;
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation($"Task Request cancelled: GetHistoricalScrimMatchInfoAsync scrimMatchId {scrimMatchId}");
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation($"Request cancelled: GetHistoricalScrimMatchInfoAsync scrimMatchId {scrimMatchId}");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"{ex}");
-
-            return null;
-        }
-    }
-
-    public Task<IEnumerable<uint>> GetScrimMatchBrowserFacilityIdsListAsync(CancellationToken cancellationToken)
+    public async Task<ScrimMatchInfo?> GetHistoricalScrimMatchInfoAsync(string scrimMatchId, CancellationToken cancellationToken)
     {
         using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
         PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        IEnumerable<uint> result = dbContext.ScrimMatchInfo
+        ScrimMatchInfo? scrimMatchInfo = await dbContext.ScrimMatchInfo
+            .FirstOrDefaultAsync(m => m.ScrimMatchId == scrimMatchId, cancellationToken);
+
+        scrimMatchInfo?.SetTeamAliases();
+
+        return scrimMatchInfo;
+    }
+
+    public async Task<IEnumerable<uint>> GetScrimMatchBrowserFacilityIdsListAsync(CancellationToken cancellationToken)
+    {
+        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+        PlanetmansDbContext dbContext = factory.GetDbContext();
+
+        return await dbContext.ScrimMatchInfo
             .Where(m => m.FacilityId.HasValue)
             .Select(m => m.FacilityId!.Value)
-            .Distinct();
-
-        return Task.FromResult(result);
+            .Distinct()
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<Ruleset>> GetScrimMatchBrowseRulesetIdsListAsync(CancellationToken cancellationToken)

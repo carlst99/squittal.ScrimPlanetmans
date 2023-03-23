@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using DbgCensus.Core.Objects;
 using Microsoft.EntityFrameworkCore;
@@ -539,7 +540,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
     }
 
     #region Remove Entities From Teams
-    public async Task<bool> RemoveOutfitFromTeamAndDb(string aliasLower)
+    public async Task<bool> RemoveOutfitFromTeamAndDbAsync(string aliasLower, CancellationToken ct = default)
     {
         if (!IsOutfitOwnedByTeam(aliasLower, out Team? owningTeam))
             return false;
@@ -555,7 +556,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
             return false;
 
         if (teamOrdinal.HasValue)
-            await RemoveOutfitMatchDataFromDb(outfit.Id, teamOrdinal.Value);
+            await RemoveOutfitMatchDataFromDbAsync(outfit.Id, teamOrdinal.Value, ct);
         await TryUpdateAllTeamMatchResultsInDb();
         await UpdateMatchParticipatingPlayers();
 
@@ -610,7 +611,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return anyPlayersRemoved;
     }
 
-    private async Task RemoveOutfitMatchDataFromDb(ulong outfitId, TeamDefinition teamOrdinal)
+    private async Task RemoveOutfitMatchDataFromDbAsync(ulong outfitId, TeamDefinition teamOrdinal, CancellationToken ct)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
 
@@ -629,7 +630,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                     && e.TeamOrdinal == teamOrdinal
                     && e.IsFromOutfit
                     && e.OutfitId == outfitId)
-                .ToListAsync();
+                .ToListAsync(ct);
 
             // TODO: can a TaskList be used safely for this?
             foreach (ScrimMatchParticipatingPlayer player in participatingPlayers)
@@ -639,7 +640,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            _logger.LogError(ex, "Failed to remove an outfit's match data from the database");
         }
     }
 

@@ -295,18 +295,15 @@ public partial class RulesetDataService : IRulesetDataService
         }
     }
 
-    public Task<Ruleset?> GetRulesetWithFacilityRules(int rulesetId, CancellationToken cancellationToken)
+    public async Task<Ruleset?> GetRulesetWithFacilityRules(int rulesetId, CancellationToken cancellationToken)
     {
         using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
         PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        Ruleset? ruleset =  dbContext.Rulesets
+        return await dbContext.Rulesets
             .Where(r => r.Id == rulesetId)
-            .Include("RulesetFacilityRules")
-            .Include("RulesetFacilityRules.MapRegion")
-            .FirstOrDefault();
-
-        return Task.FromResult(ruleset);
+            .Include(x => x.RulesetFacilityRules)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public Task<RulesetOverlayConfiguration?> GetRulesetOverlayConfigurationAsync(int rulesetId, CancellationToken ct)
@@ -426,7 +423,7 @@ public partial class RulesetDataService : IRulesetDataService
             .ToListAsync(ct);
     }
 
-    public Task<IEnumerable<RulesetItemCategoryRule>> GetRulesetItemCategoryRulesDeferringToItemRules
+    public async Task<IEnumerable<RulesetItemCategoryRule>> GetRulesetItemCategoryRulesDeferringToItemRules
     (
         int rulesetId,
         CancellationToken ct
@@ -435,11 +432,9 @@ public partial class RulesetDataService : IRulesetDataService
         using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
         PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        IEnumerable<RulesetItemCategoryRule> rules = dbContext.RulesetItemCategoryRules
+        return await dbContext.RulesetItemCategoryRules
             .Where(r => r.RulesetId == rulesetId && r.DeferToItemRules)
-            .Include("ItemCategory");
-
-        return Task.FromResult(rules);
+            .ToListAsync(ct);
     }
 
     #endregion GET Ruleset Rules

@@ -332,11 +332,11 @@ else
         }
     }
 
-    private async void RemoveOutfit()
+    private async Task RemoveOutfit()
     {
         if (!_isLoadingMembers)
         {
-            await TeamsManager.RemoveOutfitFromTeamAndDb(_renderedOutfit.AliasLower);
+            await TeamsManager.RemoveOutfitFromTeamAndDbAsync(_renderedOutfit.AliasLower);
         }
     }
     #endregion Form Submission & Validation
