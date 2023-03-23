@@ -32,7 +32,7 @@ public interface IRulesetDataService
     Task<IEnumerable<ItemCategory>?> GetItemCategoriesDeferringToItemRulesAsync
     (
         int rulesetId,
-        CancellationToken cancellationToken = default
+        CancellationToken ct = default
     );
 
     Task<Ruleset?> SaveNewRulesetAsync(Ruleset ruleset, CancellationToken ct = default);

@@ -137,65 +137,65 @@ public partial class RulesetDataService : IRulesetDataService
     {
         _logger.LogInformation("Updating rulesets post-Item Store Refresh");
 
-            IReadOnlyList<CensusItem>? allWeaponItems = await _itemService.GetAllWeaponsAsync(ct);
-            if (allWeaponItems is null)
-                return;
+        IReadOnlyList<CensusItem>? allWeaponItems = await _itemService.GetAllWeaponsAsync(ct);
+        if (allWeaponItems is null)
+            return;
 
-            Ruleset[] storeRulesets = (await GetAllRulesetsAsync(ct)).ToArray();
+        Ruleset[] storeRulesets = (await GetAllRulesetsAsync(ct)).ToArray();
 
-            if (storeRulesets.Length is 0)
-            {
-                _logger.LogInformation
+        if (storeRulesets.Length is 0)
+        {
+            _logger.LogInformation
+            (
+                "Finished updating rulesets post-Item Store Refresh. No store rulesets found"
+            );
+            return;
+        }
+
+        foreach (Ruleset ruleset in storeRulesets)
+        {
+            IEnumerable<ItemCategory>? getDeferredItemCategoryRules
+                = await GetItemCategoriesDeferringToItemRulesAsync(ruleset.Id, ct);
+
+            if (getDeferredItemCategoryRules is null)
+                continue;
+            ItemCategory[] deferredItemCategoryRules = getDeferredItemCategoryRules.ToArray();
+
+            if (!deferredItemCategoryRules.Any())
+                continue;
+
+            IEnumerable<RulesetItemRule> rulesetItemRules = await GetRulesetItemRulesAsync
+            (
+                ruleset.Id,
+                ct
+            );
+            HashSet<uint> rulesetItems = new(rulesetItemRules.Select(x => x.ItemId));
+
+            List<CensusItem> missingItemIds = allWeaponItems.Where
                 (
-                    "Finished updating rulesets post-Item Store Refresh. No store rulesets found"
-                );
-                return;
-            }
+                    w => deferredItemCategoryRules.Any(rule => rule.Id == w.ItemCategoryId)
+                        && !rulesetItems.Contains(w.ItemId)
+                )
+                .ToList();
 
-            foreach (Ruleset ruleset in storeRulesets)
-            {
-                IEnumerable<ItemCategory>? getDeferredItemCategoryRules
-                    = await GetItemCategoriesDeferringToItemRulesAsync(ruleset.Id, ct);
+            if (!missingItemIds.Any())
+                continue;
 
-                if (getDeferredItemCategoryRules is null)
-                    continue;
-                ItemCategory[] deferredItemCategoryRules = getDeferredItemCategoryRules.ToArray();
-
-                if (!deferredItemCategoryRules.Any())
-                    continue;
-
-                IEnumerable<RulesetItemRule> rulesetItemRules = await GetRulesetItemRulesAsync
+            RulesetItemRule[] newRules = missingItemIds.Select
                 (
-                    ruleset.Id,
-                    ct
-                );
-                HashSet<uint> rulesetItems = new(rulesetItemRules.Select(x => x.ItemId));
+                    w => BuildRulesetItemRule(ruleset.Id, w.ItemId, w.ItemCategoryId)
+                )
+                .ToArray();
+            await SaveRulesetItemRules(ruleset.Id, newRules, ct);
 
-                List<CensusItem> missingItemIds = allWeaponItems.Where
-                    (
-                        w => deferredItemCategoryRules.Any(rule => rule.Id == w.ItemCategoryId)
-                            && !rulesetItems.Contains(w.ItemId)
-                    )
-                    .ToList();
-
-                if (!missingItemIds.Any())
-                    continue;
-
-                RulesetItemRule[] newRules = missingItemIds.Select
-                    (
-                        w => BuildRulesetItemRule(ruleset.Id, w.ItemId, w.ItemCategoryId)
-                    )
-                    .ToArray();
-                await SaveRulesetItemRules(ruleset.Id, newRules, ct);
-
-                _logger.LogInformation
-                (
-                    "Updated Item Rules for Ruleset {ID} post-Item Category Store Refresh. " +
-                    "New Rules: {Count}",
-                    ruleset.Id,
-                    newRules.Length
-                );
-            }
+            _logger.LogInformation
+            (
+                "Updated Item Rules for Ruleset {ID} post-Item Category Store Refresh. " +
+                "New Rules: {Count}",
+                ruleset.Id,
+                newRules.Length
+            );
+        }
 
         _logger.LogInformation("Finished updating rulesets post-Item Store Refresh");
     }
@@ -322,18 +322,17 @@ public partial class RulesetDataService : IRulesetDataService
 
     #region GET Ruleset Rules
 
-    public Task<IEnumerable<RulesetActionRule>> GetRulesetActionRulesAsync(int rulesetId, CancellationToken ct)
+    public async Task<IEnumerable<RulesetActionRule>> GetRulesetActionRulesAsync(int rulesetId, CancellationToken ct)
     {
         using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
         PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        IEnumerable<RulesetActionRule> result = dbContext.RulesetActionRules
-            .Where(r => r.RulesetId == rulesetId);
-
-        return Task.FromResult(result);
+        return await dbContext.RulesetActionRules
+            .Where(r => r.RulesetId == rulesetId)
+            .ToListAsync(ct);
     }
 
-    public Task<IEnumerable<RulesetItemCategoryRule>> GetRulesetItemCategoryRulesAsync
+    public async Task<IEnumerable<RulesetItemCategoryRule>> GetRulesetItemCategoryRulesAsync
     (
         int rulesetId,
         CancellationToken ct
@@ -342,45 +341,44 @@ public partial class RulesetDataService : IRulesetDataService
         using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
         PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        IEnumerable<RulesetItemCategoryRule> result = dbContext.RulesetItemCategoryRules
-            .Where(r => r.RulesetId == rulesetId);
-
-        return Task.FromResult(result);
+        return await dbContext.RulesetItemCategoryRules
+            .Where(r => r.RulesetId == rulesetId)
+            .ToListAsync(ct);
     }
 
-    public Task<IEnumerable<RulesetItemRule>> GetRulesetItemRulesAsync(int rulesetId, CancellationToken ct)
+    public async Task<IEnumerable<RulesetItemRule>> GetRulesetItemRulesAsync(int rulesetId, CancellationToken ct)
     {
         using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
         PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        IEnumerable<RulesetItemRule> result =  dbContext.RulesetItemRules
-            .Where(r => r.RulesetId == rulesetId);
-
-        return Task.FromResult(result);
+        return await dbContext.RulesetItemRules
+            .Where(r => r.RulesetId == rulesetId)
+            .ToListAsync(ct);
     }
 
-    public IEnumerable<RulesetItemRule> GetRulesetItemRulesForItemCategoryId
+    public async Task<IEnumerable<RulesetItemRule>> GetRulesetItemRulesForItemCategoryIdAsync
     (
         int rulesetId,
-        uint itemCategoryId
+        uint itemCategoryId,
+        CancellationToken ct
     )
     {
         using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
         PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        return dbContext.RulesetItemRules
-            .Where(r => r.RulesetId == rulesetId && r.ItemCategoryId == itemCategoryId);
+        return await dbContext.RulesetItemRules
+            .Where(r => r.RulesetId == rulesetId && r.ItemCategoryId == itemCategoryId)
+            .ToListAsync(ct);
     }
 
-    public Task<IEnumerable<RulesetFacilityRule>> GetRulesetFacilityRulesAsync(int rulesetId, CancellationToken ct)
+    public async Task<IEnumerable<RulesetFacilityRule>> GetRulesetFacilityRulesAsync(int rulesetId, CancellationToken ct)
     {
         using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
         PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        IEnumerable<RulesetFacilityRule> result = dbContext.RulesetFacilityRules
-            .Where(r => r.RulesetId == rulesetId);
-
-        return Task.FromResult(result);
+        return await dbContext.RulesetFacilityRules
+            .Where(r => r.RulesetId == rulesetId)
+            .ToListAsync(ct);
     }
 
     public async Task<IEnumerable<RulesetFacilityRule>> GetUnusedRulesetFacilityRulesAsync(int rulesetId, CancellationToken ct)
@@ -409,22 +407,23 @@ public partial class RulesetDataService : IRulesetDataService
     public async Task<IEnumerable<ItemCategory>?> GetItemCategoriesDeferringToItemRulesAsync
     (
         int rulesetId,
-        CancellationToken cancellationToken
+        CancellationToken ct
     )
     {
-        IEnumerable<uint> categoryIds = GetItemCategoryIdsDeferringToItemRulesAsync(rulesetId);
+        IEnumerable<uint> categoryIds = await GetItemCategoryIdsDeferringToItemRulesAsync(rulesetId, ct);
 
-        return await _itemCategoryService.GetItemCategoriesFromIdsAsync(categoryIds, cancellationToken);
+        return await _itemCategoryService.GetItemCategoriesFromIdsAsync(categoryIds, ct);
     }
 
-    private IEnumerable<uint> GetItemCategoryIdsDeferringToItemRulesAsync(int rulesetId)
+    private async Task<IEnumerable<uint>> GetItemCategoryIdsDeferringToItemRulesAsync(int rulesetId, CancellationToken ct)
     {
         using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
         PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        return dbContext.RulesetItemCategoryRules
+        return await dbContext.RulesetItemCategoryRules
             .Where(r => r.RulesetId == rulesetId && r.DeferToItemRules)
-            .Select(r => r.ItemCategoryId);
+            .Select(r => r.ItemCategoryId)
+            .ToListAsync(ct);
     }
 
     public Task<IEnumerable<RulesetItemCategoryRule>> GetRulesetItemCategoryRulesDeferringToItemRules
@@ -748,7 +747,7 @@ public partial class RulesetDataService : IRulesetDataService
 
                 foreach (RulesetItemCategoryRule rule in dbContext.RulesetItemCategoryRules)
                 {
-                    Task itemRulesTask = UpdateItemRulesForItemCategoryRule(rule);
+                    Task itemRulesTask = UpdateItemRulesForItemCategoryRule(rule, ct);
                     TaskList.Add(itemRulesTask);
                 }
 
@@ -1248,14 +1247,14 @@ public partial class RulesetDataService : IRulesetDataService
         }
     }
 
-    private async Task UpdateItemRulesForItemCategoryRule(RulesetItemCategoryRule itemCategoryRule)
+    private async Task UpdateItemRulesForItemCategoryRule(RulesetItemCategoryRule itemCategoryRule, CancellationToken ct)
     {
         int rulesetId = itemCategoryRule.RulesetId;
         uint itemCategoryId = itemCategoryRule.ItemCategoryId;
         int itemCategoryPoints = itemCategoryRule.Points;
         bool isItemCategoryBanned = itemCategoryRule.IsBanned;
 
-        using (await _itemRulesLock.WaitAsync($"{rulesetId}"))
+        using (await _itemRulesLock.WaitAsync($"{rulesetId}", ct))
         {
             try
             {
@@ -1263,14 +1262,14 @@ public partial class RulesetDataService : IRulesetDataService
                 PlanetmansDbContext dbContext = factory.GetDbContext();
 
                 Dictionary<uint, RulesetItemRule> defaultItemRules
-                    = GetRulesetItemRulesForItemCategoryId(DefaultRulesetId, itemCategoryId)
+                    = (await GetRulesetItemRulesForItemCategoryIdAsync(DefaultRulesetId, itemCategoryId, ct))
                         .ToDictionary(x => x.ItemId, x => x);
 
                 Dictionary<uint, RulesetItemRule> storeItemRules
-                    = GetRulesetItemRulesForItemCategoryId(rulesetId, itemCategoryId)
+                    = (await GetRulesetItemRulesForItemCategoryIdAsync(rulesetId, itemCategoryId, ct))
                         .ToDictionary(x => x.ItemId, x => x);
 
-                IReadOnlyList<CensusItem>? allStoreItems = await _itemService.GetByCategoryAsync(itemCategoryId);
+                IReadOnlyList<CensusItem>? allStoreItems = await _itemService.GetByCategoryAsync(itemCategoryId, ct);
                 if (allStoreItems is null)
                     return;
 
@@ -1309,7 +1308,7 @@ public partial class RulesetDataService : IRulesetDataService
                     dbContext.RulesetItemRules.AddRange(createdRules);
                 }
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {
