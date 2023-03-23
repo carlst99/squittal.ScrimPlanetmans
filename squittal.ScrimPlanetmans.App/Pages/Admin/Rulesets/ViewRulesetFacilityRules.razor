@@ -1,16 +1,19 @@
 ﻿@using squittal.ScrimPlanetmans.App.Pages.Shared;
 @using System.Threading;
+@using DbgCensus.Core.Objects
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.Rulesets
+@using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models
-@using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 
+@inject ICensusMapRegionService MapRegionService
 @inject IRulesetDataService RulesetDataService
-@inject IZoneService ZoneService
+@inject ICensusZoneService ZoneService
 
 @implements IDisposable
 
-<div class="sq-mini-card-6 default" style="min-width: 420px; background-color: transparent; box-shadow: 0px 2px 5px 0px var(--sq-light-blue-gray);">
+<div class="sq-mini-card-6 default" style="min-width: 420px; background-color: transparent; box-shadow: 0 2px 5px 0 var(--sq-light-blue-gray);">
     <h5>Facility Rules</h5>
 
     @if (_isLoadingRules)
@@ -21,17 +24,48 @@
     {
         <div class="sq-content" style="margin-top: 8px;">
 
-            <div class="tabbed-button-container" style="">
-                <button type="button" title="View infantry item category rules" class="btn btn-link @GetViewTabStyle(0)" @onclick="@(() => OnSelectNewView(0))">All</button>
-                <button type="button" title="View infantry item category rules" class="btn btn-link @GetViewTabStyle(4)" @onclick="@(() => OnSelectNewView(4))">Hossin</button>
-                <button type="button" title="View infantry item category rules" class="btn btn-link @GetViewTabStyle(2)" @onclick="@(() => OnSelectNewView(2))">Indar</button>
-                <button type="button" title="View MAX item category rules" class="btn btn-link @GetViewTabStyle(8)" @onclick="@(() => OnSelectNewView(8))">Esamir</button>
-                <button type="button" title="View MAX item category rules" class="btn btn-link @GetViewTabStyle(6)" @onclick="@(() => OnSelectNewView(6))">Amerish</button>
+            <div class="tabbed-button-container">
+                <button type="button"
+                        title="View all facility rules"
+                        class="btn btn-link @GetViewTabStyle(0)"
+                        @onclick="@(() => OnSelectNewView(0))">
+                    All
+                </button>
+                <button type="button"
+                        title="View Hossin facility rules"
+                        class="btn btn-link @GetViewTabStyle(ZoneDefinition.Hossin)"
+                        @onclick="@(() => OnSelectNewView(ZoneDefinition.Hossin))">
+                    Hossin
+                </button>
+                <button type="button"
+                        title="View Indar facility rules"
+                        class="btn btn-link @GetViewTabStyle(ZoneDefinition.Indar)"
+                        @onclick="@(() => OnSelectNewView(ZoneDefinition.Indar))">
+                    Indar
+                </button>
+                <button type="button"
+                        title="View Esamir facility rules"
+                        class="btn btn-link @GetViewTabStyle(ZoneDefinition.Esamir)"
+                        @onclick="@(() => OnSelectNewView(ZoneDefinition.Esamir))">
+                    Esamir
+                </button>
+                <button type="button"
+                        title="View Amerish facility rules"
+                        class="btn btn-link @GetViewTabStyle(ZoneDefinition.Amerish)"
+                        @onclick="@(() => OnSelectNewView(ZoneDefinition.Amerish))">
+                    Amerish
+                </button>
+                <button type="button"
+                        title="View Oshur facility rules"
+                        class="btn btn-link @GetViewTabStyle(ZoneDefinition.Oshur)"
+                        @onclick="@(() => OnSelectNewView(ZoneDefinition.Oshur))">
+                    Oshur
+                </button>
             </div>
 
             <div style="max-height: 544px; overflow-y: auto; margin-bottom: 4px; border-bottom: 1px solid var(--sq-black-alpha-50);">
 
-                @if (_facilityRules != null && _facilityRules.Any(r => (r.MapRegion.ZoneId == _selectedZoneIdView) || _selectedZoneIdView == 0))
+                @if (_facilityRules != null && _mapRegionsByFacilityId is not null)
                 {
                     <table class="table-responsive-sm table-striped-light default sans-serif-font" style="border-bottom: none;">
                         <thead style="border-bottom: 1px solid var(--sq-black-alpha-50);">
@@ -45,13 +79,19 @@
                         </thead>
 
                         <tbody>
-                            @foreach (var facilityRule in _facilityRules.Where(r => (r.MapRegion != null && r.MapRegion.ZoneId == _selectedZoneIdView) || _selectedZoneIdView == 0))
+                            @foreach (RulesetFacilityRule facilityRule in _facilityRules)
                             {
+                                if (!_mapRegionsByFacilityId.TryGetValue(facilityRule.FacilityId, out CensusMapRegion? mapRegion))
+                                    continue;
+
+                                if (_selectedZoneIdView is not 0 && mapRegion.ZoneId != _selectedZoneIdView)
+                                    continue;
+
                                 <tr class="sans-serif-font">
-                                    <td style="color: var(--sq-black); padding-left: 8px;">@facilityRule.MapRegion.FacilityName <span class="mono-font" style="color: var(--sq-gray); font-size: smaller;">[@facilityRule.FacilityId]</span></td>
+                                    <td style="color: var(--sq-black); padding-left: 8px;">@mapRegion.FacilityName <span class="mono-font" style="color: var(--sq-gray); font-size: smaller;">[@facilityRule.FacilityId]</span></td>
                                     @if (_selectedZoneIdView == 0)
                                     {
-                                        <td style="color: var(--sq-black); padding-left: 8px;">@GetFacilityZoneName(facilityRule)</td>
+                                        <td style="color: var(--sq-black); padding-left: 8px;">@GetZoneName(mapRegion.ZoneId)</td>
                                     }
                                 </tr>
                             }
@@ -66,7 +106,7 @@
                     }
                     else
                     {
-                        <p class="sans-serif-font" style="margin-top: 4px; margin-bottom: 4px; font-weight: 400; font-style: italic">There are no @(_zoneNames[_selectedZoneIdView]) facility rules for this ruleset</p>
+                        <p class="sans-serif-font" style="margin-top: 4px; margin-bottom: 4px; font-weight: 400; font-style: italic">There are no @(GetZoneName(_selectedZoneIdView)) facility rules for this ruleset</p>
                     }
                 }
             </div>
@@ -80,26 +120,22 @@
     public int i_rulesetId { get; set; }
     private int _renderedRulesetId { get; set; }
 
-    private List<RulesetFacilityRule> _facilityRules { get; set; }
-
-    private List<int> _mapZones { get; set; } = new List<int>();
-    private List<Zone> _zones { get; set; }
-    private Dictionary<int, string> _zoneNames { get; set; } = new Dictionary<int, string>();
+    private List<RulesetFacilityRule>? _facilityRules { get; set; }
+    private Dictionary<uint, CensusMapRegion>? _mapRegionsByFacilityId;
+    private Dictionary<ZoneDefinition, string> _zoneNames { get; set; } = new();
 
     private bool _isLoadingRules { get; set; } = false;
 
-    private int _selectedZoneIdView { get; set; } = 0; // All Zones
+    private ZoneDefinition _selectedZoneIdView { get; set; } = 0; // All Zones
 
-    private CancellationTokenSource cts;
+    private CancellationTokenSource? _cts;
 
-
-    #region Initializtion Methods
     public void Dispose()
     {
-        if (cts != null)
+        if (_cts != null)
         {
-            cts.Cancel();
-            cts.Dispose();
+            _cts.Cancel();
+            _cts.Dispose();
         }
     }
 
@@ -112,7 +148,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        var paramsChanged = false;
+        bool paramsChanged = false;
 
         if (i_rulesetId != _renderedRulesetId)
         {
@@ -134,35 +170,37 @@
         InvokeAsyncStateHasChanged();
 
         // If a process is already underway, cancel it
-        if (cts != null)
-        {
-            cts.Cancel();
-        }
+        _cts?.Cancel();
 
         // Set ctsRulesets to cancel the current process if another table refresh is requested
-        CancellationTokenSource newCTS = new CancellationTokenSource();
-        cts = newCTS;
+        CancellationTokenSource newCTS = new();
+        _cts = newCTS;
 
         try
         {
-            var TaskList = new List<Task>();
+            IReadOnlyList<CensusMapRegion>? regions = await MapRegionService.GetAllAsync(_cts.Token);
+            IReadOnlyList<CensusZone>? zones = await ZoneService.GetAllAsync(_cts.Token);
+            IEnumerable<RulesetFacilityRule> facilityRules = await RulesetDataService.GetRulesetFacilityRulesAsync
+            (
+                _renderedRulesetId,
+                _cts.Token
+            );
 
-            var facilityRulesTask = RulesetDataService.GetRulesetFacilityRulesAsync(_renderedRulesetId, cts.Token);
-            TaskList.Add(facilityRulesTask);
+            _facilityRules = facilityRules.ToList();
 
-            var zonesTask = ZoneService.GetAllZones();
-            TaskList.Add(zonesTask);
+            if (zones is not null)
+            {
+                _zoneNames = zones.ToDictionary
+                (
+                    z => z.ZoneId, z => z.Name.English.GetValueOrDefault() ?? z.ZoneId.ToString()
+                );
+            }
 
-            await Task.WhenAll(TaskList);
-
-            cts.Token.ThrowIfCancellationRequested();
-
-            _facilityRules = facilityRulesTask.Result.ToList();
-            _zones = zonesTask.Result.ToList();
-
-            _mapZones = _facilityRules.Select(f => f.MapRegion.ZoneId).Distinct().ToList();
-
-            _zoneNames = _zones.ToDictionary(z => z.Id, z => z.Name);
+            if (regions is not null)
+            {
+                _mapRegionsByFacilityId = regions.Where(r => r.FacilityId is not 0)
+                    .ToDictionary(r => r.FacilityId, r => r);
+            }
         }
         catch
         {
@@ -170,47 +208,30 @@
         }
 
         // When the process is complete, signal that another process can proceed
-        if (cts == newCTS)
+        if (_cts == newCTS)
         {
-            cts = null;
+            _cts = null;
         }
 
         _isLoadingRules = false;
     }
-    #endregion Initializtion Methods
 
-    #region Form & UI Handling
-    private string GetViewTabStyle(int thisZoneId)
-    {
-        if (_selectedZoneIdView == thisZoneId)
-        {
-            return $"view-visible";
-        }
-        else
-        {
-            return $"view-hidden";
-        }
-    }
+    private string GetViewTabStyle(ZoneDefinition zone)
+        => _selectedZoneIdView == zone
+            ? "view-visible"
+            : "view-hidden";
 
-    private void OnSelectNewView(int newView)
+    private void OnSelectNewView(ZoneDefinition newView)
     {
         if (newView != _selectedZoneIdView)
-        {
             _selectedZoneIdView = newView;
-        }
     }
-    #endregion Form & UI Handling
 
-    private string GetFacilityZoneName(RulesetFacilityRule rule)
-    {
-        return _zoneNames[rule.MapRegion.ZoneId];
-    }
+    private string GetZoneName(ZoneDefinition zoneId)
+        => _zoneNames.TryGetValue(zoneId, out string? zoneName)
+            ? zoneName
+            : zoneId.ToString();
 
     private void InvokeAsyncStateHasChanged()
-    {
-        InvokeAsync(() =>
-        {
-            StateHasChanged();
-        });
-    }
+        => InvokeAsync(StateHasChanged);
 }

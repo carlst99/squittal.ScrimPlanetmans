@@ -1,4 +1,5 @@
 ﻿@using System.Collections.Concurrent;
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside
 @using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.ScrimMatch
@@ -6,13 +7,11 @@
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models
-@using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 
 @inject IScrimTeamsManager ScrimTeamsManager
 @inject IScrimMatchEngine ScrimMatchEngine
 @inject IOutfitService OutfitService
-@inject IWorldService WorldService
 @inject IScrimMessageBroadcastService MessageService
 
 @implements IDisposable

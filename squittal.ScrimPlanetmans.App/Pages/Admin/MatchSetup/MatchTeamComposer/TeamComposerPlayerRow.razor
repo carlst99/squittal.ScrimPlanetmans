@@ -1,14 +1,16 @@
-﻿@inject IScrimTeamsManager ScrimTeamsManager
-@inject IScrimMessageBroadcastService MessageService
-@inject IWorldService WorldService
-
-@using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
+﻿@using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
-@using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.Models
+@using DbgCensus.Core.Objects
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
+
 @implements IDisposable
+
+@inject IScrimTeamsManager ScrimTeamsManager
+@inject IScrimMessageBroadcastService MessageService
+@inject ICensusWorldService WorldService
 
 @if (Player != null)
 {
@@ -111,7 +113,7 @@
     [Parameter]
     public bool ShowRemovalControls { get; set; }
 
-    private int _renderedWorldId { get; set; } = 0;
+    private WorldDefinition _renderedWorldId { get; set; } = 0;
     private string _renderedWorldName { get; set; } = string.Empty;
 
     private bool _showTemporaryAliasEditForm { get; set; } = false;
@@ -142,14 +144,11 @@
         {
             _renderedWorldId = Player.WorldId;
 
-            var renderedWorld = await WorldService.GetWorldAsync(_renderedWorldId);
+            var renderedWorld = await WorldService.GetByIdAsync(_renderedWorldId);
 
-            _renderedWorldName = renderedWorld == null ? "Unknown World" : renderedWorld.Name;
+            _renderedWorldName = renderedWorld?.Name.English.GetValueOrDefault() ?? "Unknown World";
 
-            await InvokeAsync(() =>
-            {
-                StateHasChanged();
-            });
+            await InvokeAsync(StateHasChanged);
         }
     }
 

@@ -1,5 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
+using DbgCensus.Core.Objects;
 
 namespace squittal.ScrimPlanetmans.App.Data.Models;
 
@@ -15,7 +15,7 @@ public class ScrimMatchRoundConfiguration
 
     public int RoundSecondsTotal { get; set; }
 
-    public int WorldId { get; set; }
+    public WorldDefinition WorldId { get; set; }
     public bool IsManualWorldId { get; set; } // = false;
 
     public uint? FacilityId { get; set; } // = -1
@@ -23,6 +23,5 @@ public class ScrimMatchRoundConfiguration
 
     #region Navigation Properties
     public ScrimMatch ScrimMatch { get; set; }
-    public World World { get; set; }
     #endregion Navigation Properties
 }

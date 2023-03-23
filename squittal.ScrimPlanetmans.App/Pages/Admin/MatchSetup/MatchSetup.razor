@@ -5,23 +5,22 @@
 @using squittal.ScrimPlanetmans.App.Pages.Shared;
 @using squittal.ScrimPlanetmans.App.Pages.Admin.MatchSetup.MatchTeamComposer;
 @using System.Threading;
+@using DbgCensus.Core.Objects
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
 @using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.Models.CensusRest
-@using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models
-@using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 
 @inject IScrimMessageBroadcastService MessageService
 @inject IScrimMatchEngine ScrimMatchEngine
 @inject ICensusMapRegionService MapRegionService
-@inject IZoneService ZoneService
-@inject IWorldService WorldService
+@inject ICensusZoneService ZoneService
+@inject ICensusWorldService WorldService
 @inject IScrimRulesetManager RulesetManager
 @inject IEventFilterService EventFilter
 
@@ -150,7 +149,7 @@
 
                     <EditForm Model="@_matchConfiguration" style="margin-top: 0.5rem;">
 
-                        <p style="margin-bottom: 0.5rem;"><div style="width: 110px; padding-right: 4px; display: inline-block;">Match Title:</div><InputText id="matchTitle" Value="@_matchConfiguration.Title" ValueChanged="@((string s) => OnChangeMatchTitle(s))" ValueExpression="@(() => _matchConfiguration.Title)" style="width: 250px;" maxlength="100" pattern="(?!.)$|^([A-Za-z0-9()\[\]\-_'.][ ]{0,1}){1,49}[A-Za-z0-9()\[\]\-_'.]$" /></p>
+                        <p style="margin-bottom: 0.5rem;"><div style="width: 110px; padding-right: 4px; display: inline-block;">Match Title:</div><InputText id="matchTitle" Value="@_matchConfiguration.Title" ValueChanged="@(OnChangeMatchTitle)" ValueExpression="@(() => _matchConfiguration.Title)" style="width: 250px;" maxlength="100" pattern="(?!.)$|^([A-Za-z0-9()\[\]\-_'.][ ]{0,1}){1,49}[A-Za-z0-9()\[\]\-_'.]$" /></p>
                         <p style="margin-bottom: 0.5rem;"><span style="width: 110px; padding-right: 4px; display: inline-block;">Round Length:</span><InputNumber min="1" type="text" id="roundSecondsTotal" Value="@_matchConfiguration.RoundSecondsTotal" ValueChanged="@((int s) => _matchConfiguration.TrySetRoundLength(s, true))" ValueExpression="@(() => _matchConfiguration.RoundSecondsTotal)" /><span style="padding-left: 4px; width: 64px;">seconds</span></p>
 
                         <div style="margin-bottom: 0.2rem;">
@@ -159,10 +158,12 @@
 
                             @if (_worlds != null)
                             {
-                                <InputSelect TValue="string" style="margin-right: 5px; width: 125px; padding: 0.1rem;" Value="@_matchConfiguration.WorldIdString" ValueChanged="@((string s) => _matchConfiguration.TrySetWorldId(s, true, false))" ValueExpression="@(() => _matchConfiguration.WorldIdString)">
+                                <InputSelect TValue="string" style="margin-right: 5px; width: 125px; padding: 0.1rem;" Value="@_matchConfiguration.WorldId.ToString()" ValueChanged="@((s) => _matchConfiguration.TrySetWorldId(s, true, false))" ValueExpression="@(() => _matchConfiguration.WorldId.ToString())">
                                     @foreach (var world in _worlds)
                                     {
-                                        <option value=@world.Id.ToString() label="@world.Name">@world.Name (@world.Id.ToString())</option>
+                                        string worldName = world.Name.English.GetValueOrDefault()
+                                            ?? world.WorldId.ToString();
+                                        <option value="@world.WorldId" label="@worldName">@worldName (@((int)world.WorldId)</option>
                                     }
                                 </InputSelect>
                             }
@@ -173,14 +174,19 @@
                                     <option value=@_noFacilitIdValue>No Base</option>
 
                                     @foreach (var zone in _mapZones)
-                                            {
-                                        <optgroup label="@(_zones.Where(z => zone == z.Id).Select(z => z.Name).FirstOrDefault())" style="background-color: var(--sq-bg-white-unlit); color: var(--sq-pink); font-size: 1rem;">@(_zones.Where(z => zone == z.Id).Select(z => z.Name).FirstOrDefault())</optgroup>
+                                    {
+                                        string zoneName = _zones?.FirstOrDefault(z => zone == z.ZoneId)?
+                                            .Name
+                                            .English
+                                            .GetValueOrDefault() ?? zone.ToString();
+
+                                        <optgroup label="@zoneName" style="background-color: var(--sq-bg-white-unlit); color: var(--sq-pink); font-size: 1rem;">@zoneName</optgroup>
 
                                         @foreach (var region in _mapRegions.Where(r => r.ZoneId == zone))
-                                                {
+                                        {
                                             <option value=@region.FacilityId.ToString() label="@region.FacilityName">@region.FacilityName (@region.FacilityId.ToString())</option>
-                                                }
-                                            }
+                                        }
+                                    }
                                 </InputSelect>
                             }
                         </div>
@@ -233,11 +239,11 @@
 
     #region Facility & World Select List Variables
     private IEnumerable<CensusMapRegion>? _mapRegions { get; set; }
-    private List<uint> _mapZones { get; set; } = new();
-    private IEnumerable<Zone> _zones { get; set; }
+    private List<ZoneDefinition> _mapZones { get; set; } = new();
+    private IReadOnlyList<CensusZone>? _zones { get; set; }
     private string _noFacilitIdValue { get; set; } = "-1";
 
-    private IEnumerable<World> _worlds { get; set; }
+    private IReadOnlyList<CensusWorld>? _worlds { get; set; }
     #endregion
 
     private bool _isStreamServiceEnabled { get; set; } = false;
@@ -269,10 +275,10 @@
             var censusStreamStatusTask = GetCensusStreamStatus();
             TaskList.Add(censusStreamStatusTask);
 
-            var zonesTask = ZoneService.GetAllZones();
+            var zonesTask = ZoneService.GetAllAsync();
             TaskList.Add(zonesTask);
 
-            var worldsTask = WorldService.GetAllWorldsAsync();
+            var worldsTask = WorldService.GetAllAsync();
             TaskList.Add(worldsTask);
 
             var rulesetsTask = SetUpRulesetsAsync();
@@ -557,8 +563,11 @@
     }
     #endregion Match Controls
 
-    private void OnChangeMatchTitle(string newTitle)
+    private void OnChangeMatchTitle(string? newTitle)
     {
+        if (newTitle is null)
+            return;
+
         var oldTitle = _matchConfiguration.Title;
 
         if (_matchConfiguration.TrySetTitle(newTitle, true))

@@ -1,18 +1,40 @@
 ﻿@using System.Text.RegularExpressions;
 @using squittal.ScrimPlanetmans.App.Models.Forms
+@using System.Diagnostics.CodeAnalysis
+
 @inherits InputBase<squittal.ScrimPlanetmans.App.Models.Forms.OutfitAlias>
 
-<input type="text" @attributes=AdditionalAttributes class=@CssClass @bind=CurrentValueAsString maxlength="4" pattern="[A-Za-z0-9]{1,4}"/>
+<input type="text"
+       @attributes="AdditionalAttributes"
+       class="@CssClass"
+       @bind="CurrentValueAsString"
+       maxlength="4"
+       pattern="[A-Za-z0-9]{1,4}" />
 
 @code {
-    static Regex Regex = new Regex("[A-Za-z0-9]{1,4}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static Regex Regex = new("[A-Za-z0-9]{1,4}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    protected override string FormatValueAsString(OutfitAlias value) => value.Alias;
+    protected override string? FormatValueAsString(OutfitAlias? value)
+        => value?.Alias;
 
-    protected override bool TryParseValueFromString(string value, out OutfitAlias result, out string validationErrorMessage)
+    protected override bool TryParseValueFromString
+    (
+        string? value,
+        [NotNullWhen(true)] out OutfitAlias? result,
+        [NotNullWhen(false)] out string? validationErrorMessage
+    )
     {
         validationErrorMessage = null;
+        result = null;
+
+        if (string.IsNullOrEmpty(value))
+        {
+            validationErrorMessage = "Alias cannot be empty";
+            return false;
+        }
+
         result = new OutfitAlias(value);
         return true;
     }
+
 }

@@ -20,9 +20,9 @@ public class ScrimVehicleDestruction
     public required ulong VictimCharacterId { get; init; }
 
     [Required]
-    public required int VictimVehicleId { get; init; }
+    public required uint VictimVehicleId { get; init; }
 
-    public int? AttackerVehicleId { get; init; }
+    public uint? AttackerVehicleId { get; init; }
     public int ScrimMatchRound { get; init; }
     public ScrimActionType ActionType { get; init; }
     public DeathEventType DeathType { get; init; }

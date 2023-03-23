@@ -10,12 +10,10 @@ using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
-using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.CensusEventStreamHandlers;
@@ -25,7 +23,7 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
     private readonly ILogger<VehicleDestroyEventHandler> _logger;
     private readonly IEventFilterService _eventFilter;
     private readonly ICensusItemService _itemService;
-    private readonly IVehicleService _vehicleService;
+    private readonly ICensusVehicleService _vehicleService;
     private readonly IScrimTeamsManager _teamsManager;
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly IScrimMatchScorer _scorer;
@@ -38,7 +36,7 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
         ILogger<VehicleDestroyEventHandler> logger,
         IEventFilterService eventFilter,
         ICensusItemService itemService,
-        IVehicleService vehicleService,
+        ICensusVehicleService vehicleService,
         IScrimTeamsManager teamsManager,
         IScrimMessageBroadcastService messageService,
         IScrimMatchScorer scorer,
@@ -100,11 +98,11 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
             Weapon = weapon
         };
 
-        Vehicle? attackerVehicle = await _vehicleService.GetVehicleInfoAsync((int)payload.AttackerVehicleID);
+        CensusVehicle? attackerVehicle = await _vehicleService.GetByIdAsync(payload.AttackerVehicleID, ct);
         if (attackerVehicle != null)
             destructionEvent.AttackerVehicle = new ScrimActionVehicleInfo(attackerVehicle);
 
-        Vehicle? victimVehicle = await _vehicleService.GetVehicleInfoAsync((int)payload.VehicleID);
+        CensusVehicle? victimVehicle = await _vehicleService.GetByIdAsync(payload.VehicleID, ct);
         if (victimVehicle != null)
             destructionEvent.VictimVehicle = new ScrimActionVehicleInfo(victimVehicle);
 
@@ -160,7 +158,7 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
                             Timestamp = destructionEvent.Timestamp,
                             AttackerCharacterId = attackerId,
                             VictimCharacterId = victimId,
-                            VictimVehicleId = destructionEvent.VictimVehicle?.Id ?? (int)payload.VehicleID,
+                            VictimVehicleId = destructionEvent.VictimVehicle?.Id ?? payload.VehicleID,
                             AttackerVehicleId = destructionEvent.AttackerVehicle?.Id,
                             ScrimMatchRound = currentRound,
                             ActionType = destructionEvent.ActionType,

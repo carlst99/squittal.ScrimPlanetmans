@@ -3,18 +3,19 @@
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
-@using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.Models.Forms
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.Util
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
+@using squittal.ScrimPlanetmans.App.Models.CensusRest
 
 @inject IScrimTeamsManager ScrimTeamsManager
 @inject IScrimMatchEngine ScrimMatchEngine
 @inject IOutfitService OutfitService
-@inject IWorldService WorldService
+@inject ICensusWorldService WorldService
 @inject IScrimMessageBroadcastService MessageService
 
 @implements IDisposable
@@ -124,7 +125,16 @@
         <div class="sq-mini-card-12 @SqCssHelper.GetFactionClassFromId(outfit.FactionId)">
 
             <h5 class="@SqCssHelper.GetFactionClassFromId(outfit.FactionId)" style="color: var(--sq-ps2-primary); margin-bottom: 0.1rem;">
-                <b>[@outfit.Alias] @outfit.Name</b> (@outfit.MemberCount | @outfit.MembersOnlineCount) <span>@_worlds?.Where(w => w.Id == outfit.WorldId).Select(w => w.Name).FirstOrDefault()</span><span> @StringHelpers.GetFactionAbbreviation(outfit.FactionId)</span>
+                <b>[@outfit.Alias] @outfit.Name</b> (@outfit.MemberCount | @outfit.MembersOnlineCount)
+                <span>
+                    @(_worlds?.FirstOrDefault(w => w.WorldId == outfit.WorldId)?
+                        .Name
+                        .English
+                        .GetValueOrDefault() ?? outfit.WorldId.ToString())
+                </span>
+                <span>
+                    @StringHelpers.GetFactionAbbreviation(outfit.FactionId)
+                </span>
             </h5>
 
             <p style="margin: 0 0 0.1rem 0;">
@@ -402,7 +412,7 @@
     #endregion
 
     #region Helpers
-    private IEnumerable<World> _worlds;
+    private IReadOnlyList<CensusWorld>? _worlds;
     private TeamDefinition _renderedTeamOrdinal;
     #endregion
 
@@ -412,7 +422,7 @@
     #region Initialization Methods
     protected override async Task OnInitializedAsync()
     {
-        _worlds = await WorldService.GetAllWorldsAsync();
+        _worlds = await WorldService.GetAllAsync();
     }
 
     protected override void OnInitialized()

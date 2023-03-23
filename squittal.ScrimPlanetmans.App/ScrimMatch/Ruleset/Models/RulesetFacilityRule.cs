@@ -10,8 +10,5 @@ public class RulesetFacilityRule
     [Required]
     public required uint FacilityId { get; init; }
 
-    [Required]
-    public required uint MapRegionId { get; init; }
-
     public Ruleset Ruleset { get; set; }
 }

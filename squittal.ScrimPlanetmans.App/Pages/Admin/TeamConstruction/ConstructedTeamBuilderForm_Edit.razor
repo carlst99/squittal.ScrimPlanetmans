@@ -1,4 +1,5 @@
 ﻿@using System.Collections.Concurrent;
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
 @using squittal.ScrimPlanetmans.App.Data.Models
 @using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.Forms
@@ -6,12 +7,10 @@
 @using squittal.ScrimPlanetmans.App.Pages.Shared;
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
-@using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 
 @inject IConstructedTeamService ConstructedTeamsService
 @inject IScrimMessageBroadcastService MessageService
-@inject IWorldService WorldService
 
 @implements IDisposable
 
@@ -210,14 +209,9 @@
 
     private ConcurrentQueue<ConstructedTeamMemberChangeMessage> _changeMessagesQueue { get; set; } = new ConcurrentQueue<ConstructedTeamMemberChangeMessage>();
 
-    private IEnumerable<World> _worlds;
 
 
     #region Initialization Methods
-    protected override async Task OnInitializedAsync()
-    {
-        _worlds = await WorldService.GetAllWorldsAsync();
-    }
 
     protected override void OnInitialized()
     {

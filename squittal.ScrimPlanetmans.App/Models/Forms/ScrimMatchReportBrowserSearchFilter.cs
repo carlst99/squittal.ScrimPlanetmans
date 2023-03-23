@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using DbgCensus.Core.Objects;
 
 namespace squittal.ScrimPlanetmans.App.Models.Forms;
 
@@ -14,8 +15,7 @@ public class ScrimMatchReportBrowserSearchFilter
     public int RulesetId { get => GetRulesetIdFromString(); }
     public string RulesetIdString { get; set; } = _defaultRulesetIdString;
 
-    public int WorldId { get => GetWorldIdFromString(); }
-    public string WorldIdString { get; set; } = _defaultSearchWorldIdString; //"19";
+    public WorldDefinition WorldId { get; set; }
 
     public int FacilityId { get => GetFacilityIdFromString(); }
     public string FacilityIdString { get; set; } = _defaultSearchFacilityIdString; //"0";
@@ -34,7 +34,7 @@ public class ScrimMatchReportBrowserSearchFilter
 
     private static readonly DateTime _defaultSearchStartDate = new DateTime(2012, 11, 20); // PlanetSide 2 release date
     private static readonly DateTime _defaultSearchEndDate = DateTime.UtcNow.AddDays(1);
-    private static readonly string _defaultSearchWorldIdString = "19"; // Jaeger
+    private static readonly WorldDefinition _defaultSearchWorldId = WorldDefinition.Jaeger;
     private static readonly string _defaultSearchFacilityIdString = "0"; // Any Facility
     private static readonly int _defaultSearchMinimumRoundCount = 2;
     private static readonly string _defaultSearchInputTerms = string.Empty;
@@ -48,7 +48,7 @@ public class ScrimMatchReportBrowserSearchFilter
     private bool GetIsDefaultFilter()
     {
         return MinimumRoundCount == _defaultSearchMinimumRoundCount
-            && WorldIdString == _defaultSearchWorldIdString
+            && WorldId == _defaultSearchWorldId
             && FacilityIdString == _defaultSearchFacilityIdString
             && SearchStartDate == _defaultSearchStartDate && SearchEndDate == _defaultSearchEndDate
             && InputSearchTerms == _defaultSearchInputTerms
@@ -64,7 +64,7 @@ public class ScrimMatchReportBrowserSearchFilter
 
         SearchTermsList = new List<string>();
         AliasSearchTermsList = new List<string>();
-            
+
         if (string.IsNullOrWhiteSpace(searchTerms))
         {
             _searchTermsAutoEvent.Set();
@@ -104,9 +104,15 @@ public class ScrimMatchReportBrowserSearchFilter
 
     public void SetWorldId(string worldIdString)
     {
-        _worldAutoEvent.WaitOne();
+        if (!Enum.TryParse(worldIdString, out WorldDefinition worldId))
+            return;
+        SetWorldId(worldId);
+    }
 
-        WorldIdString = worldIdString;
+    public void SetWorldId(WorldDefinition worldId)
+    {
+        _worldAutoEvent.WaitOne();
+        WorldId = worldId;
         _worldAutoEvent.Set();
     }
 
@@ -148,18 +154,6 @@ public class ScrimMatchReportBrowserSearchFilter
         else
         {
             return -1;
-        }
-    }
-
-    private int GetWorldIdFromString()
-    {
-        if (int.TryParse(WorldIdString, out int intId))
-        {
-            return intId;
-        }
-        else
-        {
-            return 19; // Default to Jaeger
         }
     }
 

@@ -259,7 +259,7 @@ public class ConstructedTeamService : IConstructedTeamService
             NameFull = character.Name.First,
             NameAlias = membership.Alias,
             PrestigeLevel = character.PrestigeLevel,
-            WorldId = (int)character.WorldId
+            WorldId = character.WorldId
         };
     }
 
@@ -547,7 +547,7 @@ public class ConstructedTeamService : IConstructedTeamService
             string playerAlias;
             if (string.IsNullOrWhiteSpace(customAlias))
             {
-                playerAlias = Player.GetTrimmedPlayerName(character.Name.First, (int)character.WorldId);
+                playerAlias = Player.GetTrimmedPlayerName(character.Name.First, character.WorldId);
                 if (string.IsNullOrWhiteSpace(playerAlias))
                     playerAlias = character.Name.First;
             }
@@ -605,7 +605,7 @@ public class ConstructedTeamService : IConstructedTeamService
             string playerAlias;
             if (string.IsNullOrWhiteSpace(customAlias))
             {
-                playerAlias = Player.GetTrimmedPlayerName(character.Name.First, (int)character.WorldId);
+                playerAlias = Player.GetTrimmedPlayerName(character.Name.First, character.WorldId);
 
                 if (string.IsNullOrWhiteSpace(playerAlias))
                     playerAlias = characterName;

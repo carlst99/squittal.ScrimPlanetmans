@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using DbgCensus.Core.Objects;
 using squittal.ScrimPlanetmans.App.Models;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
+using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
@@ -170,7 +171,7 @@ public class ScrimLogoutActionEvent : ScrimActionEvent
 public class ScrimFacilityControlActionEvent : ScrimActionEvent
 {
     public int FacilityId { get; set; }
-    public int WorldId { get; set; }
+    public WorldDefinition WorldId { get; set; }
     public string? FacilityName { get; set; }
 
     public FacilityControlType ControlType { get; set; }
@@ -212,77 +213,40 @@ public class ScrimVehicleDestructionActionEvent : ScrimActionEvent
 
 public class ScrimActionVehicleInfo
 {
-    public int Id { get; set; }
+    public uint Id { get; set; }
     public string Name { get; set; }
 
     public VehicleType Type { get; set; }
 
-    public ScrimActionVehicleInfo(Vehicle vehicle)
+    public ScrimActionVehicleInfo(CensusVehicle? vehicle)
     {
-        if (vehicle == null)
-        {
+        if (vehicle is null)
             return;
-        }
 
-        Id = vehicle.Id;
-        Name = vehicle.Name;
+        Id = vehicle.VehicleId;
+        Name = vehicle.Name.English.GetValueOrDefault() ?? "Unknown Vehicle";
 
-        Type = GetVehicleType(vehicle.Id);
+        Type = GetVehicleType(vehicle.VehicleId);
     }
 
-    public static VehicleType GetVehicleType(int vehicleId)
-    {
-        if (vehicleId == 1 || vehicleId == 2010 || vehicleId == 2125)
+    public static VehicleType GetVehicleType(uint vehicleId)
+        => vehicleId switch
         {
-            return VehicleType.Flash;
-        }
-        else if (vehicleId == 2)
-        {
-            return VehicleType.Sunderer;
-        }
-        else if (vehicleId == 3)
-        {
-            return VehicleType.Lightning;
-        }
-        else if (vehicleId == 4 || vehicleId == 5 || vehicleId == 6)
-        {
-            return VehicleType.MBT;
-        }
-        else if (vehicleId == 7 || vehicleId == 8 || vehicleId == 9)
-        {
-            return VehicleType.ESF;
-        }
-        else if (vehicleId == 10)
-        {
-            return VehicleType.Liberator;
-        }
-        else if (vehicleId == 11)
-        {
-            return VehicleType.Galaxy;
-        }
-        else if (vehicleId == 12)
-        {
-            return VehicleType.Harasser;
-        }
-        else if (vehicleId == 14)
-        {
-            return VehicleType.Valkyrie;
-        }
-        else if (vehicleId == 15)
-        {
-            return VehicleType.ANT;
-        }
-        else if (vehicleId == 2019)
-        {
-            return VehicleType.Bastion;
-        }
-        else if (vehicleId == 2122 || vehicleId == 2123 || vehicleId == 2124)
-        {
-            return VehicleType.Interceptor;
-        }
-        else
-        {
-            return VehicleType.Unknown;
-        }
-    }
+            1 or 2010 or 2125 => VehicleType.Flash,
+            2 => VehicleType.Sunderer,
+            3 => VehicleType.Lightning,
+            4 or 5 or 6 => VehicleType.MBT,
+            7 or 8 or 9 => VehicleType.ESF,
+            10 => VehicleType.Liberator,
+            11 => VehicleType.Galaxy,
+            12 => VehicleType.Harasser,
+            14 => VehicleType.Valkyrie,
+            15 => VehicleType.ANT,
+            2019 => VehicleType.Bastion,
+            2122 => VehicleType.Interceptor,
+            2123 => VehicleType.Interceptor,
+            2124 => VehicleType.Interceptor,
+            2142 => VehicleType.Corsair,
+            _ => VehicleType.Unknown
+        };
 }

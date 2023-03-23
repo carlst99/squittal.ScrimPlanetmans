@@ -1,38 +1,31 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
-using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.Data;
 
 public class ApplicationDataLoader : IApplicationDataLoader
 {
+    private readonly ILogger<ApplicationDataLoader> _logger;
     private readonly IScrimRulesetManager _rulesetManager;
     private readonly IScrimMatchScorer _matchScorer;
-    private readonly IWorldService _worldService;
-    private readonly IZoneService _zoneService;
     private readonly IDbSeeder _dbSeeder;
-    private readonly ILogger<ApplicationDataLoader> _logger;
 
-
-    public ApplicationDataLoader(
+    public ApplicationDataLoader
+    (
+        ILogger<ApplicationDataLoader> logger,
         IScrimRulesetManager rulesetManager,
         IScrimMatchScorer matchScorer,
-        IWorldService worldService,
-        IZoneService zoneService,
-        IDbSeeder dbSeeder,
-        ILogger<ApplicationDataLoader> logger)
+        IDbSeeder dbSeeder
+    )
     {
+        _logger = logger;
         _rulesetManager = rulesetManager;
         _matchScorer = matchScorer;
-        _worldService = worldService;
-        _zoneService = zoneService;
         _dbSeeder = dbSeeder;
-        _logger = logger;
     }
 
     public async Task OnApplicationStartup(CancellationToken cancellationToken)
@@ -42,27 +35,10 @@ public class ApplicationDataLoader : IApplicationDataLoader
 
             await _dbSeeder.SeedDatabase(cancellationToken);
 
-            cancellationToken.ThrowIfCancellationRequested();
-
-            List<Task> TaskList = new List<Task>();
-
-            var seedDefaultRulesetTask = _rulesetManager.SeedDefaultRulesetAsync();
-            TaskList.Add(seedDefaultRulesetTask);
-
-            var worldsMapTask = _worldService.SetUpWorldsMap();
-            TaskList.Add(worldsMapTask);
-
-            var zonesTask = _zoneService.SetupZonesMapAsync();
-            TaskList.Add(zonesTask);
-
-            await Task.WhenAll(TaskList);
-
-            cancellationToken.ThrowIfCancellationRequested();
+            await _rulesetManager.SeedDefaultRulesetAsync(cancellationToken);
 
             await _rulesetManager.ActivateDefaultRulesetAsync(cancellationToken);
-
             await _rulesetManager.SetUpActiveRulesetAsync(cancellationToken);
-
             await _matchScorer.SetActiveRulesetAsync(cancellationToken);
         }
         catch (Exception ex)

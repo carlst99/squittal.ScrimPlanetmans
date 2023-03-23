@@ -5,6 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using DbgCensus.Core.Objects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
@@ -102,7 +103,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
     public IEnumerable<Player> GetTeamConstructedTeamFactionPlayers(TeamDefinition teamOrdinal, int constructedTeamId, int factionId)
         => GetTeam(teamOrdinal).GetConstructedTeamFactionPlayers(constructedTeamId, factionId);
 
-    public int? GetNextWorldId(int previousWorldId)
+    public WorldDefinition? GetNextWorldId(WorldDefinition previousWorldId)
     {
         if (_allPlayers.Any(p => p.WorldId == previousWorldId))
             return previousWorldId;
@@ -331,8 +332,8 @@ public class ScrimTeamsManager : IScrimTeamsManager
         foreach (Player player in players)
         {
             player.TeamOrdinal = teamOrdinal;
-            player.FactionId = (int)outfit.FactionId;
-            player.WorldId = (int)outfit.WorldId;
+            player.FactionId = outfit.FactionId ?? 0;
+            player.WorldId = outfit.WorldId ?? 0;
 
             player.UpdateNameTrimmed();
 
@@ -497,7 +498,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
             .FirstOrDefault(o => o.AliasLower == aliasLower);
 
         int outfitFactionID = (int)outfit.FactionId;
-        int outfitWorldId = (int)outfit.WorldId;
+        WorldDefinition outfitWorldId = outfit.WorldId ?? 0;
 
         bool anyPlayersAdded = false;
 

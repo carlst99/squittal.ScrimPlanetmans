@@ -1,9 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using squittal.ScrimPlanetmans.App.Data.DataConfigurations.Census;
 using squittal.ScrimPlanetmans.App.Data.DataConfigurations.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Data.DataConfigurations.ScrimMatchReports;
 using squittal.ScrimPlanetmans.App.Data.Models;
-using squittal.ScrimPlanetmans.App.Models.Planetside;
 using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
@@ -15,14 +13,6 @@ public class PlanetmansDbContext : DbContext
         : base(options)
     {
     }
-
-    #region Census DbSets
-    //public DbSet<Outfit> Outfits { get; set; }
-    //public DbSet<OutfitMember> OutfitMembers { get; set; }
-    public DbSet<Vehicle> Vehicles { get; set; }
-    public DbSet<World> Worlds { get; set; }
-    public DbSet<Zone> Zones { get; set; }
-    #endregion
 
     #region Stream Event DbSets
     //public DbSet<Death> Deaths { get; set; }
@@ -75,12 +65,6 @@ public class PlanetmansDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
-
-        #region Census Configuration
-        builder.ApplyConfiguration(new VehicleConfiguration());
-        builder.ApplyConfiguration(new WorldConfiguration());
-        builder.ApplyConfiguration(new ZoneConfiguration());
-        #endregion
 
         #region Stream Configuration
         //builder.ApplyConfiguration(new DeathConfiguration());

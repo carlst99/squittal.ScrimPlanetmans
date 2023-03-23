@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using squittal.ScrimPlanetmans.App.Logging;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Services.Interfaces;
-using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.Services;
 
@@ -18,21 +17,10 @@ public class DatabaseMaintenanceService
 
     public DatabaseMaintenanceService
     (
-        IZoneService zoneService,
-        IWorldService worldService,
-        IVehicleService vehicleService,
         ISqlScriptRunner adhocScriptRunner
     )
     {
         _adhocScriptRunner = adhocScriptRunner;
-
-        CensusStoreDataComparisonRow zones = new("Zones", zoneService);
-        CensusStoreDataComparisonRow worlds = new("Worlds", worldService);
-        CensusStoreDataComparisonRow vehicles = new("Vehicles", vehicleService);
-
-        Comparisons.Add(zones);
-        Comparisons.Add(worlds);
-        Comparisons.Add(vehicles);
     }
 
     public async Task InitializeCounts()

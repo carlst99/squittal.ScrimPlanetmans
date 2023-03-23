@@ -5,22 +5,21 @@
 
 @using squittal.ScrimPlanetmans.App.Pages.Shared;
 @using System.Threading;
+@using DbgCensus.Core.Objects
 @using Microsoft.AspNetCore.WebUtilities 
+@using Microsoft.Extensions.Primitives
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
 @using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.Forms
-@using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models
-@using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatchReports.Interfaces
-@*for QueryHelpers*@
 
 @inject IScrimMatchReportDataService ReportDataService
 @inject ICensusMapRegionService MapRegionService
-@inject IZoneService ZoneService
-@inject IWorldService WorldService
+@inject ICensusZoneService ZoneService
+@inject ICensusWorldService WorldService
 @inject NavigationManager NavManager
 
 @implements IDisposable
@@ -31,7 +30,7 @@
 
         <div class="col-lg-8" style="margin-left: auto; margin-right: auto;">
 
-            <div class="header-card-container default" style="background-color: transparent; box-shadow: 0px 2px 5px 0px var(--sq-light-blue-gray);">
+            <div class="header-card-container default" style="background-color: transparent; box-shadow: 0 2px 5px 0 var(--sq-light-blue-gray);">
                 <h4>Scrim Match Browser</h4>
 
                 @if (!_isLoadingSearchFilterData)
@@ -49,7 +48,7 @@
                         @if (!_searchFilter.IsDefaultFilter || _isFilteredResults)
                         {
                             <button class="btn btn-outline-primary" @onclick="OnClearSearchFilters">
-                                <span class="oi oi-x" style="top: 0px;"></span>Clear
+                                <span class="oi oi-x" style="top: 0;"></span>Clear
                             </button>
                         }
 
@@ -58,10 +57,10 @@
                             @if (_rulesets != null)
                             {
                             <div style="margin-left: 0; margin-right: 16px; margin-bottom: 0.5rem; display: inline-block;">Ruleset: 
-                                <InputSelect TValue="string" style="width: 175px; padding: 0.1rem; display: inline-block;" Value="@_searchFilter.RulesetIdString" ValueChanged="@((string s) => _searchFilter.SetRulesetId(s))" ValueExpression="@(() => _searchFilter.RulesetIdString)">
+                                <InputSelect TValue="string" style="width: 175px; padding: 0.1rem; display: inline-block;" Value="@_searchFilter.RulesetIdString" ValueChanged="@((s) => _searchFilter.SetRulesetId(s))" ValueExpression="@(() => _searchFilter.RulesetIdString)">
                                 <option value=@_anyRulesetIdValue>Any Ruleset</option>
 
-                                    @foreach (var ruleset in _rulesets)
+                                    @foreach (Ruleset ruleset in _rulesets)
                                     {
                                             <option value=@ruleset.Id.ToString() label="@ruleset.Name">@ruleset.Name (@ruleset.Id.ToString())</option>
                                     }
@@ -71,27 +70,33 @@
                             
                             @if (_worlds != null)
                             {
-                                <InputSelect TValue="string" style="margin-left: 0; margin-right: 4px; width: 125px; padding: 0.1rem; display: inline-block;" Value="@_searchFilter.WorldIdString" ValueChanged="@((string s) => _searchFilter.SetWorldId(s))" ValueExpression="@(() => _searchFilter.WorldIdString)">
+                                <InputSelect TValue="string" style="margin-left: 0; margin-right: 4px; width: 125px; padding: 0.1rem; display: inline-block;" Value="@_searchFilter.WorldId.ToString()" ValueChanged="@((s) => _searchFilter.SetWorldId(s))" ValueExpression="@(() => _searchFilter.WorldId.ToString())">
                                     <option value=@_anyWorldIdValue>All Servers</option>
 
-                                    @foreach (var world in _worlds)
+                                    @foreach (CensusWorld world in _worlds)
                                     {
-                                        <option value=@world.Id.ToString() label="@world.Name">@world.Name (@world.Id.ToString())</option>
+                                        string worldName = world.Name.English.GetValueOrDefault()
+                                            ?? world.WorldId.ToString();
+                                        <option value="@world.WorldId" label="@worldName">@@worldName (@((int)world.WorldId)</option>
                                     }
                                 </InputSelect>
                             }
 
-                            <InputSelect TValue="string" style="margin-right: 16px; width: 175px; padding: 0.1rem; display: inline-block;" Value="@_searchFilter.FacilityIdString" ValueChanged="@((string s) => _searchFilter.SetFacilityId(s))" ValueExpression="@(() => _searchFilter.FacilityIdString)">
+                            <InputSelect TValue="string" style="margin-right: 16px; width: 175px; padding: 0.1rem; display: inline-block;" Value="@_searchFilter.FacilityIdString" ValueChanged="@((s) => _searchFilter.SetFacilityId(s))" ValueExpression="@(() => _searchFilter.FacilityIdString)">
                                 <option value=@_anyFacilityIdValue>Any Facility</option>
                                 <option value=@_noFacilitIdFilterValue>No Filter</option>
 
                                 @if (_mapZones != null && _mapRegions != null)
                                 {
-                                    @foreach (var zone in _mapZones)
+                                    @foreach (ZoneDefinition zone in _mapZones)
                                     {
-                                        <optgroup label="@(_zones.Where(z => zone == z.Id).Select(z => z.Name).FirstOrDefault())" style="background-color: var(--sq-bg-white-unlit); color: var(--sq-pink); font-size: 1rem;">@(_zones.Where(z => zone == z.Id).Select(z => z.Name).FirstOrDefault())</optgroup>
+                                        string zoneName = _zones?.FirstOrDefault(z => zone == z.ZoneId)?
+                                            .Name
+                                            .English
+                                            .GetValueOrDefault() ?? zone.ToString();
+                                        <optgroup label="@zoneName" style="background-color: var(--sq-bg-white-unlit); color: var(--sq-pink); font-size: 1rem;">@zoneName</optgroup>
 
-                                        @foreach (var region in _mapRegions.Where(r => r.ZoneId == zone))
+                                        @foreach (CensusMapRegion region in _mapRegions.Where(r => r.ZoneId == zone))
                                         {
                                             <option value=@region.FacilityId.ToString() label="@region.FacilityName">@region.FacilityName (@region.FacilityId.ToString())</option>
                                         }
@@ -126,7 +131,7 @@
                     @if (_storeScrimMatchList != null)
                     {
                         <tbody style="@(_isLoadingScrimMatchList ? "opacity: 0.5;" : string.Empty)">
-                            @foreach (var match in _storeScrimMatchList)
+                            @foreach (ScrimMatchInfo match in _storeScrimMatchList)
                             {
                                 <tr>
                                     <td>@GetLocalizedDateString(match.StartTime)</td>
@@ -256,14 +261,14 @@
     private ScrimMatchReportBrowserSearchFilter _searchFilter { get; set; } = new ScrimMatchReportBrowserSearchFilter();
 
     private IEnumerable<CensusMapRegion>? _mapRegions { get; set; }
-    private List<uint> _mapZones { get; set; } = new();
-    private IEnumerable<Zone> _zones { get; set; }
+    private List<ZoneDefinition>? _mapZones { get; set; } = new();
+    private IReadOnlyList<CensusZone>? _zones { get; set; }
     private string _noFacilitIdFilterValue { get; set; } = "-1";
     private string _anyFacilityIdValue { get; set; } = "0";
-    private IEnumerable<World> _worlds { get; set; }
+    private IReadOnlyList<CensusWorld>? _worlds { get; set; }
     private string _anyWorldIdValue { get; set; } = "0";
 
-    private IEnumerable<Ruleset> _rulesets { get; set; }
+    private IEnumerable<Ruleset>? _rulesets { get; set; }
     private string _anyRulesetIdValue { get; set; } = "0";
 
     private bool _isLoadingSearchFilterData { get; set; } = true;
@@ -313,8 +318,7 @@
 
         await LoadFilterDataAsync();
 
-        var worlds = await WorldService.GetAllWorldsAsync();
-        _worlds = worlds.OrderBy(worlds => worlds.Name).ToList();
+        _worlds = await WorldService.GetAllAsync();
 
         _isLoadingSearchFilterData = false;
 
@@ -326,7 +330,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        var paramsChanged = false;
+        bool paramsChanged = false;
 
         UpdateUriParameters();
 
@@ -364,7 +368,7 @@
         try
         {
 
-            var paginatedList = await ReportDataService.GetHistoricalScrimMatchesListAsync(_renderedPageIndex, _searchFilter, ctsMatches.Token);
+            PaginatedList<ScrimMatchInfo> paginatedList = await ReportDataService.GetHistoricalScrimMatchesListAsync(_renderedPageIndex, _searchFilter, ctsMatches.Token);
 
             ctsMatches.Token.ThrowIfCancellationRequested();
 
@@ -405,19 +409,20 @@
         try
         {
 
-            var playedFacilities = await ReportDataService.GetScrimMatchBrowserFacilityIdsListAsync(ctsFilters.Token);
+            IEnumerable<uint> playedFacilities = await ReportDataService.GetScrimMatchBrowserFacilityIdsListAsync(ctsFilters.Token);
             ctsFilters.Token.ThrowIfCancellationRequested();
 
-            var mapRegions = await MapRegionService.GetAllAsync(newCTS.Token);
+            IReadOnlyList<CensusMapRegion>? mapRegions = await MapRegionService.GetAllAsync(newCTS.Token);
 
             _rulesets = await ReportDataService.GetScrimMatchBrowseRulesetIdsListAsync(ctsFilters.Token);
             ctsFilters.Token.ThrowIfCancellationRequested();
 
             _mapRegions = mapRegions?.Where(r => playedFacilities.Contains(r.FacilityId)).OrderBy(r => r.FacilityName).ToList();
 
-            _zones = await ZoneService.GetAllZones();
+            _zones = await ZoneService.GetAllAsync(newCTS.Token);
 
-            _mapZones = _mapRegions.Select(r => r.ZoneId).Distinct().ToList();
+            if (_mapRegions is not null)
+                _mapZones = _mapRegions.Select(r => r.ZoneId).Distinct().ToList();
         }
         catch
         {
@@ -433,24 +438,19 @@
 
     #endregion Initialization Methods
 
-    #region Event Handling
-    private async void OnLocationChanged(object sender, LocationChangedEventArgs args)
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs args)
     {
-        if (UpdateUriParameters())
-        {
-            await LoadScrimMatchListAsync();
+        if (!UpdateUriParameters())
+            return;
 
-            if (_searchFilter.IsDefaultFilter)
-            {
-                _isFilteredResults = false;
-            }
+        await LoadScrimMatchListAsync();
 
-            StateHasChanged();
-        }
+        if (_searchFilter.IsDefaultFilter)
+            _isFilteredResults = false;
+
+        StateHasChanged();
     }
-    #endregion Event Handling
 
-    #region Form Controls
     private async Task OnSearchFilterSubmit()
     {
         _searchFilter.ParseSearchTermsString();
@@ -469,7 +469,7 @@
             _isFilteredResults = false;
         }
 
-        NavManager.NavigateTo($"/reports?page=1");
+        NavManager.NavigateTo("/reports?page=1");
     }
 
     private async void OnClearSearchFilters()
@@ -483,19 +483,17 @@
 
         _isFilteredResults = false;
 
-        NavManager.NavigateTo($"/reports?page=1");
+        NavManager.NavigateTo("/reports?page=1");
 
         InvokeAsyncStateHasChanged();
     }
 
-    #endregion Form Controls
-
     private bool UpdateUriParameters()
     {
-        var uri = NavManager.ToAbsoluteUri(NavManager.Uri);
-        var stateChanged = false;
+        Uri uri = NavManager.ToAbsoluteUri(NavManager.Uri);
+        bool stateChanged = false;
 
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("page", out var qPage))
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("page", out StringValues qPage))
         {
             if (int.TryParse(qPage, out int page))
             {
@@ -539,7 +537,7 @@
     {
         dateTime = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
 
-        var dateTimeLocal = dateTime.ToLocalTime();
+        DateTime dateTimeLocal = dateTime.ToLocalTime();
 
         return $"{dateTimeLocal.ToString("ddd")} {dateTimeLocal.ToString("g")}";
     }
@@ -548,7 +546,7 @@
     {
         dateTime = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
 
-        var dateTimeLocal = dateTime.ToLocalTime();
+        DateTime dateTimeLocal = dateTime.ToLocalTime();
 
         return $"{dateTimeLocal.ToString("ddd")} {dateTime.ToShortDateString()}";
     }
@@ -557,7 +555,7 @@
     {
         dateTime = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
 
-        var dateTimeLocal = dateTime.ToLocalTime();
+        DateTime dateTimeLocal = dateTime.ToLocalTime();
 
         return $"{dateTimeLocal.ToShortTimeString()}";
     }

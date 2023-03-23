@@ -2,10 +2,8 @@
 
 namespace squittal.ScrimPlanetmans.App.Models.CensusRest;
 
-public record CensusMapRegion
+public record CensusZone
 (
-    uint MapRegionId,
     ZoneDefinition ZoneId,
-    uint FacilityId,
-    string FacilityName
+    GlobalizedString Name
 );

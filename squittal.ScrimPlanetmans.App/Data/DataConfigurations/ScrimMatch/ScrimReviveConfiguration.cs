@@ -24,7 +24,5 @@ public class ScrimReviveConfiguration : IEntityTypeConfiguration<ScrimRevive>
         builder.Ignore(e => e.ScrimMatch);
         builder.Ignore(e => e.MedicParticipatingPlayer);
         builder.Ignore(e => e.RevivedParticipatingPlayer);
-        builder.Ignore(e => e.World);
-        builder.Ignore(e => e.Zone);
     }
 }

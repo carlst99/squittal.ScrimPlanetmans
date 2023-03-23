@@ -1,4 +1,6 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
+using DbgCensus.Core.Objects;
 using squittal.ScrimPlanetmans.App.Services.Rulesets;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
@@ -7,26 +9,25 @@ public class MatchConfiguration
 {
     public string Title { get; set; } = "PS2 Scrims";
 
-    public bool IsManualTitle { get; private set; } = false;
+    public bool IsManualTitle { get; private set; }
 
     public int RoundSecondsTotal { get; set; } = 900;
-    public bool IsManualRoundSecondsTotal { get; private set; } = false;
+    public bool IsManualRoundSecondsTotal { get; private set; }
 
     // Target Base Configuration
-    public bool IsManualWorldId { get; private set; } = false;
-    public bool IsWorldIdSet { get; private set; } = false;
-    public int WorldId { get => GetWorldIdFromString(); }
-    public string WorldIdString { get; set; } = "19";
+    public bool IsManualWorldId { get; private set; }
+    public bool IsWorldIdSet { get; private set; }
+    public WorldDefinition WorldId { get; set; }
     public uint FacilityId => GetFacilityIdFromString();
     public string FacilityIdString { get; set; } = "-1";
 
-    public bool EndRoundOnFacilityCapture { get; set; } = false; // TODO: move this setting to the Ruleset model
-    public bool IsManualEndRoundOnFacilityCapture { get; set; } = false;
+    public bool EndRoundOnFacilityCapture { get; set; } // TODO: move this setting to the Ruleset model
+    public bool IsManualEndRoundOnFacilityCapture { get; set; }
 
-    private readonly AutoResetEvent _autoEvent = new AutoResetEvent(true);
-    private readonly AutoResetEvent _autoEventRoundSeconds = new AutoResetEvent(true);
-    private readonly AutoResetEvent _autoEventMatchTitle = new AutoResetEvent(true);
-    private readonly AutoResetEvent _autoEndRoundOnFacilityCapture = new AutoResetEvent(true);
+    private readonly AutoResetEvent _autoEvent = new(true);
+    private readonly AutoResetEvent _autoEventRoundSeconds = new(true);
+    private readonly AutoResetEvent _autoEventMatchTitle = new(true);
+    private readonly AutoResetEvent _autoEndRoundOnFacilityCapture = new(true);
 
     public bool SaveLogFiles { get; set; } = true;
     public bool SaveEventsToDatabase { get; set; } = true;
@@ -136,27 +137,22 @@ public class MatchConfiguration
 
     public void ResetWorldId()
     {
-        WorldIdString = "19";
+        WorldId = WorldDefinition.Jaeger;
         IsManualWorldId = false;
         IsWorldIdSet = false;
     }
 
-    public bool TrySetWorldId(int worldId, bool isManualValue = false, bool isRollBack = false)
-    {
-        if (worldId <= 0)
-        {
-            return false;
-        }
-        return TrySetWorldId(worldId.ToString(), isManualValue, isRollBack);
-    }
+    public bool TrySetWorldId(string worldIdString, bool isManualValue = false, bool isRollback = false)
+        => Enum.TryParse(worldIdString, out WorldDefinition worldId)
+            && TrySetWorldId(worldId, isManualValue, isRollback);
 
-    public bool TrySetWorldId(string worldIdString, bool isManualValue = false, bool isRollBack = false)
+    public bool TrySetWorldId(WorldDefinition worldId, bool isManualValue = false, bool isRollBack = false)
     {
         _autoEvent.WaitOne();
 
         if (isManualValue)
         {
-            WorldIdString = worldIdString;
+            WorldId = worldId;
             IsManualWorldId = true;
             IsWorldIdSet = true;
 
@@ -166,7 +162,7 @@ public class MatchConfiguration
         }
         else if (!IsManualWorldId && (!IsWorldIdSet || isRollBack))
         {
-            WorldIdString = worldIdString;
+            WorldId = worldId;
 
             IsWorldIdSet = true;
 
@@ -186,16 +182,4 @@ public class MatchConfiguration
         => uint.TryParse(FacilityIdString, out uint facilityId)
             ? facilityId
             : 0;
-
-    private int GetWorldIdFromString()
-    {
-        if (int.TryParse(WorldIdString, out int intId))
-        {
-            return intId;
-        }
-        else
-        {
-            return 19; // Default to Jaeger
-        }
-    }
 }

@@ -14,5 +14,6 @@ public enum VehicleType
     Valkyrie,
     Liberator,
     Galaxy,
-    Bastion
+    Bastion,
+    Corsair
 }

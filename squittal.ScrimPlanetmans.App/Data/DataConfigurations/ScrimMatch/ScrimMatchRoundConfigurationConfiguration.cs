@@ -20,6 +20,5 @@ public class ScrimMatchRoundConfigurationConfiguration : IEntityTypeConfiguratio
         builder.Property(e => e.IsRoundEndedOnFacilityCapture).HasDefaultValue(false);
 
         builder.Ignore(e => e.ScrimMatch);
-        builder.Ignore(e => e.World);
     }
 }

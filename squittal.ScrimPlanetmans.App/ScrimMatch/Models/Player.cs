@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Text.RegularExpressions;
+using DbgCensus.Core.Objects;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
-using squittal.ScrimPlanetmans.App.Services.Planetside;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
@@ -33,7 +33,7 @@ public class Player
     }
 
     public int FactionId { get; set; }
-    public int WorldId { get; set; }
+    public WorldDefinition WorldId { get; set; }
 
     public int PrestigeLevel { get; set; }
 
@@ -75,7 +75,7 @@ public class Player
         IsOnline = isOnline;
         PrestigeLevel = character.PrestigeLevel;
         FactionId = (int)character.FactionId;
-        WorldId = (int)character.WorldId;
+        WorldId = character.WorldId;
 
         IsOutfitless = character.Outfit is null;
         if (character.Outfit is not null)
@@ -89,12 +89,12 @@ public class Player
     }
 
     #region Temporary Alias
-    public static string GetTrimmedPlayerName(string name, int worldId)
+    public static string GetTrimmedPlayerName(string name, WorldDefinition worldId)
     {
         bool isPil2NameFormat = false;
         bool isLegacyJaegerNameFormat = false;
 
-        if (WorldService.IsJaegerWorldId(worldId))
+        if (worldId is WorldDefinition.Jaeger)
         {
             if (_pil2NameRegex.Match(name).Success)
             {

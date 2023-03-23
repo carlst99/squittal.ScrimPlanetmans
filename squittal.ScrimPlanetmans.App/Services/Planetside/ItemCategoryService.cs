@@ -13,31 +13,6 @@ public class ItemCategoryService : IItemCategoryService
 {
     private readonly ICensusItemCategoryService _censusItemCategory;
 
-    private static readonly HashSet<uint> _nonWeaponItemCategoryIds = new()
-    {
-        99,  // Camo
-        100, // Infantry
-        101, // Vehicles
-        103, // Infantry Gear
-        105, // Vehicle Gear
-        106, // Armor Camo
-        107, // Weapon Camo
-        108, // Vehicle Camo
-        133, // Implants
-        134, // Consolidated Camo
-        135, // VO Packs
-        136, // Male VO Pack
-        137, // Female VO Pack
-        139, // Infantry Abilities
-        140, // Vehicle Abilities
-        141, // Boosts & Utilities
-        142, // Consolidated Decal
-        143, // Attachments
-        145, // ANT Utility
-        146, // Bounty Contract
-        148  // ANT Harvesting Tool
-    };
-
     private static readonly HashSet<uint> _infantryItemCategoryIds = new()
     {
         2,   // Knife
@@ -165,18 +140,14 @@ public class ItemCategoryService : IItemCategoryService
     {
         uint id = itemCategory.ItemCategoryId;
 
-        bool isWeaponCategory = GetIsWeaponItemCategory(id);
         ItemCategoryDomain domain = GetItemCategoryDomain(id);
 
         string name = itemCategory.Name.English.HasValue
             ? itemCategory.Name.English.Value
             : $"Category {id}";
 
-        return new ItemCategory(id, name, isWeaponCategory, domain);
+        return new ItemCategory(id, name, domain);
     }
-
-    private static bool GetIsWeaponItemCategory(uint itemCategoryId)
-        => !_nonWeaponItemCategoryIds.Contains(itemCategoryId);
 
     private static ItemCategoryDomain GetItemCategoryDomain(uint itemCategoryId)
     {

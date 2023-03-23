@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using DbgCensus.Core.Objects;
 using squittal.ScrimPlanetmans.App.Data.Models;
 
 namespace squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
@@ -19,7 +20,7 @@ public class ScrimMatchInfo
     public int RoundCount { get; set; }
 
     // World & Facility correspond to last round's configuration
-    public int WorldId { get; set; }
+    public WorldDefinition WorldId { get; set; }
     public string WorldName { get; set; }
     public uint? FacilityId { get; set; }
     public string FacilityName { get; set; }

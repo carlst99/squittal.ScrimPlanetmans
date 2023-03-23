@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using DbgCensus.Core.Objects;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 using squittal.ScrimPlanetmans.App.Models;
@@ -98,7 +99,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
 
         _messageService.DisableLogging();
 
-        var previousWorldId = MatchConfiguration.WorldIdString;
+        var previousWorldId = MatchConfiguration.WorldId;
         var previousIsManualWorldId = MatchConfiguration.IsManualWorldId;
 
         var previousEndRoundOnFacilityCapture = MatchConfiguration.EndRoundOnFacilityCapture;
@@ -375,7 +376,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
             return;
         }
 
-        int? worldId;
+        WorldDefinition? worldId;
 
         var message = e.Message;
         var changeType = message.ChangeType;
@@ -391,12 +392,12 @@ public class ScrimMatchEngine : IScrimMatchEngine
             isRollBack = true;
         }
 
-        if (worldId == null)
+        if (!worldId.HasValue)
         {
             MatchConfiguration.ResetWorldId();
             SendMatchConfigurationUpdateMessage();
         }
-        else if (MatchConfiguration.TrySetWorldId((int)worldId, false, isRollBack))
+        else if (MatchConfiguration.TrySetWorldId(worldId.Value, false, isRollBack))
         {
             SendMatchConfigurationUpdateMessage();
         }
@@ -419,7 +420,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
             return;
         }
 
-        int? worldId;
+        WorldDefinition? worldId;
         bool isRollBack = false;
 
         if (changeType == TeamPlayerChangeType.Add)
@@ -432,12 +433,12 @@ public class ScrimMatchEngine : IScrimMatchEngine
             isRollBack = true;
         }
 
-        if (worldId == null)
+        if (!worldId.HasValue)
         {
             MatchConfiguration.ResetWorldId();
             SendMatchConfigurationUpdateMessage();
         }
-        else if (MatchConfiguration.TrySetWorldId((int)worldId, false, isRollBack))
+        else if (MatchConfiguration.TrySetWorldId(worldId.Value, false, isRollBack))
         {
             SendMatchConfigurationUpdateMessage();
         }

@@ -1,4 +1,6 @@
-﻿namespace squittal.ScrimPlanetmans.App.Models.Planetside;
+﻿using DbgCensus.Core.Objects;
+
+namespace squittal.ScrimPlanetmans.App.Models.Planetside;
 
 public class Outfit
 {
@@ -10,7 +12,7 @@ public class Outfit
     public int MemberCount { get; set; }
     public int MembersOnlineCount { get; set; }
     public int? FactionId { get; set; }
-    public int? WorldId { get; set; }
+    public WorldDefinition? WorldId { get; set; }
     public TeamDefinition? TeamOrdinal { get; set; }
 
     public Outfit(ulong id, string name, string alias)

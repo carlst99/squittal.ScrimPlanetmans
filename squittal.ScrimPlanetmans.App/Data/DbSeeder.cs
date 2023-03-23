@@ -1,38 +1,27 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.Interfaces;
-using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.Data;
 
 public class DbSeeder : IDbSeeder
 {
-    private readonly IWorldService _worldService;
-    private readonly IZoneService _zoneService;
     private readonly IScrimRulesetManager _rulesetManager;
-    private readonly IVehicleService _vehicleService;
     private readonly ISqlScriptRunner _sqlScriptRunner;
     private readonly ILogger<DbSeeder> _logger;
 
     public DbSeeder
     (
-        IWorldService worldService,
-        IZoneService zoneService,
         IScrimRulesetManager rulesetManager,
-        IVehicleService vehicleService,
         ISqlScriptRunner sqlScriptRunner,
         ILogger<DbSeeder> logger
     )
     {
-        _worldService = worldService;
-        _zoneService = zoneService;
         _rulesetManager = rulesetManager;
-        _vehicleService = vehicleService;
         _sqlScriptRunner = sqlScriptRunner;
         _logger = logger;
     }
@@ -41,27 +30,10 @@ public class DbSeeder : IDbSeeder
     {
         try
         {
-            List<Task> TaskList = new();
-
-            Task worldsTask = _worldService.RefreshStoreAsync(true, true, cancellationToken);
-            TaskList.Add(worldsTask);
-
-            Task zoneTask = _zoneService.RefreshStoreAsync(true, true, cancellationToken);
-            TaskList.Add(zoneTask);
-
-            Task scrimActionTask = _rulesetManager.SeedScrimActionModelsAsync(cancellationToken);
-            TaskList.Add(scrimActionTask);
-
-            Task vehicleTask = _vehicleService.RefreshStoreAsync(true, false, cancellationToken);
-            TaskList.Add(vehicleTask);
-
-            await Task.WhenAll(TaskList);
+            await _rulesetManager.SeedScrimActionModelsAsync(cancellationToken);
 
             _sqlScriptRunner.RunSqlDirectoryScripts("Views");
-
-            _logger.LogInformation($"Compiled all SQL Views");
-
-            cancellationToken.ThrowIfCancellationRequested();
+            _logger.LogInformation("Compiled all SQL Views");
         }
         catch (Exception ex)
         {

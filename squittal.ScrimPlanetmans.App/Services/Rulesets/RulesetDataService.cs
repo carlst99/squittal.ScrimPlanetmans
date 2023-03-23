@@ -402,8 +402,7 @@ public partial class RulesetDataService : IRulesetDataService
         return new RulesetFacilityRule
         {
             RulesetId = rulesetId,
-            FacilityId = mapRegion.FacilityId,
-            MapRegionId = mapRegion.MapRegionId,
+            FacilityId = mapRegion.FacilityId
         };
     }
 
@@ -1377,7 +1376,7 @@ public partial class RulesetDataService : IRulesetDataService
 
                 List<RulesetFacilityRule> defaultRules = await dbContext.RulesetFacilityRules.Where(r => r.RulesetId == defaultRulesetId).ToListAsync();
 
-                dbContext.RulesetFacilityRules.AddRange(defaultRules.Select(r => BuildRulesetFacilityRule(rulesetId, r.FacilityId, r.MapRegionId)));
+                dbContext.RulesetFacilityRules.AddRange(defaultRules.Select(r => BuildRulesetFacilityRule(rulesetId, r.FacilityId)));
 
                 await dbContext.SaveChangesAsync();
             }
@@ -1388,12 +1387,11 @@ public partial class RulesetDataService : IRulesetDataService
         }
     }
 
-    private static RulesetFacilityRule BuildRulesetFacilityRule(int rulesetId, uint facilityId, uint mapRegionId)
+    private static RulesetFacilityRule BuildRulesetFacilityRule(int rulesetId, uint facilityId)
         => new()
         {
             RulesetId = rulesetId,
-            FacilityId = facilityId,
-            MapRegionId = mapRegionId
+            FacilityId = facilityId
         };
 
     #endregion SAVE / UPDATE methods
@@ -1850,7 +1848,7 @@ public partial class RulesetDataService : IRulesetDataService
         );
 
     private RulesetFacilityRule ConvertToDbModel(int rulesetID, JsonRulesetFacilityRule jsonRule)
-        => BuildRulesetFacilityRule(rulesetID, jsonRule.FacilityId, jsonRule.MapRegionId);
+        => BuildRulesetFacilityRule(rulesetID, jsonRule.FacilityId);
 
     #endregion Import / Export JSON
 

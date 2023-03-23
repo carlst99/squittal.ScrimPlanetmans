@@ -1,56 +1,58 @@
 ﻿@using System.Linq;
+@using DbgCensus.Core.Objects
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.CensusRest
-@using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
-@using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 
 @inject ICensusMapRegionService MapRegionService
-@inject IZoneService ZoneService
+@inject ICensusZoneService ZoneService
 
-@if (_mapRegions == null || _zones == null)
+@if (_mapRegionsByZone is null)
 {
     <div class="styled-select placeholder">Select Base...</div>
 }
 else
 {
 <EditForm Model="@_matchConfiguration">
-        <InputSelect class="btn-sm" style="margin-right: 5px; width: 249px;"  @bind-Value=@_matchConfiguration.FacilityIdString>
+    <InputSelect class="btn-sm" style="margin-right: 5px; width: 249px;"  @bind-Value=@_matchConfiguration.FacilityIdString>
 
-            <option value=@NO_FACILITY_ID_VALUE>No Base</option>
+        <option value=@NO_FACILITY_ID_VALUE>No Base</option>
 
-            @foreach (uint zone in _mapZones)
+        @foreach ((ZoneDefinition zone, IReadOnlyList<CensusMapRegion> regions) in _mapRegionsByZone)
+        {
+            string zoneName = _zones?.FirstOrDefault(z => zone == z.ZoneId)?
+                .Name
+                .English
+                .GetValueOrDefault() ?? zone.ToString();
+
+            <optgroup label="@zoneName"
+                      style="background-color: var(--sq-bg-white-unlit); color: var(--sq-pink); font-size: 1rem;" />
+
+            @foreach (CensusMapRegion region in regions)
             {
-                <optgroup label="@(_zones.Where(z => zone == z.Id).Select(z => z.Name).FirstOrDefault())" style="background-color: var(--sq-bg-white-unlit); color: var(--sq-pink); font-size: 1rem;"/>
-
-                @foreach (CensusMapRegion region in _mapRegions.Where(r => r.ZoneId == zone))
-                {
-                    <option value=@region.MapRegionId label="@region.FacilityName">@region.FacilityName</option>
-                }
+                <option value=@region.MapRegionId label="@region.FacilityName">@region.FacilityName</option>
             }
-        </InputSelect>
-    @*</div>*@
+        }
+    </InputSelect>
 </EditForm>
 }
 
 @code {
     public const string NO_FACILITY_ID_VALUE = "-1";
 
-    private List<CensusMapRegion> _mapRegions { get; set; } = new();
-    private List<uint> _mapZones { get; set; } = new();
-    private List<Zone> _zones { get; set; } = new();
+    private IReadOnlyDictionary<ZoneDefinition, IReadOnlyList<CensusMapRegion>>? _mapRegionsByZone;
+    private IReadOnlyList<CensusZone>? _zones { get; set; }
     private MatchConfiguration _matchConfiguration { get; } = new();
 
     protected override async Task OnInitializedAsync()
     {
-        IEnumerable<Zone> zones = await ZoneService.GetAllZonesAsync();
-        _zones = zones.ToList();
+        _zones = await ZoneService.GetAllAsync();
 
         IReadOnlyList<CensusMapRegion>? mapRegions = await MapRegionService.GetAllAsync();
         if (mapRegions is not null)
         {
-            _mapRegions = mapRegions.OrderBy(r => r.FacilityName).ToList();
-            _mapZones = mapRegions.Select(r => r.ZoneId).Distinct().ToList();
+            _mapRegionsByZone = mapRegions.GroupBy(r => r.ZoneId)
+                .ToDictionary(x => x.Key, x => (IReadOnlyList<CensusMapRegion>)x.ToList());
         }
     }
 }

@@ -7,13 +7,11 @@
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.Pages.Shared;
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
-@using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.Util
 
 @inject IConstructedTeamService ConstructedTeamsService
 @inject IScrimMessageBroadcastService MessageService
-@inject IWorldService WorldService
 
 @implements IDisposable
 
@@ -102,14 +100,8 @@
 
     private bool _isLoadingCharacters { get; set; } = false;
 
-    private IEnumerable<World> _worlds;
-
 
     #region Initialization Methods
-    protected override async Task OnInitializedAsync()
-    {
-        _worlds = await WorldService.GetAllWorldsAsync();
-    }
 
     protected override void OnInitialized()
     {

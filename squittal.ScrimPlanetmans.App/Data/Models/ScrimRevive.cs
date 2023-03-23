@@ -44,7 +44,5 @@ public class ScrimRevive
     public ScrimMatch ScrimMatch { get; set; }
     public ScrimMatchParticipatingPlayer MedicParticipatingPlayer { get; set; }
     public ScrimMatchParticipatingPlayer RevivedParticipatingPlayer { get; set; }
-    public Zone Zone { get; set; }
-    public World World { get; set; }
     #endregion Navigation Properties
 }

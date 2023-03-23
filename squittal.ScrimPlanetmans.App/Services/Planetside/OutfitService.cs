@@ -47,7 +47,7 @@ public class OutfitService : IOutfitService
         if (leader is null || leader.FactionId is FactionDefinition.NSO)
             return;
 
-        outfit.WorldId = (int)leader.WorldId;
+        outfit.WorldId = leader.WorldId;
         outfit.FactionId = (int)leader.FactionId;
     }
 }

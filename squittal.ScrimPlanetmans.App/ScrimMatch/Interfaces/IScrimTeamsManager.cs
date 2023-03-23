@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using DbgCensus.Core.Objects;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
@@ -25,7 +26,7 @@ public interface IScrimTeamsManager
     void SetPlayerBenchedStatus(ulong characterId, bool isBenched);
     Task SaveRoundEndScores(int round);
     Task RollBackAllTeamStats(int currentRound);
-    int? GetNextWorldId(int previousWorldId);
+    WorldDefinition? GetNextWorldId(WorldDefinition previousWorldId);
     Team? GetFirstTeamWithFactionId(int factionId);
     void UpdateTeamStats(TeamDefinition teamOrdinal, ScrimEventAggregate updates);
     Task AdjustTeamPoints(TeamDefinition teamOrdinal, PointAdjustment adjustment);

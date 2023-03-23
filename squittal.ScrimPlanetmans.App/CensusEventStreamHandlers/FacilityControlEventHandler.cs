@@ -115,7 +115,7 @@ public class FacilityControlEventHandler : IPayloadHandler<IFacilityControl>
             DurationHeld = (int)payload.DurationHeld,
             OutfitId = payload.OutfitID.ToString(),
             Timestamp = payload.Timestamp.UtcDateTime,
-            WorldId = (int)payload.WorldID,
+            WorldId = payload.WorldID,
             ZoneId = (int)payload.ZoneID.CombinedId,
             ControllingTeamOrdinal = controllingTeam.TeamOrdinal,
             ControlType = type,

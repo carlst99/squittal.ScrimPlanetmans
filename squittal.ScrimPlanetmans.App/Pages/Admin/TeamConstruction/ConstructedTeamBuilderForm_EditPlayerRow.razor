@@ -1,12 +1,15 @@
 ﻿@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
-@using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces
 @using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.Models.Forms
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using System.Diagnostics.CodeAnalysis
+@using DbgCensus.Core.Objects
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
+@using squittal.ScrimPlanetmans.App.Models.CensusRest
+
 @inject IConstructedTeamService ConstructedTeamsService
-@inject IWorldService WorldService
+@inject ICensusWorldService WorldService
 @inject IScrimMessageBroadcastService MessageService
 
 @if (_renderedCharacter != null)
@@ -109,7 +112,7 @@
     public bool i_showRemovalControls { get; set; } = true;
     private bool _renderedShowRemoveControls { get; set; } = true;
 
-    private int _renderedWorldId { get; set; } = 0;
+    private WorldDefinition _renderedWorldId { get; set; } = 0;
     private string _renderedWorldName { get; set; } = string.Empty;
 
     private bool _isAliasEditFormVisible { get; set; } = false;
@@ -131,10 +134,10 @@
         if (i_character.WorldId != _renderedWorldId)
         {
             _renderedWorldId = i_character.WorldId;
-            World? renderedWorld = await WorldService.GetWorldAsync(_renderedWorldId);
+            CensusWorld? renderedWorld = await WorldService.GetByIdAsync(_renderedWorldId);
 
     //var renderedWorld = await WorldService.GetWorldAsync(_renderedWorldId);
-            _renderedWorldName = renderedWorld == null ? "Unknown World" : renderedWorld.Name;
+            _renderedWorldName = renderedWorld?.Name.English.GetValueOrDefault() ?? "Unknown world";
 
             await InvokeAsync(StateHasChanged);
         }

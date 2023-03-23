@@ -28,7 +28,6 @@ using squittal.ScrimPlanetmans.App.Services.CensusEventStream;
 using squittal.ScrimPlanetmans.App.Services.CensusRest;
 using squittal.ScrimPlanetmans.App.Services.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.Planetside;
-using squittal.ScrimPlanetmans.App.Services.Planetside.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.Rulesets;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
@@ -136,7 +135,10 @@ public class Program
             .AddTransient<ICensusLoadoutService, CensusLoadoutService>()
             .AddTransient<ICensusMapRegionService, CensusMapRegionService>()
             .AddTransient<ICensusOutfitService, CensusOutfitService>()
-            .AddTransient<ICensusProfileService, CensusProfileService>();
+            .AddTransient<ICensusProfileService, CensusProfileService>()
+            .AddTransient<ICensusVehicleService, CensusVehicleService>()
+            .AddTransient<ICensusWorldService, CensusWorldService>()
+            .AddTransient<ICensusZoneService, CensusZoneService>();
 
         // Register Census EventStream Services
         builder.Services.Configure<EventStreamOptions>(builder.Configuration.GetSection(nameof(EventStreamOptions)));
@@ -161,9 +163,6 @@ public class Program
         services.AddTransient<IItemCategoryService, ItemCategoryService>();
         services.AddTransient<ILoadoutService, LoadoutService>();
         services.AddTransient<IOutfitService, OutfitService>();
-        services.AddTransient<IVehicleService, VehicleService>();
-        services.AddSingleton<IWorldService, WorldService>();
-        services.AddSingleton<IZoneService, ZoneService>();
 
         // Register Scrim services
         services.AddSingleton<IScrimMessageBroadcastService, ScrimMessageBroadcastService>();
