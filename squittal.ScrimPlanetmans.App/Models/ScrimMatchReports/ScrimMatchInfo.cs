@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using DbgCensus.Core.Objects;
 using squittal.ScrimPlanetmans.App.Data.Models;
 
@@ -7,27 +8,26 @@ namespace squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
 
 public class ScrimMatchInfo
 {
-    public string ScrimMatchId { get; set; }
+    [Required]
+    public string ScrimMatchId { get; init; }
     public DateTime StartTime { get; set; }
     public string Title { get; set; }
 
-    public Dictionary<int, string> TeamAliases { get; set; } = new Dictionary<int, string>()
+    public Dictionary<TeamDefinition, string> TeamAliases { get; set; } = new()
     {
-        { 1, "???" },
-        { 2, "???" }
+        { TeamDefinition.Team1, "???" },
+        { TeamDefinition.Team2, "???" }
     };
 
     public int RoundCount { get; set; }
 
     // World & Facility correspond to last round's configuration
     public WorldDefinition WorldId { get; set; }
-    public string WorldName { get; set; }
     public uint? FacilityId { get; set; }
-    public string FacilityName { get; set; }
 
     //public bool EndRoundOnFacilityCapture { get; set; } = false;
-    public int TeamOneFactionId { get; set; }
-    public int TeamTwoFactionId { get; set; }
+    public FactionDefinition TeamOneFactionId { get; set; }
+    public FactionDefinition TeamTwoFactionId { get; set; }
 
     public int RulesetId { get; set; }
     public string RulesetName { get; set; }
@@ -38,7 +38,7 @@ public class ScrimMatchInfo
 
     }
 
-    public ScrimMatchInfo(Data.Models.ScrimMatch scrimMatch, ScrimMatchRoundConfiguration lastRoundConfiguration, string firstTeamTag, string secondTeamTag)
+    public ScrimMatchInfo(Data.Models.ScrimMatch scrimMatch, ScrimMatchRoundConfiguration lastRoundConfiguration)
     {
         ScrimMatchId = scrimMatch.Id;
         StartTime = scrimMatch.StartTime;
@@ -54,20 +54,10 @@ public class ScrimMatchInfo
     public void SetTeamAliases()
     {
         if (string.IsNullOrWhiteSpace(ScrimMatchId))
-        {
             return;
-        }
 
-        var idParts = ScrimMatchId.Split("_");
-
-        if (!TeamAliases.TryAdd(1, idParts[1]))
-        {
-            TeamAliases[1] = idParts[1];
-        }
-
-        if (!TeamAliases.TryAdd(2, idParts[2]))
-        {
-            TeamAliases[2] = idParts[2];
-        }
+        string[] idParts = ScrimMatchId.Split("_");
+        TeamAliases[TeamDefinition.Team1] = idParts[1];
+        TeamAliases[TeamDefinition.Team2] = idParts[2];
     }
 }

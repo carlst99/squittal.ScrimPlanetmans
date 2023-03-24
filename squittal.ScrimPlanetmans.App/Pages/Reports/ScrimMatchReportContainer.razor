@@ -11,11 +11,13 @@
 @using squittal.ScrimPlanetmans.App.Pages.Shared;
 @using System.Threading;
 @using System.Text.RegularExpressions;
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
 @using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatchReports.Interfaces
 
+@inject ICensusMapRegionService MapRegionService
 @inject IScrimMatchReportDataService ReportDataService
 @inject NavigationManager NavManager
 
@@ -39,20 +41,20 @@
                     <div style="display: grid; grid-template-columns: 60% 40%; align-items: baseline; font-family: Roboto, 'Segoe UI', sans-serif; margin-bottom: 12px;">
                         <h4 style="margin-bottom: 0; font-family: 'Roboto Mono', 'Input Mono', Consolas, monospace">@(_matchInfo.Title)</h4> @*margin-bottom: 2px;*@
                         <p style="margin-bottom: 0px; font-size: 1rem; text-align: right;">@_matchInfo.StartTime.ToString("f")</p>
-                        @if (string.IsNullOrWhiteSpace(_matchInfo.FacilityName))
+                        @if (_matchInfo.FacilityId is null)
                         {
-                            <p style="margin-bottom: 0px; font-size: 1rem;">
-                                <span>@_matchInfo.WorldName</span>
+                            <p style="margin-bottom: 0; font-size: 1rem;">
+                                <span>@_matchInfo.WorldId.ToString()</span>
                                 <span class="oi oi-caret-right small" style="padding-left: 4px; padding-right: 4px;"></span>
                                 <span style="font-style: italic;">No facility</span>
                             </p>
                         }
                         else
                         {
-                            <p style="margin-bottom: 0px; font-size: 1rem;">
-                                <span>@_matchInfo.WorldName</span>
+                            <p style="margin-bottom: 0; font-size: 1rem;">
+                                <span>@_matchInfo.WorldId.ToString()</span>
                                 <span class="oi oi-caret-right small" style="padding-left: 4px; padding-right: 4px;"></span>
-                                <span>@_matchInfo.FacilityName</span>
+                                <span>@_matchFacilityName</span>
                             </p>
                         }
                         <p style="margin-bottom: 0px; font-size: 1rem; text-align: right; font-weight: 300;">@_matchInfo.RoundCount Rounds | Ruleset: @_matchInfo.RulesetName</p>
@@ -97,7 +99,7 @@
                             <tbody style="font-size: 0.8rem;">
                                 @foreach (var team in _teamStats)
                                 {
-                                    @if (team.TeamOrdinal > 1)
+                                    @if (team.TeamOrdinal > TeamDefinition.Team1)
                                     {
                                         <tr style="height: 16px;">
                                         </tr>
@@ -363,8 +365,8 @@
 
 
 @code {
-        [Parameter]
-        public string i_scrimMatchId { get; set; }
+    [Parameter]
+    public string i_scrimMatchId { get; set; }
     private string _renderedScrimMatchId { get; set; }
 
     [Parameter]
@@ -375,17 +377,17 @@
     private IEnumerable<ScrimMatchReportInfantryPlayerStats> _playerStats { get; set; }
     private IEnumerable<ScrimMatchReportInfantryTeamStats> _teamStats { get; set; }
 
-    private bool _showAllRoundStats { get; set; } = false;
-    private List<string> _expandedRoundPlayers { get; set; } = new List<string>();
-    private List<int> _expandedRoundTeams { get; set; } = new List<int>();
-    private List<int> _expandedRoundTeamCaptures { get; set; } = new List<int>();
+    private bool _showAllRoundStats { get; set; }
+    private List<string> _expandedRoundPlayers { get; } = new();
+    private List<TeamDefinition> _expandedRoundTeams { get; } = new();
+    private List<TeamDefinition> _expandedRoundTeamCaptures { get; } = new();
 
     private IEnumerable<ScrimMatchReportInfantryPlayerRoundStats> _playerRoundStats { get; set; }
     private IEnumerable<ScrimMatchReportInfantryTeamRoundStats> _teamRoundStats { get; set; }
 
     private Dictionary<int, int> _maxPlayerRoundPoints { get; set; }
 
-    private ScrimMatchInfo _matchInfo { get; set; }
+    private ScrimMatchInfo? _matchInfo { get; set; }
 
     private int _maxPlayerPoints { get; set; } = 1;
 
@@ -399,6 +401,7 @@
 
     private CancellationTokenSource cts;
 
+    private string? _matchFacilityName;
 
     #region Initialization Methods
     public void Dispose()
@@ -558,6 +561,17 @@
     private async Task LoadMatchInfo(CancellationToken cancellationToken)
     {
         _matchInfo = await ReportDataService.GetHistoricalScrimMatchInfoAsync(_renderedScrimMatchId, cancellationToken);
+
+        if (_matchInfo is { FacilityId: { } })
+        {
+            CensusMapRegion? region = await MapRegionService.GetByFacilityIdAsync
+            (
+                _matchInfo.FacilityId.Value,
+                cancellationToken
+            );
+
+            _matchFacilityName = region?.FacilityName ?? $"Unknown Facility ({_matchInfo.FacilityId.Value})";
+        }
     }
 
     private bool IsSelectedPlayerValid()
@@ -656,7 +670,7 @@
         }
     }
 
-    private void OnClickTeamRow(int teamOrdinal)
+    private void OnClickTeamRow(TeamDefinition teamOrdinal)
     {
         lock (_expandedRoundTeams)
         {
@@ -673,7 +687,7 @@
         }
     }
 
-    private void OnClickCapturesRow(int teamOrdinal)
+    private void OnClickCapturesRow(TeamDefinition teamOrdinal)
     {
         lock (_expandedRoundTeamCaptures)
         {
@@ -815,7 +829,7 @@
             : "default";
     }
 
-    private string GetClickableTeamRowIsActiveClass(int teamOrdinal)
+    private string GetClickableTeamRowIsActiveClass(TeamDefinition teamOrdinal)
     {
         return _expandedRoundTeams.Contains(teamOrdinal) || _showAllRoundStats
                     ? "active"

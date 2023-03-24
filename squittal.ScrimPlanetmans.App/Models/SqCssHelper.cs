@@ -1,4 +1,6 @@
-﻿namespace squittal.ScrimPlanetmans.App.Models;
+﻿using DbgCensus.Core.Objects;
+
+namespace squittal.ScrimPlanetmans.App.Models;
 
 public static class SqCssHelper
 {
@@ -9,6 +11,16 @@ public static class SqCssHelper
             2 => "nc",
             3 => "tr",
             4 => "ns",
+            _ => "default",
+        };
+
+    public static string GetFactionClassFromId(FactionDefinition? factionId)
+        => factionId switch
+        {
+            FactionDefinition.VS => "vs",
+            FactionDefinition.NC => "nc",
+            FactionDefinition.TR => "tr",
+            FactionDefinition.NSO => "ns",
             _ => "default",
         };
 

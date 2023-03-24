@@ -4,7 +4,7 @@ public class ScrimMatchReportInfantryPlayerStats : ScrimMatchReportStats
 {
     public string ScrimMatchId { get; set; }
     public string CharacterId { get; set; }
-    public int TeamOrdinal { get; set; }
+    public TeamDefinition TeamOrdinal { get; set; }
     public string NameDisplay { get; set; }
     public string NameFull { get; set; }
     public int FactionId { get; set; }

@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
+using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Forms;
 using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
@@ -29,97 +30,94 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         _logger = logger;
     }
 
-    public async Task<PaginatedList<ScrimMatchInfo>> GetHistoricalScrimMatchesListAsync(int? pageIndex, ScrimMatchReportBrowserSearchFilter searchFilter, CancellationToken cancellationToken)
+    public async Task<PaginatedList<ScrimMatchInfo>> GetHistoricalScrimMatchesListAsync
+    (
+        int? pageIndex,
+        ScrimMatchReportBrowserSearchFilter searchFilter,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
             using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
             PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            IQueryable<ScrimMatchInfo> scrimMatchesQuery = dbContext.ScrimMatchInfo
+            pageIndex ??= 1;
+
+            List<ScrimMatchRoundConfiguration> roundConfigs = await dbContext.ScrimMatchRoundConfigurations
                 .Where(GetHistoricalScrimMatchBrowserWhereExpression(searchFilter))
-                .AsQueryable();
+                .Include(x => x.ScrimMatch)
+                .GroupBy(x => x.ScrimMatchId)
+                .Select(x => x.MaxBy(y => y.ScrimMatchRound))
+                .Where(x => x != null)
+                .Skip((pageIndex.Value - 1) * _scrimMatchBrowserPageSize)
+                .Take(_scrimMatchBrowserPageSize)
+                .Cast<ScrimMatchRoundConfiguration>()
+                .ToListAsync(cancellationToken);
 
-            PaginatedList<ScrimMatchInfo>? paginatedList = await PaginatedList<ScrimMatchInfo>.CreateAsync(scrimMatchesQuery.AsNoTracking().OrderByDescending(m => m.StartTime), pageIndex ?? 1, _scrimMatchBrowserPageSize, cancellationToken);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (paginatedList == null)
-            {
-                return null;
-            }
-
-            foreach (ScrimMatchInfo match in paginatedList.Contents)
-            {
-                match.SetTeamAliases();
-            }
-
-            return paginatedList;
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation($"Task Request cancelled: GetHistoricalScrimMatchesListAsync page {pageIndex}");
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation($"Request cancelled: GetHistoricalScrimMatchesListAsync page {pageIndex}");
-            return null;
+            return new PaginatedList<ScrimMatchInfo>
+            (
+                roundConfigs.Select(x => new ScrimMatchInfo(x.ScrimMatch, x)),
+                pageIndex.Value,
+                _scrimMatchBrowserPageSize
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError($"{ex}");
-
-            return null;
+            _logger.LogError(ex, "Failed to get historical scrim matches");
+            return new PaginatedList<ScrimMatchInfo>(Array.Empty<ScrimMatchInfo>(), 0, 1, 0);
         }
     }
 
-    private Expression<Func<ScrimMatchInfo, bool>> GetHistoricalScrimMatchBrowserWhereExpression(ScrimMatchReportBrowserSearchFilter searchFilter)
+    private static Expression<Func<ScrimMatchRoundConfiguration, bool>> GetHistoricalScrimMatchBrowserWhereExpression
+    (
+        ScrimMatchReportBrowserSearchFilter searchFilter
+    )
     {
         bool isDefaultFilter = searchFilter.IsDefaultFilter;
 
-        Expression<Func<ScrimMatchInfo, bool>>? whereExpression;
+        Expression<Func<ScrimMatchRoundConfiguration, bool>>? whereExpression;
 
         if (isDefaultFilter)
         {
-            Expression<Func<ScrimMatchInfo, bool>> roundExpression = m => m.RoundCount >= searchFilter.MinimumRoundCount;
+            Expression<Func<ScrimMatchRoundConfiguration, bool>> roundExpression = m => m.ScrimMatchRound >= searchFilter.MinimumRoundCount;
 
             DateTime twoHoursAgo = DateTime.UtcNow - TimeSpan.FromHours(2);
-            Expression<Func<ScrimMatchInfo, bool>> recentMatchExpression = m => m.StartTime >= twoHoursAgo;
+            Expression<Func<ScrimMatchRoundConfiguration, bool>> recentMatchExpression = m => m.ScrimMatch.StartTime >= twoHoursAgo;
 
             roundExpression = roundExpression.Or(recentMatchExpression);
             whereExpression = roundExpression;
         }
         else
         {
-            Expression<Func<ScrimMatchInfo, bool>> roundExpression = m => m.RoundCount >= searchFilter.MinimumRoundCount;
+            Expression<Func<ScrimMatchRoundConfiguration, bool>> roundExpression = m => m.ScrimMatchRound >= searchFilter.MinimumRoundCount;
             whereExpression = roundExpression;
         }
 
         if (searchFilter.SearchStartDate != null)
         {
-            Expression<Func<ScrimMatchInfo, bool>> startDateExpression = m => m.StartTime >= searchFilter.SearchStartDate;
+            Expression<Func<ScrimMatchRoundConfiguration, bool>> startDateExpression = m => m.ScrimMatch.StartTime >= searchFilter.SearchStartDate;
 
             whereExpression = whereExpression.And(startDateExpression);
         }
 
         if (searchFilter.SearchEndDate != null)
         {
-            Expression<Func<ScrimMatchInfo, bool>> endDateExpression = m => m.StartTime <= searchFilter.SearchEndDate;
+            Expression<Func<ScrimMatchRoundConfiguration, bool>> endDateExpression = m => m.ScrimMatch.StartTime <= searchFilter.SearchEndDate;
 
             whereExpression = whereExpression.And(endDateExpression);
         }
 
         if (searchFilter.RulesetId != 0)
         {
-            Expression<Func<ScrimMatchInfo, bool>> rulesetExpression = m => m.RulesetId == searchFilter.RulesetId;
+            Expression<Func<ScrimMatchRoundConfiguration, bool>> rulesetExpression = m => m.ScrimMatch.RulesetId == searchFilter.RulesetId;
 
             whereExpression = whereExpression.And(rulesetExpression);
         }
 
         if (searchFilter.FacilityId != -1)
         {
-            Expression<Func<ScrimMatchInfo, bool>> facilityExpression;
+            Expression<Func<ScrimMatchRoundConfiguration, bool>> facilityExpression;
 
             if (searchFilter.FacilityId == 0)
             {
@@ -135,26 +133,26 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
 
         if (searchFilter.WorldId != 0)
         {
-            Expression<Func<ScrimMatchInfo, bool>> worldExpression = m => m.WorldId == searchFilter.WorldId;
+            Expression<Func<ScrimMatchRoundConfiguration, bool>> worldExpression = m => m.WorldId == searchFilter.WorldId;
 
             whereExpression = whereExpression.And(worldExpression);
         }
 
         if (searchFilter.SearchTermsList.Any() || searchFilter.AliasSearchTermsList.Any())
         {
-            Expression<Func<ScrimMatchInfo, bool>>? searchTermsExpression = null;
-            Expression<Func<ScrimMatchInfo, bool>>? aliasTermsExpression = null;
+            Expression<Func<ScrimMatchRoundConfiguration, bool>>? searchTermsExpression = null;
+            Expression<Func<ScrimMatchRoundConfiguration, bool>>? aliasTermsExpression = null;
 
             foreach (string term in searchFilter.SearchTermsList)
             {
-                Expression<Func<ScrimMatchInfo, bool>> exp = m => m.Title.Contains(term); // DbFunctionsExtensions.Like(EF.Functions, m.Title, "%" + term + "%");
+                Expression<Func<ScrimMatchRoundConfiguration, bool>> exp = m => m.Title.Contains(term); // DbFunctionsExtensions.Like(EF.Functions, m.Title, "%" + term + "%");
                 searchTermsExpression = searchTermsExpression == null ? exp : searchTermsExpression.Or(exp);
             }
 
 
             foreach (string term in searchFilter.AliasSearchTermsList)
             {
-                Expression<Func<ScrimMatchInfo, bool>> exp = m => m.ScrimMatchId.Contains(term); // DbFunctionsExtensions.Like(EF.Functions, m.ScrimMatchId, "%" + term + "%");
+                Expression<Func<ScrimMatchRoundConfiguration, bool>> exp = m => m.ScrimMatchId.Contains(term); // DbFunctionsExtensions.Like(EF.Functions, m.ScrimMatchId, "%" + term + "%");
                 aliasTermsExpression = aliasTermsExpression == null ? exp : aliasTermsExpression.And(exp);
             }
 
@@ -172,17 +170,19 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         return whereExpression;
     }
 
-    public async Task<ScrimMatchInfo?> GetHistoricalScrimMatchInfoAsync(string scrimMatchId, CancellationToken cancellationToken)
+    public Task<ScrimMatchInfo?> GetHistoricalScrimMatchInfoAsync(string scrimMatchId, CancellationToken cancellationToken)
     {
         using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
         PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        ScrimMatchInfo? scrimMatchInfo = await dbContext.ScrimMatchInfo
-            .FirstOrDefaultAsync(m => m.ScrimMatchId == scrimMatchId, cancellationToken);
+        ScrimMatchRoundConfiguration? roundConfig = dbContext.ScrimMatchRoundConfigurations
+            .Where(rc => rc.ScrimMatchId == scrimMatchId)
+            .Include(x => x.ScrimMatch)
+            .MaxBy(rc => rc.ScrimMatchRound);
 
-        scrimMatchInfo?.SetTeamAliases();
-
-        return scrimMatchInfo;
+        return roundConfig is null
+            ? Task.FromResult<ScrimMatchInfo?>(null)
+            : Task.FromResult<ScrimMatchInfo?>(new ScrimMatchInfo(roundConfig.ScrimMatch, roundConfig));
     }
 
     public async Task<IEnumerable<uint>> GetScrimMatchBrowserFacilityIdsListAsync(CancellationToken cancellationToken)
@@ -190,10 +190,10 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
         PlanetmansDbContext dbContext = factory.GetDbContext();
 
-        return await dbContext.ScrimMatchInfo
-            .Where(m => m.FacilityId.HasValue)
-            .Select(m => m.FacilityId!.Value)
+        return await dbContext.ScrimMatchRoundConfigurations
+            .Where(m => m.FacilityId != null)
             .Distinct()
+            .Select(m => m.FacilityId!.Value)
             .ToListAsync(cancellationToken);
     }
 
@@ -204,52 +204,24 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
             using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
             PlanetmansDbContext dbContext = factory.GetDbContext();
 
-            List<int> distinctRulesetIds = await dbContext.ScrimMatchInfo
-                .Select(m => m.RulesetId)
+            List<int> distinctRulesetIds = await dbContext.ScrimMatchRoundConfigurations
+                .Select(m => m.ScrimMatch.RulesetId)
                 .Distinct()
                 .ToListAsync(cancellationToken);
 
-            cancellationToken.ThrowIfCancellationRequested();
-
             if (!distinctRulesetIds.Any())
-            {
-                return null;
-            }
+                return Array.Empty<Ruleset>();
 
-            List<Ruleset> distinctRulesets = await dbContext.Rulesets
+            return await dbContext.Rulesets
                 .Where(r => distinctRulesetIds.Contains(r.Id))
                 .ToListAsync(cancellationToken);
 
-            cancellationToken.ThrowIfCancellationRequested();
-
-            return distinctRulesets;
-
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation($"Task Request cancelled: GetScrimMatchBrowserFacilityIdsListAsync");
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation($"Request cancelled: GetScrimMatchBrowserFacilityIdsListAsync");
-            return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError($"{ex}");
-
-            return null;
+            _logger.LogError(ex, "Failed to get all scrim match ruleset IDs");
+            return Array.Empty<Ruleset>();
         }
-    }
-
-    private Ruleset ConvertToRulesetModel(ScrimMatchInfo scrimMatchInfo)
-    {
-        return new Ruleset
-        {
-            Id = scrimMatchInfo.RulesetId,
-            Name = scrimMatchInfo.RulesetName
-        };
     }
 
     public async Task<IEnumerable<ScrimMatchReportInfantryPlayerStats>>  GetHistoricalScrimMatchInfantryPlayerStatsAsync(string scrimMatchId, CancellationToken cancellationToken)

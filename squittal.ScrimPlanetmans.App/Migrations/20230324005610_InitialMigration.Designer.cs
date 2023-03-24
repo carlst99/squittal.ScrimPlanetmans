@@ -12,7 +12,7 @@ using squittal.ScrimPlanetmans.App.Data;
 namespace squittal.ScrimPlanetmans.App.Migrations
 {
     [DbContext(typeof(PlanetmansDbContext))]
-    [Migration("20230323121804_InitialMigration")]
+    [Migration("20230324005610_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -317,6 +317,8 @@ namespace squittal.ScrimPlanetmans.App.Migrations
 
                     b.HasKey("ScrimMatchId", "ScrimMatchRound");
 
+                    b.HasIndex("ScrimMatchId");
+
                     b.ToTable("ScrimMatchRoundConfiguration", (string)null);
                 });
 
@@ -590,54 +592,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                     b.HasKey("ScrimMatchId", "Timestamp", "AttackerCharacterId", "VictimCharacterId", "VictimVehicleId");
 
                     b.ToTable("ScrimVehicleDestruction", (string)null);
-                });
-
-            modelBuilder.Entity("squittal.ScrimPlanetmans.App.Models.ScrimMatchReports.ScrimMatchInfo", b =>
-                {
-                    b.Property<long?>("FacilityId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("FacilityName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("RoundCount")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RulesetId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("RulesetName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ScrimMatchId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("TeamOneFactionId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TeamTwoFactionId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("WorldId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("WorldName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.ToTable((string)null);
-
-                    b.ToView("View_ScrimMatchInfo", (string)null);
                 });
 
             modelBuilder.Entity("squittal.ScrimPlanetmans.App.Models.ScrimMatchReports.ScrimMatchReportInfantryDeath", b =>

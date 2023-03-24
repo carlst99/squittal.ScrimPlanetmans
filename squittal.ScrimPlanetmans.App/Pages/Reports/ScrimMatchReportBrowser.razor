@@ -138,25 +138,33 @@
                                     <td>@GetLocalizedTimeString(match.StartTime)</td>
                                     @if (match.TeamOneFactionId <= 0)
                                     {
-                                        <td style="color: var(--sq-black);">@match.TeamAliases[1]</td>
+                                        <td style="color: var(--sq-black);">@match.TeamAliases[TeamDefinition.Team1]</td>
                                     }
                                     else
                                     {
-                                        <td class="@SqCssHelper.GetFactionClassFromId(match.TeamOneFactionId)" style="color: var(--sq-ps2-primary);">@match.TeamAliases[1]</td>
+                                        <td class="@SqCssHelper.GetFactionClassFromId(match.TeamOneFactionId)" style="color: var(--sq-ps2-primary);">@match.TeamAliases[TeamDefinition.Team1]</td>
                                     }
                                     @if (match.TeamTwoFactionId <= 0)
                                     {
-                                        <td style="color: var(--sq-black);">@match.TeamAliases[2]</td>
+                                        <td style="color: var(--sq-black);">@match.TeamAliases[TeamDefinition.Team2]</td>
                                     }
                                     else
                                     {
-                                        <td class="@SqCssHelper.GetFactionClassFromId(match.TeamTwoFactionId)" style="color: var(--sq-ps2-primary);">@match.TeamAliases[2]</td>
+                                        <td class="@SqCssHelper.GetFactionClassFromId(match.TeamTwoFactionId)" style="color: var(--sq-ps2-primary);">@match.TeamAliases[TeamDefinition.Team2]</td>
                                     }
                                     <td>@match.Title</td>
-                                    <td>@match.WorldName</td>
+                                    <td>
+                                        @(_worlds?.FirstOrDefault(w => w.WorldId == match.WorldId)?
+                                            .Name
+                                            .English
+                                            .GetValueOrDefault() ?? match.WorldId.ToString())
+                                    </td>
                                     @if (match.FacilityId != null)
                                     {
-                                        <td>@match.FacilityName</td>
+                                        <td>
+                                            @(_mapRegions?.FirstOrDefault(r => r.FacilityId == match.FacilityId)?
+                                                .FacilityName ?? "Unknown facility")
+                                        </td>
                                     }
                                     else
                                     {

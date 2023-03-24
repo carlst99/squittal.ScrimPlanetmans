@@ -1,8 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using DbgCensus.Core.Objects;
+using Microsoft.EntityFrameworkCore;
 
 namespace squittal.ScrimPlanetmans.App.Data.Models;
 
+[Index(nameof(ScrimMatchId))]
 public class ScrimMatchRoundConfiguration
 {
     [Required]
