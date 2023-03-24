@@ -10,15 +10,11 @@ public class ScrimMatchRoundConfigurationConfiguration : IEntityTypeConfiguratio
     {
         builder.ToTable("ScrimMatchRoundConfiguration");
 
+        builder.HasKey(e => e.ScrimMatchId);
         builder.HasKey(e => new
         {
             e.ScrimMatchId,
             e.ScrimMatchRound
         });
-
-        builder.Property(e => e.IsManualWorldId).HasDefaultValue(false);
-        builder.Property(e => e.IsRoundEndedOnFacilityCapture).HasDefaultValue(false);
-
-        builder.Ignore(e => e.ScrimMatch);
     }
 }

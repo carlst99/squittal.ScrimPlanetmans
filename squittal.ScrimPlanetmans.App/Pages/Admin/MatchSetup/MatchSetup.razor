@@ -30,7 +30,7 @@
 
     @if (!string.IsNullOrWhiteSpace(_errorBannerMessage))
     {
-        <ErrorMessageBanner i_ErrorMessage="@_errorBannerMessage" />
+        <ErrorMessageBanner ErrorMessage="@_errorBannerMessage" />
     }
 
     <div class="row">
@@ -48,16 +48,22 @@
             <div class="header-card-container default">
 
                 <div style="display: grid; grid-template-columns: 1fr 115px;">
-                    @if (string.IsNullOrWhiteSpace(_matchConfiguration.Title))
+                    @if (string.IsNullOrWhiteSpace(_matchConfiguration?.Title))
                     {
-                        <h5>@(_currentRound == 0 ? string.Empty : $"Round {_currentRound}:") @Enum.GetName(typeof(MatchState), _matchState)</h5>
+                        <h5>
+                            @(_currentRound == 0 ? string.Empty : $"Round {_currentRound}:") @_matchState.ToString()
+                        </h5>
                     }
                     else
                     {
-                        <h5>@(_matchConfiguration.Title)@(_currentRound == 0 ? string.Empty : $" - Round {_currentRound}"): @Enum.GetName(typeof(MatchState), _matchState)</h5>
+                        <h5>
+                            @_matchConfiguration.Title
+                            @(_currentRound == 0 ? string.Empty : $" - Round {_currentRound}:") @_matchState.ToString()
+                        </h5>
                     }
+
                     <div class="mono-font" style="font-size: 18px; text-align: right;">
-                        <MatchTimer Debug=false />
+                        <MatchTimer Debug="false"/>
                     </div>
                 </div>
 
@@ -73,7 +79,10 @@
                     <button class="btn btn-primary" @onclick="StartMatch">
                         <span class="oi oi-media-play"></span>Start Match
                     </button>
-                    <button class="btn btn-outline-primary" @onclick="(() => ClearMatch(false))" title="Clear all team data, match data, and match configuration">
+
+                    <button class="btn btn-outline-primary"
+                            @onclick="() => ClearMatch(false)"
+                            title="Clear all team data, match data, and match configuration">
                         <span class="oi oi-eject"></span>Clear Match
                     </button>
                 }
@@ -82,6 +91,7 @@
                     <button class="btn btn-primary" @onclick="StartMatch">
                         <span class="oi oi-media-play"></span>Start Round @(_currentRound + 1)
                     </button>
+
                     @if (!_isDeleteDataEnabled)
                     {
                         <button disabled class="btn btn-outline-primary">
@@ -94,11 +104,16 @@
                             <span class="oi oi-media-step-backward"></span>Reset Round
                         </button>
                     }
-                    <button class="btn btn-outline-primary" @onclick="(() => ClearMatch(true))" title="Set up a new match with the same teams" style="width: 120px;">
+
+                    <button class="btn btn-outline-primary"
+                            @onclick="() => ClearMatch(true)"
+                            title="Set up a new match with the same teams" style="width: 120px;">
                         <span class="oi oi-media-step-forward"></span>Rematch
                     </button>
 
-                    <button class="btn btn-outline-primary" @onclick="(() => ClearMatch(false))" title="Set up a new match with new teams" style="width: 120px;">
+                    <button class="btn btn-outline-primary"
+                            @onclick="() => ClearMatch(false)"
+                            title="Set up a new match with new teams" style="width: 120px;">
                         <span class="oi oi-eject"></span>New Match
                     </button>
 
@@ -107,7 +122,9 @@
                             <DataAnnotationsValidator />
                             <ValidationSummary />
 
-                            <InputCheckbox id="isDeleteDataEnabledCheckBox" @bind-Value="@_isDeleteDataEnabled" style="position: relative; top: 1px;" /> Enable Round Resetting
+                            <InputCheckbox id="isDeleteDataEnabledCheckBox"
+                                           @bind-Value="@_isDeleteDataEnabled"
+                                           style="position: relative; top: 1px;" /> Enable Round Resetting
                         </EditForm>
                     </div>
                 }
@@ -127,7 +144,7 @@
                     </button>
                 }
 
-                @if ((_matchState == MatchState.Uninitialized || _matchState == MatchState.Stopped) && !(_isLoading || _isResettingRound || _isClearingMatch || _isStartingRound || _isChangingRuleset || _isLoadingRulesets || _isLoadingActiveRulesetConfig))
+                @if (_matchState is MatchState.Uninitialized or MatchState.Stopped && !(_isLoading || _isResettingRound || _isClearingMatch || _isStartingRound || _isChangingRuleset || _isLoadingRulesets || _isLoadingActiveRulesetConfig))
                 {
                     @if (_currentRound == 0 && _rulesets != null && _rulesets.Any() && _selectedRuleset != null && !string.IsNullOrWhiteSpace(_inputSelectRulesetStringId))
                     {
@@ -139,7 +156,7 @@
 
                                 <option value=@_selectedRuleset.Id.ToString() label="@($"{_selectedRuleset.Name} [{_selectedRuleset.Id}]")">@_selectedRuleset.Name [@_selectedRuleset.Id.ToString()]</option>
 
-                                @foreach (var ruleset in _rulesets.Where(r => r.Id != _selectedRuleset.Id))
+                                @foreach (Ruleset ruleset in _rulesets.Where(r => r.Id != _selectedRuleset.Id))
                                 {
                                     <option value=@ruleset.Id.ToString() label="@($"{ruleset.Name} [{ruleset.Id}]")">@ruleset.Name [@ruleset.Id.ToString()]</option>
                                 }
@@ -147,52 +164,91 @@
                         </EditForm>
                     }
 
-                    <EditForm Model="@_matchConfiguration" style="margin-top: 0.5rem;">
+                    if (_matchConfiguration is not null)
+                    {
+                        <EditForm Model="@_matchConfiguration" style="margin-top: 0.5rem;">
+                            <p style="margin-bottom: 0.5rem;">
+                                <div style="width: 110px; padding-right: 4px; display: inline-block;">
+                                    Match Title:
+                                </div>
+                                <InputText id="matchTitle"
+                                           Value="@_matchConfiguration.Title"
+                                           ValueChanged="@(OnChangeMatchTitle)"
+                                           ValueExpression="@(() => _matchConfiguration.Title)"
+                                           style="width: 250px;"
+                                           maxlength="100"
+                                           pattern="(?!.)$|^([A-Za-z0-9()\[\]\-_'.][ ]{0,1}){1,49}[A-Za-z0-9()\[\]\-_'.]$" />
+                            </p>
+                            <p style="margin-bottom: 0.5rem;">
+                                <span style="width: 110px; padding-right: 4px; display: inline-block;">Round Length:</span>
+                                <InputNumber min="1"
+                                             type="text"
+                                             id="roundSecondsTotal"
+                                             Value="@_matchConfiguration.RoundSecondsTotal"
+                                             ValueChanged="@((int s) => _matchConfiguration.TrySetRoundLength(s, true))"
+                                             ValueExpression="@(() => _matchConfiguration.RoundSecondsTotal)" />
+                                <span style="padding-left: 4px; width: 64px;">seconds</span>
+                            </p>
 
-                        <p style="margin-bottom: 0.5rem;"><div style="width: 110px; padding-right: 4px; display: inline-block;">Match Title:</div><InputText id="matchTitle" Value="@_matchConfiguration.Title" ValueChanged="@(OnChangeMatchTitle)" ValueExpression="@(() => _matchConfiguration.Title)" style="width: 250px;" maxlength="100" pattern="(?!.)$|^([A-Za-z0-9()\[\]\-_'.][ ]{0,1}){1,49}[A-Za-z0-9()\[\]\-_'.]$" /></p>
-                        <p style="margin-bottom: 0.5rem;"><span style="width: 110px; padding-right: 4px; display: inline-block;">Round Length:</span><InputNumber min="1" type="text" id="roundSecondsTotal" Value="@_matchConfiguration.RoundSecondsTotal" ValueChanged="@((int s) => _matchConfiguration.TrySetRoundLength(s, true))" ValueExpression="@(() => _matchConfiguration.RoundSecondsTotal)" /><span style="padding-left: 4px; width: 64px;">seconds</span></p>
+                            <div style="margin-bottom: 0.2rem;">
+                                <p style="margin-bottom: 0.2rem;">Scrim Server & Base: </p>
 
-                        <div style="margin-bottom: 0.2rem;">
-                            <p style="margin-bottom: 0.2rem;">Scrim Server & Base: </p>
-
-
-                            @if (_worlds != null)
-                            {
-                                <InputSelect TValue="string" style="margin-right: 5px; width: 125px; padding: 0.1rem;" Value="@_matchConfiguration.WorldId.ToString()" ValueChanged="@((s) => _matchConfiguration.TrySetWorldId(s, true, false))" ValueExpression="@(() => _matchConfiguration.WorldId.ToString())">
-                                    @foreach (var world in _worlds)
-                                    {
-                                        string worldName = world.Name.English.GetValueOrDefault()
-                                            ?? world.WorldId.ToString();
-                                        <option value="@world.WorldId" label="@worldName">@worldName (@((int)world.WorldId)</option>
-                                    }
-                                </InputSelect>
-                            }
-
-                            @if (_mapZones != null && _mapRegions != null && _zones != null)
-                            {
-                                <InputSelect style="margin-right: 5px; width: 250px; padding: 0.1rem;" @bind-Value=@_matchConfiguration.FacilityIdString>
-                                    <option value=@_noFacilitIdValue>No Base</option>
-
-                                    @foreach (var zone in _mapZones)
-                                    {
-                                        string zoneName = _zones?.FirstOrDefault(z => zone == z.ZoneId)?
-                                            .Name
-                                            .English
-                                            .GetValueOrDefault() ?? zone.ToString();
-
-                                        <optgroup label="@zoneName" style="background-color: var(--sq-bg-white-unlit); color: var(--sq-pink); font-size: 1rem;">@zoneName</optgroup>
-
-                                        @foreach (var region in _mapRegions.Where(r => r.ZoneId == zone))
+                                @if (_worlds != null)
+                                {
+                                    <InputSelect TValue="WorldDefinition"
+                                                 style="margin-right: 5px; width: 125px; padding: 0.1rem;"
+                                                 Value="@_matchConfiguration.WorldId"
+                                                 ValueChanged="@(s => _matchConfiguration.TrySetWorldId(s, true))"
+                                                 ValueExpression="@(() => _matchConfiguration.WorldId)">
+                                        @foreach (CensusWorld world in _worlds)
                                         {
-                                            <option value=@region.FacilityId.ToString() label="@region.FacilityName">@region.FacilityName (@region.FacilityId.ToString())</option>
+                                            string worldName = world.Name.English.GetValueOrDefault()
+                                                ?? world.WorldId.ToString();
+                                            <option value="@world.WorldId" label="@worldName">@worldName (@((int)world.WorldId)</option>
                                         }
-                                    }
-                                </InputSelect>
-                            }
-                        </div>
+                                    </InputSelect>
+                                }
 
-                        <p style="margin-bottom: 0.2rem; margin-top: 8px;"><InputCheckbox id="endRoundOnCapture" Value="@_matchConfiguration.EndRoundOnFacilityCapture" ValueChanged="@((bool b) => _matchConfiguration.TrySetEndRoundOnFacilityCapture(b, true))" ValueExpression="@(() => _matchConfiguration.EndRoundOnFacilityCapture)" style="position: relative; top: 1px;" /><span style="padding-left: 8px;">End Round on Base Capture</span></p>
-                    </EditForm>
+                                @if (_mapRegionsByZone is not null && _zones != null)
+                                {
+                                    <InputSelect style="margin-right: 5px; width: 250px; padding: 0.1rem;" @bind-Value=@_matchConfiguration.FacilityIdString>
+                                        <option value=@NO_FACILITY_ID_VALUE>No Base</option>
+                                
+                                        @foreach ((ZoneDefinition zone, IReadOnlyList<CensusMapRegion> regions) in _mapRegionsByZone)
+                                        {
+                                            string zoneName = _zones?.FirstOrDefault(z => zone == z.ZoneId)?
+                                                .Name
+                                                .English
+                                                .GetValueOrDefault() ?? zone.ToString();
+
+                                            <optgroup label="@zoneName"
+                                                      style="background-color: var(--sq-bg-white-unlit); color: var(--sq-pink); font-size: 1rem;">
+                                                @zoneName
+                                            </optgroup>
+
+                                            @foreach (CensusMapRegion region in regions)
+                                            {
+                                                <option value=@region.FacilityId.ToString()
+                                                        label="@region.FacilityName">
+                                                    @region.FacilityName (@region.FacilityId)
+                                                </option>
+                                            }
+                                        }
+                                    </InputSelect>
+                                }
+                            </div>
+
+                            <p style="margin-bottom: 0.2rem; margin-top: 8px;">
+                                <InputCheckbox id="endRoundOnCapture"
+                                               Value="@_matchConfiguration.EndRoundOnFacilityCapture"
+                                               ValueChanged="@(b => _matchConfiguration.TrySetEndRoundOnFacilityCapture(b, true))"
+                                               ValueExpression="@(() => _matchConfiguration.EndRoundOnFacilityCapture)"
+                                               style="position: relative; top: 1px;"/><span style="padding-left: 8px;">
+                                    End Round on Base Capture
+                                </span>
+                            </p>
+                        </EditForm>
+                    }
                 }
 
                 @if (!string.IsNullOrWhiteSpace(_matchId))
@@ -217,48 +273,40 @@
 </div>
 
 @code {
-    private string _roundSecondsInput = string.Empty;
-    private MatchConfiguration _matchConfiguration { get; set; }
+    private const string NO_FACILITY_ID_VALUE = "-1";
+
+    private MatchConfiguration? _matchConfiguration { get; set; }
 
     #region Ruleset Select List Variables
-    private IEnumerable<Ruleset> _rulesets { get; set; }
+    private IEnumerable<Ruleset>? _rulesets { get; set; }
 
-    private Ruleset _inputSelectRuleset { get; set; }
+    private string? _inputSelectRulesetStringId { get; set; }
 
-    private string _inputSelectRulesetStringId { get; set; }
+    private Ruleset? _activeRuleset { get; set; }
+    private Ruleset? _selectedRuleset { get; set; }
 
-    private Ruleset _activeRuleset { get; set; }
-    private Ruleset _selectedRuleset { get; set; }
-
-    private bool _isLoading { get; set; } = false;
-    private bool _isLoadingRulesets { get; set; } = false;
-    private bool _isChangingRuleset { get; set; } = false;
-    private bool _isLoadingActiveRulesetConfig { get; set; } = false;
+    private bool _isLoading { get; set; }
+    private bool _isLoadingRulesets { get; set; }
+    private bool _isChangingRuleset { get; set; }
+    private bool _isLoadingActiveRulesetConfig { get; set; }
 
     #endregion Ruleset Select List Variables
 
-    #region Facility & World Select List Variables
-    private IEnumerable<CensusMapRegion>? _mapRegions { get; set; }
-    private List<ZoneDefinition> _mapZones { get; set; } = new();
+    private IReadOnlyDictionary<ZoneDefinition, IReadOnlyList<CensusMapRegion>>? _mapRegionsByZone;
     private IReadOnlyList<CensusZone>? _zones { get; set; }
-    private string _noFacilitIdValue { get; set; } = "-1";
-
     private IReadOnlyList<CensusWorld>? _worlds { get; set; }
-    #endregion
 
-    private bool _isStreamServiceEnabled { get; set; } = false;
+    private string? _errorBannerMessage { get; set; }
 
-    private string _errorBannerMessage { get; set; }
+    private bool _isStartingRound { get; set; }
+    private bool _isClearingMatch { get; set; }
+    private bool _isResettingRound { get; set; }
+    private bool _isEndingRound { get; set; }
 
-    private bool _isStartingRound { get; set; } = false;
-    private bool _isClearingMatch { get; set; } = false;
-    private bool _isResettingRound { get; set; } = false;
-    private bool _isEndingRound { get; set; } = false;
+    private bool _isDeleteDataEnabled { get; set; }
 
-    private bool _isDeleteDataEnabled { get; set; } = false;
-
-    private bool _isRunning = false;
-    private int _currentRound = 0;
+    private bool _isRunning;
+    private int _currentRound;
     private MatchState _matchState = MatchState.Uninitialized;
 
     private string _matchId = string.Empty;
@@ -270,27 +318,23 @@
         {
             _isLoading = true;
 
-            var TaskList = new List<Task>();
+            List<Task> TaskList = new();
 
-            var censusStreamStatusTask = GetCensusStreamStatus();
-            TaskList.Add(censusStreamStatusTask);
-
-            var zonesTask = ZoneService.GetAllAsync();
+            Task<IReadOnlyList<CensusZone>?> zonesTask = ZoneService.GetAllAsync();
             TaskList.Add(zonesTask);
 
-            var worldsTask = WorldService.GetAllAsync();
+            Task<IReadOnlyList<CensusWorld>?> worldsTask = WorldService.GetAllAsync();
             TaskList.Add(worldsTask);
 
-            var rulesetsTask = SetUpRulesetsAsync();
+            Task rulesetsTask = SetUpRulesetsAsync();
             TaskList.Add(rulesetsTask);
 
-            var activeRulesetConfigTask = SetUpActiveRulesetConfigAsync();
+            Task activeRulesetConfigTask = SetUpActiveRulesetConfigAsync();
             TaskList.Add(activeRulesetConfigTask);
 
             await Task.WhenAll(TaskList);
 
-            _worlds = worldsTask.Result.OrderBy(worlds => worlds.Name).ToList();
-
+            _worlds = worldsTask.Result?.OrderBy(worlds => worlds.WorldId).ToList();
             _zones = zonesTask.Result;
 
             _isLoading = false;
@@ -304,15 +348,7 @@
         MessageService.RaiseMatchConfigurationUpdateEvent += ReceiveMatchConfigurationUpdateMessageEvent;
         MessageService.RaiseRulesetSettingChangeEvent += ReceiveRulesetSettingChangeEvent;
 
-        if (ScrimMatchEngine.MatchConfiguration != null)
-        {
-            _matchConfiguration = ScrimMatchEngine.MatchConfiguration;
-        }
-        else
-        {
-            _matchConfiguration = new MatchConfiguration();
-        }
-
+        _matchConfiguration = ScrimMatchEngine.MatchConfiguration;
         _isRunning = ScrimMatchEngine.IsRunning();
         _currentRound = ScrimMatchEngine.GetCurrentRound();
         _matchState = ScrimMatchEngine.GetMatchState();
@@ -353,8 +389,8 @@
                 _matchConfiguration.TrySetRoundLength(_activeRuleset.DefaultRoundLength, false);
                 _matchConfiguration.TrySetEndRoundOnFacilityCapture(_activeRuleset.DefaultEndRoundOnFacilityCapture, false);
 
-                var oldTitle = _matchConfiguration.Title;
-                var newTitle = _activeRuleset.DefaultMatchTitle;
+                string oldTitle = _matchConfiguration.Title;
+                string? newTitle = _activeRuleset.DefaultMatchTitle;
 
                 if (newTitle == null)
                 {
@@ -381,18 +417,23 @@
                         mapRegions.Add(region);
                 }
 
-                _mapRegions = mapRegions.OrderBy(r => r.FacilityName).ToList();
-                _mapZones = mapRegions.Select(r => r.ZoneId).Distinct().ToList();
+                _mapRegionsByZone = mapRegions.GroupBy(x => x.ZoneId)
+                    .ToDictionary
+                    (
+                        x => x.Key,
+                        x => (IReadOnlyList<CensusMapRegion>)x.OrderBy(r => r.FacilityName).ToList()
+                    );
             }
             else
             {
                 IReadOnlyList<CensusMapRegion>? mapRegions = await MapRegionService.GetAllAsync();
 
-                if (mapRegions is not null)
-                {
-                    _mapRegions = mapRegions.OrderBy(r => r.FacilityName).ToList();
-                    _mapZones = mapRegions.Select(r => r.ZoneId).Distinct().ToList();
-                }
+                _mapRegionsByZone = mapRegions?.GroupBy(x => x.ZoneId)
+                    .ToDictionary
+                    (
+                        x => x.Key,
+                        x => (IReadOnlyList<CensusMapRegion>)x.OrderBy(r => r.FacilityName).ToList()
+                    );
             }
         }
 
@@ -402,21 +443,6 @@
     #endregion Initialization Methods
 
     #region  Match & Subscription State Buttons
-    private async Task GetCensusStreamStatus()
-    {
-        // TODO: Observability of websocket status
-        //var status = await WebsocketMonitor.GetStatus();
-        _isStreamServiceEnabled = true;//status.IsEnabled;
-
-        if (!_isStreamServiceEnabled)
-        {
-            SetWebsocketConnectionErrorMessage();
-        }
-        else
-        {
-            ClearErrorMessage();
-        }
-    }
 
     private void SubscribeToCensus()
     {
@@ -568,7 +594,7 @@
         if (newTitle is null)
             return;
 
-        var oldTitle = _matchConfiguration.Title;
+        string oldTitle = _matchConfiguration.Title;
 
         if (_matchConfiguration.TrySetTitle(newTitle, true))
         {
@@ -583,9 +609,9 @@
     #endregion Match & Subscription State Buttons
 
     #region  Event Handling
-    private void ReceiveMatchStateUpdateMessageEvent(object sender, ScrimMessageEventArgs<MatchStateUpdateMessage> e)
+    private void ReceiveMatchStateUpdateMessageEvent(object? sender, ScrimMessageEventArgs<MatchStateUpdateMessage> e)
     {
-        var message = e.Message;
+        MatchStateUpdateMessage message = e.Message;
 
         _isRunning = message.MatchState == MatchState.Running;
         _currentRound = message.CurrentRound;
@@ -598,25 +624,25 @@
         InvokeAsyncStateHasChanged();
     }
 
-    private void ReceiveMatchConfigurationUpdateMessageEvent(object sender, ScrimMessageEventArgs<MatchConfigurationUpdateMessage> e)
+    private void ReceiveMatchConfigurationUpdateMessageEvent(object? sender, ScrimMessageEventArgs<MatchConfigurationUpdateMessage> e)
     {
-        var message = e.Message;
+        MatchConfigurationUpdateMessage message = e.Message;
 
         _matchConfiguration = message.MatchConfiguration;
 
         InvokeAsyncStateHasChanged();
     }
 
-    private void ReceiveRulesetSettingChangeEvent(object sender, ScrimMessageEventArgs<RulesetSettingChangeMessage> e)
+    private void ReceiveRulesetSettingChangeEvent(object? sender, ScrimMessageEventArgs<RulesetSettingChangeMessage> e)
     {
-        var message = e.Message;
+        RulesetSettingChangeMessage message = e.Message;
 
         if (!message.ChangedSettings.Contains(RulesetSettingChange.DefaultEndRoundOnFacilityCapture))
         {
             return;
         }
 
-        var success = _matchConfiguration.TrySetEndRoundOnFacilityCapture(message.Ruleset.DefaultEndRoundOnFacilityCapture, false);
+        bool success = _matchConfiguration.TrySetEndRoundOnFacilityCapture(message.Ruleset.DefaultEndRoundOnFacilityCapture, false);
 
         if (success)
         {
@@ -632,7 +658,7 @@
         _isChangingRuleset = true;
         InvokeAsyncStateHasChanged();
 
-        if (!int.TryParse(rulesetStringId, out var rulesetId))
+        if (!int.TryParse(rulesetStringId, out int rulesetId))
         {
             _isChangingRuleset = false;
             InvokeAsyncStateHasChanged();
@@ -673,23 +699,11 @@
     }
     #endregion Log Messages
 
-    #region Error Messages
     private void ClearErrorMessage()
     {
         _errorBannerMessage = string.Empty;
     }
 
-    private void SetWebsocketConnectionErrorMessage()
-    {
-        _errorBannerMessage = "Failed to connect to the Planetside 2 Websocket";
-    }
-    #endregion Error Messages
-
     private void InvokeAsyncStateHasChanged()
-    {
-        InvokeAsync(() =>
-        {
-            StateHasChanged();
-        });
-    }
+        => InvokeAsync(StateHasChanged);
 }

@@ -12,7 +12,7 @@ using squittal.ScrimPlanetmans.App.Data;
 namespace squittal.ScrimPlanetmans.App.Migrations
 {
     [DbContext(typeof(PlanetmansDbContext))]
-    [Migration("20230324005610_InitialMigration")]
+    [Migration("20230324222453_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -296,14 +296,10 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<bool>("IsManualWorldId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsRoundEndedOnFacilityCapture")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
+                        .HasColumnType("bit");
 
                     b.Property<int>("RoundSecondsTotal")
                         .HasColumnType("int");
@@ -316,8 +312,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("ScrimMatchId", "ScrimMatchRound");
-
-                    b.HasIndex("ScrimMatchId");
 
                     b.ToTable("ScrimMatchRoundConfiguration", (string)null);
                 });
@@ -2460,6 +2454,17 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .IsRequired();
 
                     b.Navigation("Ruleset");
+                });
+
+            modelBuilder.Entity("squittal.ScrimPlanetmans.App.Data.Models.ScrimMatchRoundConfiguration", b =>
+                {
+                    b.HasOne("squittal.ScrimPlanetmans.App.Data.Models.ScrimMatch", "ScrimMatch")
+                        .WithMany()
+                        .HasForeignKey("ScrimMatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ScrimMatch");
                 });
 
             modelBuilder.Entity("squittal.ScrimPlanetmans.App.Data.Models.ScrimMatchTeamPointAdjustment", b =>

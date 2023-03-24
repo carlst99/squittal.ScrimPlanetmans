@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
 using DbgCensus.Core.Objects;
-using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
@@ -17,28 +16,19 @@ public class ScrimMatchEngine : IScrimMatchEngine
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly IScrimMatchDataService _matchDataService;
     private readonly IScrimRulesetManager _rulesetManager;
-    private readonly ILogger<ScrimMatchEngine> _logger;
     private readonly IEventFilterService _eventFilter;
-
     private readonly IStatefulTimer _timer;
 
-    public MatchConfiguration MatchConfiguration { get; set; } = new MatchConfiguration();
-    public Ruleset.Models.Ruleset MatchRuleset { get; private set; }
-
-    public int CurrentSeriesMatch { get; private set; } = 0;
-
-    private bool _isRunning = false;
-
-    private int _currentRound = 0;
-
+    private bool _isRunning;
+    private int _currentRound;
     private int _roundSecondsMax = 900;
-    private int _roundSecondsRemaining;
-    private MatchTimerTickMessage _latestTimerTickMessage;
-
+    private MatchTimerTickMessage? _latestTimerTickMessage;
     private MatchState _matchState = MatchState.Uninitialized;
-
     private DateTime _matchStartTime;
 
+    public MatchConfiguration MatchConfiguration { get; set; }
+    public Ruleset.Models.Ruleset? MatchRuleset { get; private set; }
+    public int CurrentSeriesMatch { get; private set; }
 
     public ScrimMatchEngine
     (
@@ -47,7 +37,6 @@ public class ScrimMatchEngine : IScrimMatchEngine
         IScrimMatchDataService matchDataService,
         IScrimMessageBroadcastService messageService,
         IScrimRulesetManager rulesetManager,
-        ILogger<ScrimMatchEngine> logger,
         IEventFilterService eventFilter
     )
     {
@@ -56,15 +45,16 @@ public class ScrimMatchEngine : IScrimMatchEngine
         _messageService = messageService;
         _matchDataService = matchDataService;
         _rulesetManager = rulesetManager;
-        _logger = logger;
         _eventFilter = eventFilter;
 
-        _messageService.RaiseMatchTimerTickEvent += async (s, e) => await OnMatchTimerTick(s, e);
+        _messageService.RaiseMatchTimerTickEvent += async (_, e) => await OnMatchTimerTick(e);
 
         _messageService.RaiseTeamOutfitChangeEvent += OnTeamOutfitChangeEvent;
         _messageService.RaiseTeamPlayerChangeEvent += OnTeamPlayerChangeEvent;
 
-        _messageService.RaiseScrimFacilityControlActionEvent += async (s, e) => await OnFacilityControlEvent(s, e);
+        _messageService.RaiseScrimFacilityControlActionEvent += async (_, e) => await OnFacilityControlEvent(e);
+
+        MatchConfiguration = new MatchConfiguration();
     }
 
 
@@ -99,11 +89,11 @@ public class ScrimMatchEngine : IScrimMatchEngine
 
         _messageService.DisableLogging();
 
-        var previousWorldId = MatchConfiguration.WorldId;
-        var previousIsManualWorldId = MatchConfiguration.IsManualWorldId;
+        WorldDefinition previousWorldId = MatchConfiguration.WorldId;
+        bool previousIsManualWorldId = MatchConfiguration.IsManualWorldId;
 
-        var previousEndRoundOnFacilityCapture = MatchConfiguration.EndRoundOnFacilityCapture;
-        var previousIsManualEndRoundOnFacilityCapture = MatchConfiguration.EndRoundOnFacilityCapture;
+        bool previousEndRoundOnFacilityCapture = MatchConfiguration.EndRoundOnFacilityCapture;
+        bool previousIsManualEndRoundOnFacilityCapture = MatchConfiguration.EndRoundOnFacilityCapture;
 
         MatchConfiguration = new MatchConfiguration();
 
@@ -114,8 +104,15 @@ public class ScrimMatchEngine : IScrimMatchEngine
         }
         else
         {
-            var activeRuleset = await _rulesetManager.GetActiveRulesetAsync();
-            MatchConfiguration.TrySetEndRoundOnFacilityCapture(activeRuleset.DefaultEndRoundOnFacilityCapture, false);
+            Ruleset.Models.Ruleset? activeRuleset = await _rulesetManager.GetActiveRulesetAsync();
+            if (activeRuleset is not null)
+            {
+                MatchConfiguration.TrySetEndRoundOnFacilityCapture
+                (
+                    activeRuleset.DefaultEndRoundOnFacilityCapture,
+                    false
+                );
+            }
         }
 
         _roundSecondsMax = MatchConfiguration.RoundSecondsTotal;
@@ -173,7 +170,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
         _eventFilter.IsScoringEnabled = false;
 
         // Stop the timer if forcing the round to end (as opposed to timer reaching 0)
-        if (GetLatestTimerTickMessage().MatchTimerStatus.State != MatchTimerState.Stopped)
+        if (GetLatestTimerTickMessage()?.MatchTimerStatus.State is not MatchTimerState.Stopped)
         {
             _timer.Halt();
         }
@@ -189,24 +186,25 @@ public class ScrimMatchEngine : IScrimMatchEngine
 
     public async Task InitializeNewMatch()
     {
-        TrySetMatchRuleset(_rulesetManager.ActiveRuleset);
+        if (_rulesetManager.ActiveRuleset is not null)
+            TrySetMatchRuleset(_rulesetManager.ActiveRuleset);
 
         _matchStartTime = DateTime.UtcNow;
 
         CurrentSeriesMatch++;
 
-        if (MatchConfiguration.SaveLogFiles == true)
+        if (MatchConfiguration.SaveLogFiles)
         {
-            var matchId = BuildMatchId();
+            string matchId = BuildMatchId();
 
             _messageService.SetLogFileName($"{matchId}.txt");
 
-            var scrimMatch = new Data.Models.ScrimMatch
+            Data.Models.ScrimMatch scrimMatch = new()
             {
                 Id = matchId,
                 StartTime = _matchStartTime,
                 Title = MatchConfiguration.Title,
-                RulesetId = MatchRuleset.Id
+                RulesetId = MatchRuleset?.Id ?? 0
             };
 
             await _matchDataService.SaveToCurrentMatch(scrimMatch);
@@ -215,7 +213,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
 
     private string BuildMatchId()
     {
-        var matchId = _matchStartTime.ToString("yyyyMMddTHHmmss");
+        string matchId = _matchStartTime.ToString("yyyyMMddTHHmmss");
 
         foreach (TeamDefinition teamOrdinal in Enum.GetValues<TeamDefinition>())
         {
@@ -232,10 +230,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
     public async Task InitializeNewRound()
     {
         _currentRound += 1;
-
         _matchDataService.CurrentMatchRound = _currentRound;
-
-        _roundSecondsRemaining = _roundSecondsMax;
 
         _timer.Configure(TimeSpan.FromSeconds(_roundSecondsMax));
 
@@ -277,7 +272,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
         {
             return;
         }
-            
+
         _timer.Reset();
         _eventFilter.IsScoringEnabled = false;
 
@@ -322,21 +317,12 @@ public class ScrimMatchEngine : IScrimMatchEngine
             _eventFilter.AddCharacter(id);
     }
 
-    private async Task OnMatchTimerTick(object? sender, ScrimMessageEventArgs<MatchTimerTickMessage> e)
+    private async Task OnMatchTimerTick(ScrimMessageEventArgs<MatchTimerTickMessage> e)
     {
-        var message = e.Message;
-
         SetLatestTimerTickMessage(e.Message);
 
-        var status = message.MatchTimerStatus;
-
-        var state = status.State;
-
-        if (state == MatchTimerState.Stopped && _isRunning)
-        {
+        if (e.Message.MatchTimerStatus.State is MatchTimerState.Stopped && _isRunning)
             await EndRound();
-            return;
-        }
     }
 
     public bool IsRunning()
@@ -359,7 +345,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
         return _matchDataService.CurrentMatchId;
     }
 
-    public MatchTimerTickMessage GetLatestTimerTickMessage()
+    public MatchTimerTickMessage? GetLatestTimerTickMessage()
     {
         return _latestTimerTickMessage;
     }
@@ -369,7 +355,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
         _latestTimerTickMessage = value;
     }
 
-    private void OnTeamOutfitChangeEvent(object sender, ScrimMessageEventArgs<TeamOutfitChangeMessage> e)
+    private void OnTeamOutfitChangeEvent(object? sender, ScrimMessageEventArgs<TeamOutfitChangeMessage> e)
     {
         if (MatchConfiguration.IsManualWorldId)
         {
@@ -378,8 +364,8 @@ public class ScrimMatchEngine : IScrimMatchEngine
 
         WorldDefinition? worldId;
 
-        var message = e.Message;
-        var changeType = message.ChangeType;
+        TeamOutfitChangeMessage message = e.Message;
+        TeamChangeType changeType = message.ChangeType;
         bool isRollBack = false;
 
         if (changeType == TeamChangeType.Add)
@@ -403,16 +389,16 @@ public class ScrimMatchEngine : IScrimMatchEngine
         }
     }
 
-    private void OnTeamPlayerChangeEvent(object sender, ScrimMessageEventArgs<TeamPlayerChangeMessage> e)
+    private void OnTeamPlayerChangeEvent(object? sender, ScrimMessageEventArgs<TeamPlayerChangeMessage> e)
     {
         if (MatchConfiguration.IsManualWorldId)
         {
             return;
         }
 
-        var message = e.Message;
-        var changeType = message.ChangeType;
-        var player = message.Player;
+        TeamPlayerChangeMessage message = e.Message;
+        TeamPlayerChangeType changeType = message.ChangeType;
+        Player player = message.Player;
 
         // Handle outfit removals via Team Outfit Change events
         if (!player.IsOutfitless)
@@ -444,29 +430,29 @@ public class ScrimMatchEngine : IScrimMatchEngine
         }
     }
 
-    private async Task OnFacilityControlEvent(object sender, ScrimMessageEventArgs<ScrimFacilityControlActionEventMessage> e)
+    private async Task OnFacilityControlEvent(ScrimMessageEventArgs<ScrimFacilityControlActionEventMessage> e)
     {
         if (!MatchConfiguration.EndRoundOnFacilityCapture)
-        {
             return;
-        }
 
-        var message = e.Message;
-        var controlEvent = message.FacilityControl;
-
+        ScrimFacilityControlActionEvent controlEvent = e.Message.FacilityControl;
         if (controlEvent.FacilityId == MatchConfiguration.FacilityId && controlEvent.WorldId == MatchConfiguration.WorldId)
-        {
             await EndRound();
-        }
     }
 
     private void SendMatchStateUpdateMessage()
-    {
-        _messageService.BroadcastMatchStateUpdateMessage(new MatchStateUpdateMessage(_matchState, _currentRound, DateTime.UtcNow, MatchConfiguration.Title, _matchDataService.CurrentMatchId));
-    }
+        => _messageService.BroadcastMatchStateUpdateMessage(new MatchStateUpdateMessage
+        (
+            _matchState,
+            _currentRound,
+            DateTime.UtcNow,
+            MatchConfiguration.Title,
+            _matchDataService.CurrentMatchId
+        ));
 
     private void SendMatchConfigurationUpdateMessage()
-    {
-        _messageService.BroadcastMatchConfigurationUpdateMessage(new MatchConfigurationUpdateMessage(MatchConfiguration));
-    }
+        => _messageService.BroadcastMatchConfigurationUpdateMessage
+        (
+            new MatchConfigurationUpdateMessage(MatchConfiguration)
+        );
 }

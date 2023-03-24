@@ -293,14 +293,10 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<bool>("IsManualWorldId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsRoundEndedOnFacilityCapture")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
+                        .HasColumnType("bit");
 
                     b.Property<int>("RoundSecondsTotal")
                         .HasColumnType("int");
@@ -313,8 +309,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("ScrimMatchId", "ScrimMatchRound");
-
-                    b.HasIndex("ScrimMatchId");
 
                     b.ToTable("ScrimMatchRoundConfiguration", (string)null);
                 });
@@ -2457,6 +2451,17 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .IsRequired();
 
                     b.Navigation("Ruleset");
+                });
+
+            modelBuilder.Entity("squittal.ScrimPlanetmans.App.Data.Models.ScrimMatchRoundConfiguration", b =>
+                {
+                    b.HasOne("squittal.ScrimPlanetmans.App.Data.Models.ScrimMatch", "ScrimMatch")
+                        .WithMany()
+                        .HasForeignKey("ScrimMatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ScrimMatch");
                 });
 
             modelBuilder.Entity("squittal.ScrimPlanetmans.App.Data.Models.ScrimMatchTeamPointAdjustment", b =>

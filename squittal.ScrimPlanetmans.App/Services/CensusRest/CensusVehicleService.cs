@@ -33,7 +33,8 @@ public class CensusVehicleService : BaseCensusService, ICensusVehicleService
         IQueryBuilder query = QueryService.CreateQuery()
             .OnCollection("vehicle")
             .Where("vehicle_id", SearchModifier.Equals, vehicleId)
-            .ShowFields("vehicle_id", "name");
+            .ShowFields("vehicle_id", "name")
+            .WithLimit(500);
 
         vehicle = await QueryService.GetAsync<CensusVehicle>(query, ct);
 

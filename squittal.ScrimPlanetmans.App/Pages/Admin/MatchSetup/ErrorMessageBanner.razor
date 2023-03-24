@@ -5,28 +5,31 @@
           padding: 4px 8px;
           font-weight: 600;
           background-color: white;
-          box-shadow: 2px 2px 5px -1px var(--sq-light-blue-gray);
-        ">
+          box-shadow: 2px 2px 5px -1px var(--sq-light-blue-gray);">
     <span class="oi oi-circle-x" style=""></span>
-    <span>@_renderedMessage</span>
+    <span>@_renderedErrorMessage</span>
 </p>
 
 @code {
-    [Parameter]
-    public string i_ErrorMessage { get; set; }
+    private const string DEFAULT_ERROR_MESSAGE = "An error occured. Please try reloading the page.";
 
-    private string _renderedMessage;
+    private string _renderedErrorMessage;
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    public ErrorMessageBanner()
+    {
+        _renderedErrorMessage = DEFAULT_ERROR_MESSAGE;
+    }
 
     protected override void OnParametersSet()
     {
-        if (i_ErrorMessage != _renderedMessage)
-        {
-            _renderedMessage = i_ErrorMessage;
+        if (ErrorMessage?.Equals(_renderedErrorMessage) is true)
+            return;
 
-            InvokeAsync(() =>
-            {
-                StateHasChanged();
-            });
-        }
+        _renderedErrorMessage = ErrorMessage ?? DEFAULT_ERROR_MESSAGE;
+        StateHasChanged();
     }
+
 }

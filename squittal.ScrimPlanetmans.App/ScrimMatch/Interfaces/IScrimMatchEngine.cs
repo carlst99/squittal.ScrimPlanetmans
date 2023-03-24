@@ -7,7 +7,7 @@ namespace squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 public interface IScrimMatchEngine
 {
     MatchConfiguration MatchConfiguration { get; set; }
-    Ruleset.Models.Ruleset MatchRuleset { get; }
+    Ruleset.Models.Ruleset? MatchRuleset { get; }
 
     Task Start();
     Task InitializeNewMatch();
@@ -19,7 +19,7 @@ public interface IScrimMatchEngine
     Task EndRound();
     Task ResetRound();
     Task ClearMatch(bool isRematch);
-    MatchTimerTickMessage GetLatestTimerTickMessage();
+    MatchTimerTickMessage? GetLatestTimerTickMessage();
     bool IsRunning();
     int GetCurrentRound();
     MatchState GetMatchState();

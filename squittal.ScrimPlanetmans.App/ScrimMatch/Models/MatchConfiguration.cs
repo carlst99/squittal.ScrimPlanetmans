@@ -17,7 +17,7 @@ public class MatchConfiguration
     // Target Base Configuration
     public bool IsManualWorldId { get; private set; }
     public bool IsWorldIdSet { get; private set; }
-    public WorldDefinition WorldId { get; set; }
+    public WorldDefinition WorldId { get; set; } = WorldDefinition.Jaeger;
     public uint FacilityId => GetFacilityIdFromString();
     public string FacilityIdString { get; set; } = "-1";
 

@@ -70,14 +70,18 @@
                             
                             @if (_worlds != null)
                             {
-                                <InputSelect TValue="string" style="margin-left: 0; margin-right: 4px; width: 125px; padding: 0.1rem; display: inline-block;" Value="@_searchFilter.WorldId.ToString()" ValueChanged="@((s) => _searchFilter.SetWorldId(s))" ValueExpression="@(() => _searchFilter.WorldId.ToString())">
+                                <InputSelect TValue="WorldDefinition"
+                                             style="margin-left: 0; margin-right: 4px; width: 125px; padding: 0.1rem; display: inline-block;"
+                                             Value="@_searchFilter.WorldId"
+                                             ValueChanged="@(s => _searchFilter.SetWorldId(s))"
+                                             ValueExpression="@(() => _searchFilter.WorldId)">
                                     <option value=@_anyWorldIdValue>All Servers</option>
 
                                     @foreach (CensusWorld world in _worlds)
                                     {
                                         string worldName = world.Name.English.GetValueOrDefault()
                                             ?? world.WorldId.ToString();
-                                        <option value="@world.WorldId" label="@worldName">@@worldName (@((int)world.WorldId)</option>
+                                        <option value="@world.WorldId" label="@worldName">@worldName (@((int)world.WorldId)</option>
                                     }
                                 </InputSelect>
                             }

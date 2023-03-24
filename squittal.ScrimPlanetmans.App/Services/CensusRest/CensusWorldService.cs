@@ -35,9 +35,9 @@ public class CensusWorldService : BaseCensusService, ICensusWorldService
         if (_cache.TryGetValue(cacheKey, out IReadOnlyList<CensusWorld>? worlds) && worlds is not null)
             return worlds;
 
+        // Note: `/world` is a special collection that doesn't play ball with all `c:show/hide` filters
         IQueryBuilder query = QueryService.CreateQuery()
-            .OnCollection("world")
-            .ShowFields("world_id", "name");
+            .OnCollection("world");
 
         worlds = await QueryService.GetAsync<IReadOnlyList<CensusWorld>>(query, ct);
 

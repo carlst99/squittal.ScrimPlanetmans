@@ -159,24 +159,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ScrimMatchRoundConfiguration",
-                columns: table => new
-                {
-                    ScrimMatchId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    ScrimMatchRound = table.Column<int>(type: "int", nullable: false),
-                    Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    RoundSecondsTotal = table.Column<int>(type: "int", nullable: false),
-                    WorldId = table.Column<int>(type: "int", nullable: false),
-                    IsManualWorldId = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    FacilityId = table.Column<long>(type: "bigint", nullable: true),
-                    IsRoundEndedOnFacilityCapture = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ScrimMatchRoundConfiguration", x => new { x.ScrimMatchId, x.ScrimMatchRound });
-                });
-
-            migrationBuilder.CreateTable(
                 name: "ScrimMatchTeamResult",
                 columns: table => new
                 {
@@ -461,16 +443,35 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "ScrimMatchRoundConfiguration",
+                columns: table => new
+                {
+                    ScrimMatchId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    ScrimMatchRound = table.Column<int>(type: "int", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    RoundSecondsTotal = table.Column<int>(type: "int", nullable: false),
+                    WorldId = table.Column<int>(type: "int", nullable: false),
+                    IsManualWorldId = table.Column<bool>(type: "bit", nullable: false),
+                    FacilityId = table.Column<long>(type: "bigint", nullable: true),
+                    IsRoundEndedOnFacilityCapture = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ScrimMatchRoundConfiguration", x => new { x.ScrimMatchId, x.ScrimMatchRound });
+                    table.ForeignKey(
+                        name: "FK_ScrimMatchRoundConfiguration_ScrimMatch_ScrimMatchId",
+                        column: x => x.ScrimMatchId,
+                        principalTable: "ScrimMatch",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_ScrimMatch_RulesetId",
                 table: "ScrimMatch",
                 column: "RulesetId",
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ScrimMatchRoundConfiguration_ScrimMatchId",
-                table: "ScrimMatchRoundConfiguration",
-                column: "ScrimMatchId");
         }
 
         /// <inheritdoc />
@@ -510,9 +511,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                 name: "ScrimGrenadeAssist");
 
             migrationBuilder.DropTable(
-                name: "ScrimMatch");
-
-            migrationBuilder.DropTable(
                 name: "ScrimMatchParticipatingPlayer");
 
             migrationBuilder.DropTable(
@@ -534,10 +532,13 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                 name: "ConstructedTeam");
 
             migrationBuilder.DropTable(
-                name: "Ruleset");
+                name: "ScrimMatch");
 
             migrationBuilder.DropTable(
                 name: "ScrimMatchTeamResult");
+
+            migrationBuilder.DropTable(
+                name: "Ruleset");
         }
     }
 }

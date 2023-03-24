@@ -90,25 +90,6 @@ public class ScrimMatchReportBrowserSearchFilter
         _searchTermsAutoEvent.Set();
     }
 
-    public bool SetWorldId(int worldId)
-    {
-        if (worldId <= -1)
-        {
-            return false;
-        }
-
-        SetWorldId(worldId.ToString());
-
-        return true;
-    }
-
-    public void SetWorldId(string worldIdString)
-    {
-        if (!Enum.TryParse(worldIdString, out WorldDefinition worldId))
-            return;
-        SetWorldId(worldId);
-    }
-
     public void SetWorldId(WorldDefinition worldId)
     {
         _worldAutoEvent.WaitOne();

@@ -205,6 +205,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
             PlanetmansDbContext dbContext = factory.GetDbContext();
 
             List<int> distinctRulesetIds = await dbContext.ScrimMatchRoundConfigurations
+                .Include(m => m.ScrimMatch)
                 .Select(m => m.ScrimMatch.RulesetId)
                 .Distinct()
                 .ToListAsync(cancellationToken);
