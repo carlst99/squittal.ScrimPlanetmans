@@ -4,8 +4,8 @@ namespace squittal.ScrimPlanetmans.App.Util;
 
 public static class StringHelpers
 {
-    public static string GetFactionAbbreviation(int? factionId)
+    public static string GetFactionAbbreviation(FactionDefinition? factionId)
         => factionId is null
             ? "No faction"
-            : ((FactionDefinition)factionId).ToString();
+            : factionId.Value.ToString();
 }

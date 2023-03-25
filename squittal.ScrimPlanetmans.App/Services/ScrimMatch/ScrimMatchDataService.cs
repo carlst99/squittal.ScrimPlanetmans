@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
@@ -37,14 +38,14 @@ public class ScrimMatchDataService : IScrimMatchDataService
 
     public async Task<Data.Models.ScrimMatch> GetCurrentMatch()
     {
-        var matchId = CurrentMatchId;
+        string matchId = CurrentMatchId;
 
         using (await _scrimMatchLock.WaitAsync(matchId))
         {
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
                 return await dbContext.ScrimMatches.FirstOrDefaultAsync(sm => sm.Id == matchId);
             }
@@ -59,11 +60,11 @@ public class ScrimMatchDataService : IScrimMatchDataService
 
     public async Task SaveToCurrentMatch(Data.Models.ScrimMatch scrimMatch)
     {
-        var id = scrimMatch.Id;
+        string id = scrimMatch.Id;
 
         using (await _scrimMatchLock.WaitAsync(id))
         {
-            var oldMatchId = CurrentMatchId;
+            string oldMatchId = CurrentMatchId;
 
             CurrentMatchId = id;
 
@@ -71,10 +72,10 @@ public class ScrimMatchDataService : IScrimMatchDataService
             {
                 CurrentMatchId = id;
 
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeEntity = await dbContext.ScrimMatches.FirstOrDefaultAsync(sm => sm.Id == id);
+                Data.Models.ScrimMatch? storeEntity = await dbContext.ScrimMatches.FirstOrDefaultAsync(sm => sm.Id == id);
 
                 if (storeEntity == null)
                 {
@@ -99,8 +100,8 @@ public class ScrimMatchDataService : IScrimMatchDataService
 
     public async Task SaveCurrentMatchRoundConfiguration(MatchConfiguration matchConfiguration)
     {
-        var matchId = CurrentMatchId;
-        var round = CurrentMatchRound;
+        string matchId = CurrentMatchId;
+        int round = CurrentMatchRound;
 
         using (await _scrimMatchRoundConfigurationLock.WaitAsync($"{matchId}_{round}"))
         {
@@ -111,17 +112,17 @@ public class ScrimMatchDataService : IScrimMatchDataService
 
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var matchEntity = await dbContext.ScrimMatches.FirstOrDefaultAsync(sm => sm.Id == matchId);
+                Data.Models.ScrimMatch? matchEntity = await dbContext.ScrimMatches.FirstOrDefaultAsync(sm => sm.Id == matchId);
 
                 if (matchEntity == null)
                 {
                     return;
                 }
 
-                var storeEntity = await dbContext.ScrimMatchRoundConfigurations
+                ScrimMatchRoundConfiguration? storeEntity = await dbContext.ScrimMatchRoundConfigurations
                     .Where(rc => rc.ScrimMatchId == matchId && rc.ScrimMatchRound == round)
                     .FirstOrDefaultAsync();
 
@@ -146,16 +147,16 @@ public class ScrimMatchDataService : IScrimMatchDataService
 
     public async Task RemoveMatchRoundConfiguration(int roundToDelete)
     {
-        var matchId = CurrentMatchId;
+        string matchId = CurrentMatchId;
 
         using (await _scrimMatchRoundConfigurationLock.WaitAsync($"{matchId}_{roundToDelete}"))
         {
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeEntity = await dbContext.ScrimMatchRoundConfigurations
+                ScrimMatchRoundConfiguration? storeEntity = await dbContext.ScrimMatchRoundConfigurations
                     .Where(rc => rc.ScrimMatchId == matchId && rc.ScrimMatchRound == roundToDelete)
                     .FirstOrDefaultAsync();
 
@@ -194,16 +195,16 @@ public class ScrimMatchDataService : IScrimMatchDataService
 
     public async Task SaveMatchParticipatingPlayer(Player player)
     {
-        var matchId = CurrentMatchId;
+        string matchId = CurrentMatchId;
 
         using (await _scrimMatchParticipatingPlayerLock.WaitAsync($"{player.Id}_{matchId}"))
         {
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeEntity = await dbContext.ScrimMatchParticipatingPlayers
+                ScrimMatchParticipatingPlayer? storeEntity = await dbContext.ScrimMatchParticipatingPlayers
                     .Where(p => p.CharacterId == player.Id && p.ScrimMatchId == matchId)
                     .FirstOrDefaultAsync();
 
@@ -228,35 +229,37 @@ public class ScrimMatchDataService : IScrimMatchDataService
 
     public async Task<bool> TryRemoveMatchParticipatingPlayer(ulong characterId)
     {
-        var matchId = CurrentMatchId;
+        string matchId = CurrentMatchId;
 
         using (await _scrimMatchParticipatingPlayerLock.WaitAsync($"{characterId}_{matchId}"))
         {
             try
             {
-                using var factory = _dbContextHelper.GetFactory();
-                var dbContext = factory.GetDbContext();
+                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
+                PlanetmansDbContext dbContext = factory.GetDbContext();
 
-                var storeEntity = await dbContext.ScrimMatchParticipatingPlayers
+                ScrimMatchParticipatingPlayer? storeEntity = await dbContext.ScrimMatchParticipatingPlayers
                     .Where(p => p.CharacterId == characterId && p.ScrimMatchId == matchId)
                     .FirstOrDefaultAsync();
 
                 if (storeEntity == null)
-                {
                     return false;
-                }
-                else
-                {
-                    dbContext.ScrimMatchParticipatingPlayers.Remove(storeEntity);
-                }
 
+
+                dbContext.ScrimMatchParticipatingPlayers.Remove(storeEntity);
                 await dbContext.SaveChangesAsync();
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.ToString());
+                _logger.LogError
+                (
+                    ex,
+                    "Failed to remove player {PlayerId} from match {MatchId}",
+                    characterId,
+                    matchId
+                );
 
                 return false;
             }
@@ -269,6 +272,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
             ScrimMatchId = matchId,
             CharacterId = player.Id,
             TeamOrdinal = player.TeamOrdinal,
+            NameDisplay = player.NameDisplay,
             FactionId = player.FactionId,
             IsFromOutfit = player.IsOutfitless,
             OutfitId = player.IsOutfitless ? null : player.OutfitId,

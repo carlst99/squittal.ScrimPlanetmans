@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using DbgCensus.Core.Objects;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
@@ -59,14 +60,14 @@ public interface IConstructedTeamService
     Task<IEnumerable<ConstructedTeamMemberDetails>> GetConstructedTeamFactionMemberDetailsAsync
     (
         int teamId,
-        int factionId,
+        FactionDefinition factionId,
         CancellationToken ct = default
     );
 
     Task<IEnumerable<Player>> GetConstructedTeamFactionPlayersAsync
     (
         int teamId,
-        int factionId,
+        FactionDefinition factionId,
         CancellationToken ct = default
     );
 

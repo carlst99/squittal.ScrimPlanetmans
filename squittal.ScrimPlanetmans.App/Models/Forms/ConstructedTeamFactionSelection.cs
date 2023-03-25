@@ -1,4 +1,6 @@
-﻿namespace squittal.ScrimPlanetmans.App.Models.Forms;
+﻿using DbgCensus.Core.Objects;
+
+namespace squittal.ScrimPlanetmans.App.Models.Forms;
 
 public class ConstructedTeamFactionSelection
 {
@@ -19,23 +21,5 @@ public class ConstructedTeamFactionSelection
         }
     }
 
-    public string FactionStringId { get; set; } = _defaultFactionStringId;
-
-    public int FactionId
-    {
-        get
-        {
-            if (int.TryParse(FactionStringId, out int intId))
-            {
-                return intId;
-            }
-            else
-            {
-                return _defaultFactionId;
-            }
-        }
-    }
-
-    private static readonly string _defaultFactionStringId = "1";
-    private static readonly int _defaultFactionId = 1;
+    public FactionDefinition FactionId { get; set; } = FactionDefinition.VS;
 }

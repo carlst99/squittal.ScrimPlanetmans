@@ -48,6 +48,6 @@ public class OutfitService : IOutfitService
             return;
 
         outfit.WorldId = leader.WorldId;
-        outfit.FactionId = (int)leader.FactionId;
+        outfit.FactionId = leader.FactionId;
     }
 }

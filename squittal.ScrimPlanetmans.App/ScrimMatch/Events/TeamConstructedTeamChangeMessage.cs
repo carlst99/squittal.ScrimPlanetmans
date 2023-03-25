@@ -1,4 +1,5 @@
-﻿using squittal.ScrimPlanetmans.App.Data.Models;
+﻿using DbgCensus.Core.Objects;
+using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.Models;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
@@ -7,7 +8,7 @@ public record TeamConstructedTeamChangeMessage
 (
     TeamDefinition TeamOrdinal,
     ConstructedTeam ConstructedTeam,
-    int FactionId,
+    FactionDefinition FactionId,
     TeamChangeType ChangeType,
     int? PlayersFound = null
 )

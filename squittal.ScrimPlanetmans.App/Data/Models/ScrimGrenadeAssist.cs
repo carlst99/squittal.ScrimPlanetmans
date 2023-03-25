@@ -23,6 +23,9 @@ public class ScrimGrenadeAssist
     public ulong? VictimCharacterId { get; init; }
     public int Points { get; init; }
 
+    // Do not remove! Used in SQL views
+    public int ExperienceGainId { get; set; }
+
     // Technically, different teams can have players from the same faction
     public TeamDefinition? AttackerTeamOrdinal { get; init; }
     public TeamDefinition? VictimTeamOrdinal { get; init; }

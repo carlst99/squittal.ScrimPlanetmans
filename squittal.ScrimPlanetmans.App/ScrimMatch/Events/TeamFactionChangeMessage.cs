@@ -1,12 +1,13 @@
-﻿using squittal.ScrimPlanetmans.App.Models;
+﻿using DbgCensus.Core.Objects;
+using squittal.ScrimPlanetmans.App.Models;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
 public record TeamFactionChangeMessage
 (
     TeamDefinition Ordinal,
-    int? NewFactionId,
+    FactionDefinition? NewFactionId,
     string NewFactionAbbreviation,
-    int? OldFactionId,
+    FactionDefinition? OldFactionId,
     string OldFactionAbbreviation
 );

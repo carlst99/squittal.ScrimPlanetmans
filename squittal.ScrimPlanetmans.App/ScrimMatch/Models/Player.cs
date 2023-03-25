@@ -32,7 +32,7 @@ public class Player
         }
     }
 
-    public int FactionId { get; set; }
+    public FactionDefinition FactionId { get; set; }
     public WorldDefinition WorldId { get; set; }
 
     public int PrestigeLevel { get; set; }
@@ -74,7 +74,7 @@ public class Player
         NameFull = character.Name.First;
         IsOnline = isOnline;
         PrestigeLevel = character.PrestigeLevel;
-        FactionId = (int)character.FactionId;
+        FactionId = character.FactionId;
         WorldId = character.WorldId;
 
         IsOutfitless = character.Outfit is null;

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using DbgCensus.Core.Objects;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
@@ -21,7 +22,7 @@ public class Team
     public string Alias { get; set; }
     public string NameInternal { get; }
     public TeamDefinition TeamOrdinal { get; }
-    public int? FactionId { get; set; }
+    public FactionDefinition? FactionId { get; set; }
 
     public bool IsLocked { get; set; }
 
@@ -205,7 +206,7 @@ public class Team
     #endregion Team Outfits
 
     #region Team Contstructed Teams
-    public bool ContainsConstructedTeamFaction(int constructedTeamId, int factionId)
+    public bool ContainsConstructedTeamFaction(int constructedTeamId, FactionDefinition factionId)
     {
         return constructedTeamsMap.ContainsKey(GetConstructedTeamFactionKey(constructedTeamId, factionId));
     }
@@ -216,7 +217,7 @@ public class Team
         if (constructedTeam is null)
             return false;
 
-        int factionId = matchInfo.ActiveFactionId;
+        FactionDefinition factionId = matchInfo.ActiveFactionId;
         if (!constructedTeamsMap.TryAdd(GetConstructedTeamFactionKey(constructedTeam.Id, factionId), matchInfo))
             return false;
 
@@ -225,7 +226,7 @@ public class Team
         return true;
     }
 
-    public bool TryRemoveConstructedTeamFaction(int constructedTeamId, int factionId)
+    public bool TryRemoveConstructedTeamFaction(int constructedTeamId, FactionDefinition factionId)
     {
         if (!constructedTeamsMap.TryRemove(GetConstructedTeamFactionKey(constructedTeamId, factionId), out _))
         {
@@ -237,7 +238,7 @@ public class Team
         return true;
     }
 
-    public IEnumerable<Player> GetConstructedTeamFactionPlayers(int constructedTeamId, int factionId)
+    public IEnumerable<Player> GetConstructedTeamFactionPlayers(int constructedTeamId, FactionDefinition factionId)
     {
         lock (Players)
         {
@@ -247,9 +248,9 @@ public class Team
         }
     }
 
-    private string GetConstructedTeamFactionKey(int constructedTeamId, int factionId)
+    private string GetConstructedTeamFactionKey(int constructedTeamId, FactionDefinition factionId)
     {
-        return $"{constructedTeamId}^{factionId}";
+        return $"{constructedTeamId}^{(int)factionId}";
     }
     #endregion Team Contstructed Teams
 

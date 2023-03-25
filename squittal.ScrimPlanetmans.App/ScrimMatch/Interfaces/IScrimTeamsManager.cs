@@ -28,7 +28,7 @@ public interface IScrimTeamsManager
     Task SaveRoundEndScores(int round);
     Task RollBackAllTeamStats(int currentRound);
     WorldDefinition? GetNextWorldId(WorldDefinition previousWorldId);
-    Team? GetFirstTeamWithFactionId(int factionId);
+    Team? GetFirstTeamWithFactionId(FactionDefinition factionId);
     void UpdateTeamStats(TeamDefinition teamOrdinal, ScrimEventAggregate updates);
     Task AdjustTeamPoints(TeamDefinition teamOrdinal, PointAdjustment adjustment);
     Task RemoveTeamPointAdjustment(TeamDefinition teamOrdinal, PointAdjustment adjustment);
@@ -37,12 +37,19 @@ public interface IScrimTeamsManager
     int GetTeamScoreDisplay(TeamDefinition teamOrdinal);
     Task<bool> UpdatePlayerTemporaryAliasAsync(ulong playerId, string newAlias);
     Task ClearPlayerDisplayNameAsync(ulong playerId);
-    Task<bool> AddConstructedTeamFactionMembersToTeam(TeamDefinition teamOrdinal, int constructedTeamId, int factionId);
+    Task<bool> AddConstructedTeamFactionMembersToTeam(TeamDefinition teamOrdinal, int constructedTeamId, FactionDefinition factionId);
     IEnumerable<Player> GetTeamOutfitPlayers(TeamDefinition teamOrdinal, string outfitAliasLower);
     IEnumerable<Player> GetTeamNonOutfitPlayers(TeamDefinition teamOrdinal);
-    IEnumerable<Player> GetTeamConstructedTeamFactionPlayers(TeamDefinition teamOrdinal, int constructedTeamId, int factionId);
-    Task<bool> RemoveConstructedTeamFactionFromTeamAndDb(int constructedTeamId, int factionId);
-    bool IsConstructedTeamFactionAvailable(int constructedTeamId, int factionId);
+
+    IEnumerable<Player> GetTeamConstructedTeamFactionPlayers
+    (
+        TeamDefinition teamOrdinal,
+        int constructedTeamId,
+        FactionDefinition factionId
+    );
+
+    Task<bool> RemoveConstructedTeamFactionFromTeamAndDb(int constructedTeamId, FactionDefinition factionId);
+    bool IsConstructedTeamFactionAvailable(int constructedTeamId, FactionDefinition factionId);
     bool IsConstructedTeamAnyFactionAvailable(int constructedTeamId);
     void ResetAllTeamsMatchData();
     Task LockTeamPlayers(TeamDefinition teamOrdinal);

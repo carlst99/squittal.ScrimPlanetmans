@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using DbgCensus.Core.Objects;
 
 namespace squittal.ScrimPlanetmans.App.Data.Models;
 
@@ -10,7 +11,7 @@ public class ConstructedTeamPlayerMembership
     [Required]
     public required ulong CharacterId { get; set; }
 
-    public int FactionId { get; set; }
+    public FactionDefinition FactionId { get; set; }
 
     public string Alias { get; set; }
 

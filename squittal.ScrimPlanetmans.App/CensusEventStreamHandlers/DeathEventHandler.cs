@@ -137,6 +137,8 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
                             ScrimMatchId = currentMatchId,
                             Timestamp = deathEvent.Timestamp,
                             AttackerCharacterId = attackerId,
+                            AttackerFactionId = attackerPlayer?.FactionId,
+                            AttackerLoadoutId = deathEvent.AttackerLoadoutId,
                             VictimCharacterId = victimId,
                             ScrimMatchRound = currentRound,
                             ActionType = deathEvent.ActionType,

@@ -18,8 +18,6 @@ public class ScrimMatchReportInfantryDeath
     public int VictimTeamOrdinal { get; set; }
     public string AttackerNameDisplay { get; set; }
     public string VictimNameDisplay { get; set; }
-    public string AttackerNameFull { get; set; }
-    public string VictimNameFull { get; set; }
     public int AttackerFactionId { get; set; }
     public int VictimFactionId { get; set; }
     public int AttackerLoadoutId { get; set; }

@@ -77,12 +77,12 @@ public class ScrimTeamsManager : IScrimTeamsManager
     public int GetTeamScoreDisplay(TeamDefinition teamOrdinal)
         => GetTeam(teamOrdinal).EventAggregate.Points;
 
-    public Team? GetTeamFromConstructedTeamFaction(int constructedTeamId, int factionId)
+    public Team? GetTeamFromConstructedTeamFaction(int constructedTeamId, FactionDefinition factionId)
         => !IsConstructedTeamFactionAvailable(constructedTeamId, factionId, out Team? owningTeam)
             ? owningTeam
             : null;
 
-    public Team? GetFirstTeamWithFactionId(int factionId)
+    public Team? GetFirstTeamWithFactionId(FactionDefinition factionId)
         => _ordinalTeamMap.Values.FirstOrDefault(team => factionId == team.FactionId);
 
     public IEnumerable<ulong> GetAllPlayerIds()
@@ -101,7 +101,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
     public IEnumerable<Player> GetTeamNonOutfitPlayers(TeamDefinition teamOrdinal)
         => GetTeam(teamOrdinal).GetNonOutfitPlayers();
 
-    public IEnumerable<Player> GetTeamConstructedTeamFactionPlayers(TeamDefinition teamOrdinal, int constructedTeamId, int factionId)
+    public IEnumerable<Player> GetTeamConstructedTeamFactionPlayers(TeamDefinition teamOrdinal, int constructedTeamId, FactionDefinition factionId)
         => GetTeam(teamOrdinal).GetConstructedTeamFactionPlayers(constructedTeamId, factionId);
 
     public WorldDefinition? GetNextWorldId(WorldDefinition previousWorldId)
@@ -115,10 +115,10 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return null;
     }
 
-    private void UpdateTeamFaction(TeamDefinition teamOrdinal, int? factionId)
+    private void UpdateTeamFaction(TeamDefinition teamOrdinal, FactionDefinition? factionId)
     {
         Team team = GetTeam(teamOrdinal);
-        int? oldFactionId = team.FactionId;
+        FactionDefinition? oldFactionId = team.FactionId;
 
         if (oldFactionId == factionId)
             return;
@@ -362,7 +362,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return anyPlayersAdded;
     }
 
-    public async Task<bool> AddConstructedTeamFactionMembersToTeam(TeamDefinition teamOrdinal, int constructedTeamId, int factionId)
+    public async Task<bool> AddConstructedTeamFactionMembersToTeam(TeamDefinition teamOrdinal, int constructedTeamId, FactionDefinition factionId)
     {
         if (!IsConstructedTeamFactionAvailable(constructedTeamId, factionId))
         {
@@ -498,7 +498,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         Outfit? outfit = outfitTeam.Outfits
             .FirstOrDefault(o => o.AliasLower == aliasLower);
 
-        int outfitFactionID = (int)outfit.FactionId;
+        FactionDefinition? outfitFactionID = outfit?.FactionId;
         WorldDefinition outfitWorldId = outfit.WorldId ?? 0;
 
         bool anyPlayersAdded = false;
@@ -510,7 +510,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
             bool isLastPlayer = (player == lastPlayer);
 
             player.TeamOrdinal = teamOrdinal;
-            player.FactionId = outfitFactionID;
+            player.FactionId = outfitFactionID ?? FactionDefinition.None;
             player.WorldId = outfitWorldId;
 
             player.UpdateNameTrimmed();
@@ -644,7 +644,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    public async Task<bool> RemoveConstructedTeamFactionFromTeamAndDb(int constructedTeamId, int factionId)
+    public async Task<bool> RemoveConstructedTeamFactionFromTeamAndDb(int constructedTeamId, FactionDefinition factionId)
     {
         bool success = RemoveConstructedTeamFactionFromTeam(constructedTeamId, factionId);
 
@@ -667,7 +667,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return true;
     }
 
-    public bool RemoveConstructedTeamFactionFromTeam(int constructedTeamId, int factionId)
+    public bool RemoveConstructedTeamFactionFromTeam(int constructedTeamId, FactionDefinition factionId)
     {
         Team? team = GetTeamFromConstructedTeamFaction(constructedTeamId, factionId);
 
@@ -729,7 +729,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return anyPlayersRemoved;
     }
 
-    private async Task RemoveConstructedTeamFactionMatchDataFromDb(int constructedTeamId, int factionId)
+    private async Task RemoveConstructedTeamFactionMatchDataFromDb(int constructedTeamId, FactionDefinition factionId)
     {
         Team? team = GetTeamFromConstructedTeamFaction(constructedTeamId, factionId);
 
@@ -2407,7 +2407,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return false;
     }
 
-    public bool IsConstructedTeamFactionAvailable(int constructedTeamId, int factionId)
+    public bool IsConstructedTeamFactionAvailable(int constructedTeamId, FactionDefinition factionId)
     {
         foreach (Team team in _ordinalTeamMap.Values)
         {
@@ -2423,7 +2423,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
     public bool IsConstructedTeamFactionAvailable
     (
         int constructedTeamId,
-        int factionId,
+        FactionDefinition factionId,
         [NotNullWhen(false)] out Team? owningTeam
     )
     {
@@ -2442,7 +2442,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
     public bool IsConstructedTeamAnyFactionAvailable(int constructedTeamId)
     {
-        for (int factionId = 1; factionId <=3; factionId++)
+        foreach (FactionDefinition factionId in Enum.GetValues<FactionDefinition>())
         {
             if (IsConstructedTeamFactionAvailable(constructedTeamId, factionId))
             {

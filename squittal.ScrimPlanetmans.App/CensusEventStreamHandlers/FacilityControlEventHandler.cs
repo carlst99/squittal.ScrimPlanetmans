@@ -1,5 +1,6 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
+using DbgCensus.Core.Objects;
 using DbgCensus.EventStream.Abstractions.Objects.Events.Worlds;
 using DbgCensus.EventStream.EventHandlers.Abstractions;
 using Microsoft.Extensions.Logging;
@@ -53,8 +54,8 @@ public class FacilityControlEventHandler : IPayloadHandler<IFacilityControl>
     /// <inheritdoc />
     public async Task HandleAsync(IFacilityControl payload, CancellationToken ct = new())
     {
-        int oldFactionId = (int)payload.OldFactionID;
-        int newFactionId = (int)payload.NewFactionID;
+        FactionDefinition oldFactionId = payload.OldFactionID;
+        FactionDefinition newFactionId = payload.NewFactionID;
         FacilityControlType type = GetFacilityControlType(oldFactionId, newFactionId);
 
         if (type is FacilityControlType.Unknown)
@@ -156,7 +157,7 @@ public class FacilityControlEventHandler : IPayloadHandler<IFacilityControl>
         );
     }
 
-    private static FacilityControlType GetFacilityControlType(int oldFactionId, int newFactionId)
+    private static FacilityControlType GetFacilityControlType(FactionDefinition oldFactionId, FactionDefinition newFactionId)
     {
         if (newFactionId is 0)
             return FacilityControlType.Unknown;

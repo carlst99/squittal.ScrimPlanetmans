@@ -9,6 +9,7 @@
 @using squittal.ScrimPlanetmans.App.Models.Forms
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside
+@using DbgCensus.Core.Objects
 
 @inject IScrimTeamsManager TeamsManager
 @inject IConstructedTeamService ConstructedTeamsService
@@ -116,7 +117,7 @@
                     <InputSelect style="margin-right: 5px; width: 250px; padding: 0.1rem; margin-bottom: 0.2rem;" Value="@_inputConstructedTeamFactionSelection.ConstructedTeamStringId" ValueChanged="@((string s) => HandleOnChangeConstructedTeamSelection(s))" ValueExpression="@(() => _inputConstructedTeamFactionSelection.ConstructedTeamStringId)">
                         <option value=@_noTeamSelectedStringId style="font-style: italic;">No Team Selected</option>
 
-                        @foreach (var team in _availableConstructedTeams)
+                        @foreach (ConstructedTeam team in _availableConstructedTeams)
                         {
                             <option value=@team.Id.ToString() label="@($"{team.Name} [{team.Alias}]")">[@team.Alias] @team.Name (@team.Id.ToString())</option>
                         }
@@ -125,21 +126,21 @@
 
                 @if (_isConstructedTeamVsAvailable)
                 {
-                    <button type="submit" class="btn btn-outline-primary vs" @onclick="(() => HandleAddConstructedTeamFactionSubmit(1))" style="display: inline-block;">
+                    <button type="submit" class="btn btn-outline-primary vs" @onclick="(() => HandleAddConstructedTeamFactionSubmit(FactionDefinition.VS))" style="display: inline-block;">
                         VS
                     </button>
                 }
 
                 @if (_isConstructedTeamNcAvailable)
                 {
-                    <button type="submit" class="btn btn-outline-primary nc" @onclick="(() => HandleAddConstructedTeamFactionSubmit(2))" style="display: inline-block;">
+                    <button type="submit" class="btn btn-outline-primary nc" @onclick="(() => HandleAddConstructedTeamFactionSubmit(FactionDefinition.NC))" style="display: inline-block;">
                         NC
                     </button>
                 }
 
                 @if (_isConstructedTeamTrAvailable)
                 {
-                    <button type="submit" class="btn btn-outline-primary tr" @onclick="(() => HandleAddConstructedTeamFactionSubmit(3))" style="display: inline-block;">
+                    <button type="submit" class="btn btn-outline-primary tr" @onclick="(() => HandleAddConstructedTeamFactionSubmit(FactionDefinition.TR))" style="display: inline-block;">
                         TR
                     </button>
                 }
@@ -197,7 +198,7 @@
                 <div class="@GetHeaderCardClass()">
                     <table class="table-responsive-sm table-striped-light mono-font smaller @SqCssHelper.GetFactionClassFromId(_team.FactionId)" style="margin-bottom: 0.5rem; width: 100%; font-size: small;">
                         <tbody style="border-top: 1px solid var(--sq-ps2-primary-light);">
-                            @foreach (var adjustment in _team.EventAggregate.PointAdjustments)
+                            @foreach (PointAdjustment adjustment in _team.EventAggregate.PointAdjustments)
                             {
                                 <tr>
                                     <td style="text-align: right">@GetPointsDisplay(adjustment.Points)</td>
@@ -261,7 +262,7 @@
 
 @if (_teamConstructedTeams.Any())
 {
-    foreach (var team in _teamConstructedTeams)
+    foreach (ConstructedTeamMatchInfo team in _teamConstructedTeams)
     {
         <TeamComposerConstructedTeamPlayers i_constructedTeamMatchInfo=@team i_teamOrdinal=@i_teamOrdinal i_showRemovals=@_showRemovals i_isLockingTeam=@_isLockingTeam i_isTeamLocked=@_isTeamLocked />
     }
@@ -274,7 +275,7 @@
 
 @if (_teamOutfits.Any())
 {
-    foreach (var outfit in _teamOutfits)
+    foreach (Outfit outfit in _teamOutfits)
     {
         <TeamComposerOutfitPlayers i_outfit=@outfit i_teamOrdinal=@i_teamOrdinal i_showRemovals=@_showRemovals i_isLockingTeam=@_isLockingTeam i_isTeamLocked=@_isTeamLocked />
     }
@@ -292,26 +293,26 @@
     public TeamDefinition i_teamOrdinal { get; set; }
 
     #region Form & Input Variables
-    private OutfitAlias _inputAlias = new OutfitAlias();
+    private OutfitAlias _inputAlias = new();
 
-    private OutfitAlias _displayAlias = new OutfitAlias();
+    private OutfitAlias _displayAlias = new();
 
     private string _inputPlayer = string.Empty;
 
-    private PointAdjustment _inputPointAdjustment = new PointAdjustment();
+    private PointAdjustment _inputPointAdjustment = new();
 
-    private List<string> _teamOutfitsLoading = new List<string>();
+    private List<string> _teamOutfitsLoading = new();
 
-    private List<string> _validOutfitAliasHistory = new List<string>();
+    private List<string> _validOutfitAliasHistory = new();
 
     #endregion
 
     #region Team & Players
     private Team _team;
 
-    private List<Outfit> _teamOutfits = new List<Outfit>();
-    private List<ConstructedTeamMatchInfo> _teamConstructedTeams = new List<ConstructedTeamMatchInfo>();
-    private List<Player> _teamNonOutfitPlayers = new List<Player>();
+    private List<Outfit> _teamOutfits = new();
+    private List<ConstructedTeamMatchInfo> _teamConstructedTeams = new();
+    private List<Player> _teamNonOutfitPlayers = new();
     #endregion
 
     #region UI & Layout Variables
@@ -328,11 +329,11 @@
     #endregion
 
     #region Constructed Team Selection Variables
-    private ConstructedTeamFactionSelection _inputConstructedTeamFactionSelection { get; set; } = new ConstructedTeamFactionSelection();
+    private ConstructedTeamFactionSelection _inputConstructedTeamFactionSelection { get; set; } = new();
 
     private string _inputTeamStringId { get; set; } = "-1"; // string.Empty;
 
-    private List<ConstructedTeam> _availableConstructedTeams { get; set; } = new List<ConstructedTeam>();
+    private List<ConstructedTeam> _availableConstructedTeams { get; set; } = new();
 
     private bool _isConstructedTeamVsAvailable { get; set; } = false; //true;
     private bool _isConstructedTeamNcAvailable { get; set; } = false; //true;
@@ -341,7 +342,7 @@
     private string _noTeamSelectedStringId { get; set; } = "-1";
     private int _noTeamSelectedId { get; set; } = -1;
 
-    private List<ConstructedTeamFactionSelection> _constructedTeamsLoading { get; set; } = new List<ConstructedTeamFactionSelection>();
+    private List<ConstructedTeamFactionSelection> _constructedTeamsLoading { get; set; } = new();
 
     #endregion Constructed Team Selection Variables
 
@@ -368,7 +369,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var storeConstructedTeams = await ConstructedTeamsService.GetConstructedTeamsAsync();
+        IEnumerable<ConstructedTeam> storeConstructedTeams = await ConstructedTeamsService.GetConstructedTeamsAsync();
         _availableConstructedTeams.AddRange(storeConstructedTeams);
     }
 
@@ -397,7 +398,7 @@
 
     private void InitializeTeamData()
     {
-        var message = $"Starting to reload Team {i_teamOrdinal} data...";
+        string message = $"Starting to reload Team {i_teamOrdinal} data...";
         LogMessage(message);
 
         _team = TeamsManager.GetTeam(i_teamOrdinal);
@@ -429,10 +430,8 @@
     #region  Form Submission & Validation
     private async void HandleValidOutfitAliasSubmit()
     {
-        Outfit newOutfit;
-
-        var newAlias = _inputAlias.Alias;
-        var newAliasLower = newAlias.ToLower();
+        string newAlias = _inputAlias.Alias;
+        string newAliasLower = newAlias.ToLower();
 
         if (!_validOutfitAliasHistory.Contains(newAliasLower) && !TeamsManager.IsOutfitOwnedByTeam(newAliasLower, out _))
         {
@@ -440,26 +439,25 @@
 
             try
             {
-                newOutfit = await OutfitService.GetByAliasAsync(newAliasLower);
+                Outfit? newOutfit = await OutfitService.GetByAliasAsync(newAliasLower);
 
-                if (newOutfit != null && newOutfit.MemberCount > 0)
+                if (newOutfit is { MemberCount: > 0 })
                 {
                     _validOutfitAliasHistory.Add(newAliasLower);
                     _inputAlias.Alias = string.Empty;
 
-                    var success = await TeamsManager.AddOutfitAliasToTeam(i_teamOrdinal, newAliasLower);
-
+                    await TeamsManager.AddOutfitAliasToTeam(i_teamOrdinal, newAliasLower);
                     _teamOutfitsLoading.Remove(newAliasLower);
+                    InvokeAsyncStateHasChanged();
                 }
                 else
                 {
-                    if (newOutfit != null && newOutfit.MemberCount == 0)
+                    if (newOutfit is { MemberCount: 0 })
                     {
                         LogMessage($"<span style=\"color: red;\"><span style=\"font-weight: 600;\">Failed to add outfit [{newAliasLower}]</span>. Outfit has no members</span>");
                     }
 
                     _teamOutfitsLoading.Remove(newAliasLower);
-
                     InvokeAsyncStateHasChanged();
                 }
             }
@@ -476,9 +474,9 @@
 
     private void HandleSetCustomDisplayAlias()
     {
-        var newAlias = _displayAlias.Alias;
+        string newAlias = _displayAlias.Alias;
 
-        var success = TeamsManager.UpdateTeamAlias(i_teamOrdinal, newAlias, true);
+        bool success = TeamsManager.UpdateTeamAlias(i_teamOrdinal, newAlias, true);
 
         if (!success)
         {
@@ -490,26 +488,27 @@
 
     private async void HandleAddPlayerSubmit()
     {
-        var input = _inputPlayer;
+        string input = _inputPlayer;
 
         if (string.IsNullOrWhiteSpace(input))
         {
             return;
         }
 
-        var Tasks = new Dictionary<string, Task>();
-
-        var cleanedInput = GetCleanedInputPlayersString(input, out var isList);
-        var inputsDict = cleanedInput.Split(',').Distinct().Where(i => !string.IsNullOrWhiteSpace(i)).ToDictionary(i => i, i => TryAddInputCharacterToTeam(i));
+        string cleanedInput = GetCleanedInputPlayersString(input, out _);
+        Dictionary<string, Task<bool>> inputsDict = cleanedInput.Split(',')
+            .Distinct()
+            .Where(i => !string.IsNullOrWhiteSpace(i))
+            .ToDictionary(i => i, TryAddInputCharacterToTeam);
 
         await Task.WhenAll(inputsDict.Values);
 
-        var anySuccesses = false;
-        var failedInputs = new List<string>();
+        bool anySuccesses = false;
+        List<string> failedInputs = new();
 
-        foreach (var inputTaskPair in inputsDict)
+        foreach (KeyValuePair<string, Task<bool>> inputTaskPair in inputsDict)
         {
-            var result = inputTaskPair.Value.Result;
+            bool result = inputTaskPair.Value.Result;
 
             anySuccesses = (anySuccesses || result);
 
@@ -521,7 +520,7 @@
 
         if (failedInputs.Any())
         {
-            var failedInputsStringList = string.Join(",", failedInputs);
+            string failedInputsStringList = string.Join(",", failedInputs);
 
             LogMessage($"<span style=\"color: red;\"><span style=\"font-weight: 500;\">Failed to add characters {failedInputsStringList}</span>.");
 
@@ -562,7 +561,7 @@
 
     private void HandleOnChangeConstructedTeamSelection(string constructedTeamStringId)
     {
-        if (!int.TryParse(constructedTeamStringId, out var constructedTeamId))
+        if (!int.TryParse(constructedTeamStringId, out int constructedTeamId))
         {
             return;
         }
@@ -572,11 +571,11 @@
         _inputConstructedTeamFactionSelection.ConstructedTeamStringId = constructedTeamStringId;
     }
 
-    private async void HandleAddConstructedTeamFactionSubmit(int factionId)
+    private async void HandleAddConstructedTeamFactionSubmit(FactionDefinition factionId)
     {
-        var newSelection = _inputConstructedTeamFactionSelection;
+        ConstructedTeamFactionSelection newSelection = _inputConstructedTeamFactionSelection;
 
-        newSelection.FactionStringId = factionId.ToString();
+        newSelection.FactionId = factionId;
 
         if (newSelection.ConstructedTeamStringId == _noTeamSelectedStringId)
         {
@@ -589,17 +588,18 @@
 
             try
             {
-                var newTeam = await ConstructedTeamsService.GetConstructedTeamAsync(newSelection.ConstructedTeamId, true);
+                ConstructedTeam? newTeam = await ConstructedTeamsService.GetConstructedTeamAsync(newSelection.ConstructedTeamId, true);
 
                 if (newTeam != null)
                 {
-                    var success = await TeamsManager.AddConstructedTeamFactionMembersToTeam(i_teamOrdinal, newTeam.Id, newSelection.FactionId);
-
+                    await TeamsManager.AddConstructedTeamFactionMembersToTeam(i_teamOrdinal, newTeam.Id, newSelection.FactionId);
                     _constructedTeamsLoading.Remove(newSelection);
                     //_availableConstructedTeams.RemoveAll(t => t.Id == newTeam.Id);
 
-                    _inputConstructedTeamFactionSelection = new ConstructedTeamFactionSelection();
-                    _inputConstructedTeamFactionSelection.ConstructedTeamStringId = _noTeamSelectedStringId;
+                    _inputConstructedTeamFactionSelection = new ConstructedTeamFactionSelection
+                    {
+                        ConstructedTeamStringId = _noTeamSelectedStringId
+                    };
 
                     UpdateConstructedTeamFactionAvailabilities(_inputConstructedTeamFactionSelection.ConstructedTeamId); // TEST
                 }
@@ -610,7 +610,7 @@
             {
                 _constructedTeamsLoading.Remove(newSelection);
 
-                LogMessage($"<span style=\"color: red;\"><span style=\"font-weight: 600;\">Failed to add constructed team {newSelection.ConstructedTeamStringId} faction {newSelection.FactionStringId} to team {i_teamOrdinal} </span>: {ex}</span>");
+                LogMessage($"<span style=\"color: red;\"><span style=\"font-weight: 600;\">Failed to add constructed team {newSelection.ConstructedTeamStringId} faction {newSelection.FactionId} to team {i_teamOrdinal} </span>: {ex}</span>");
 
                 InvokeAsyncStateHasChanged();
             }
@@ -619,7 +619,7 @@
 
     private async void HandlePointAdjustmentSubmit()
     {
-        var adjustment = _inputPointAdjustment;
+        PointAdjustment adjustment = _inputPointAdjustment;
 
         if (adjustment.Points == 0 && string.IsNullOrWhiteSpace(adjustment.Rationale))
         {
@@ -695,9 +695,12 @@
 
     private void UpdateConstructedTeamFactionAvailabilities(int constructedTeamId)
     {
-        _isConstructedTeamVsAvailable = constructedTeamId != _noTeamSelectedId ? TeamsManager.IsConstructedTeamFactionAvailable(constructedTeamId, 1) : false; //true;
-        _isConstructedTeamNcAvailable = constructedTeamId != _noTeamSelectedId ? TeamsManager.IsConstructedTeamFactionAvailable(constructedTeamId, 2) : false; //true;
-        _isConstructedTeamTrAvailable = constructedTeamId != _noTeamSelectedId ? TeamsManager.IsConstructedTeamFactionAvailable(constructedTeamId, 3) : false; //true;
+        _isConstructedTeamVsAvailable = constructedTeamId != _noTeamSelectedId
+            && TeamsManager.IsConstructedTeamFactionAvailable(constructedTeamId, FactionDefinition.VS);
+        _isConstructedTeamNcAvailable = constructedTeamId != _noTeamSelectedId
+            && TeamsManager.IsConstructedTeamFactionAvailable(constructedTeamId, FactionDefinition.NC);
+        _isConstructedTeamTrAvailable = constructedTeamId != _noTeamSelectedId
+            && TeamsManager.IsConstructedTeamFactionAvailable(constructedTeamId, FactionDefinition.TR);
     }
 
     #endregion UI & Layout Controls
@@ -708,11 +711,11 @@
         MessageService.BroadcastSimpleMessage(message);
     }
 
-    private void ReceiveTeamPlayerChangeEvent(object sender, ScrimMessageEventArgs<TeamPlayerChangeMessage> e)
+    private void ReceiveTeamPlayerChangeEvent(object? sender, ScrimMessageEventArgs<TeamPlayerChangeMessage> e)
     {
-        var message = e.Message;
+        TeamPlayerChangeMessage message = e.Message;
 
-        var player = message.Player;
+        Player player = message.Player;
 
         if (player.TeamOrdinal != i_teamOrdinal)
         {
@@ -733,17 +736,17 @@
         InvokeAsyncStateHasChanged();
     }
 
-    private void ReceiveTeamOutfitChangeEvent(object sender, ScrimMessageEventArgs<TeamOutfitChangeMessage> e)
+    private void ReceiveTeamOutfitChangeEvent(object? sender, ScrimMessageEventArgs<TeamOutfitChangeMessage> e)
     {
-        var message = e.Message;
-        var outfit = message.Outfit;
+        TeamOutfitChangeMessage message = e.Message;
+        Outfit outfit = message.Outfit;
 
         if (outfit.TeamOrdinal != i_teamOrdinal)
         {
             return;
         }
 
-        var aliasLower = outfit.AliasLower;
+        string aliasLower = outfit.AliasLower;
 
         if (message.ChangeType == TeamChangeType.Add)
         {
@@ -759,13 +762,13 @@
         InvokeAsyncStateHasChanged();
     }
 
-    private void ReceiveTeamConstructedTeamChangeEvent(object sender, ScrimMessageEventArgs<TeamConstructedTeamChangeMessage> e)
+    private void ReceiveTeamConstructedTeamChangeEvent(object? sender, ScrimMessageEventArgs<TeamConstructedTeamChangeMessage> e)
     {
-        var message = e.Message;
+        TeamConstructedTeamChangeMessage message = e.Message;
 
-        var teamOrdinal = message.TeamOrdinal;
-        var changeType = message.ChangeType;
-        var constructedTeam = message.ConstructedTeam;
+        TeamDefinition teamOrdinal = message.TeamOrdinal;
+        TeamChangeType changeType = message.ChangeType;
+        ConstructedTeam constructedTeam = message.ConstructedTeam;
 
         if (teamOrdinal != i_teamOrdinal)
         {
@@ -795,7 +798,7 @@
         }
 
 
-        var factionId = message.FactionId;
+        FactionDefinition factionId = message.FactionId;
 
         if (changeType == TeamChangeType.Add)
         {
@@ -807,7 +810,7 @@
 
             _constructedTeamsLoading.RemoveAll(t => t.ConstructedTeamId == constructedTeam.Id && t.FactionId == factionId);
 
-            var constructedTeamMatchInfo = new ConstructedTeamMatchInfo
+            ConstructedTeamMatchInfo constructedTeamMatchInfo = new()
             {
                 ConstructedTeam = constructedTeam,
                 TeamOrdinal = i_teamOrdinal,
@@ -841,7 +844,7 @@
 
     private void HandleTeamPlayerChangeAdd(TeamPlayerChangeMessage message)
     {
-        var player = message.Player;
+        Player player = message.Player;
 
         if (player.IsOutfitless && !player.IsFromConstructedTeam && !_teamNonOutfitPlayers.Any(p => p.Id == player.Id))
         {
@@ -855,7 +858,7 @@
 
     private void HandleTeamPlayerChangeRemove(TeamPlayerChangeMessage message)
     {
-        var player = message.Player;
+        Player player = message.Player;
 
         if (player.IsOutfitless && !player.IsFromConstructedTeam)
         {
@@ -867,10 +870,10 @@
         }
     }
 
-    private void ReceivePlayerStatUpdateEvent(object sender, ScrimMessageEventArgs<PlayerStatUpdateMessage> e)
+    private void ReceivePlayerStatUpdateEvent(object? sender, ScrimMessageEventArgs<PlayerStatUpdateMessage> e)
     {
-        var message = e.Message;
-        var player = message.Player;
+        PlayerStatUpdateMessage message = e.Message;
+        Player player = message.Player;
 
         if (player.TeamOrdinal != i_teamOrdinal)
         {
@@ -887,10 +890,10 @@
         InvokeAsyncStateHasChanged();
     }
 
-    private void ReceiveTeamStatUpdateEvent(object sender, ScrimMessageEventArgs<TeamStatUpdateMessage> e)
+    private void ReceiveTeamStatUpdateEvent(object? sender, ScrimMessageEventArgs<TeamStatUpdateMessage> e)
     {
-        var message = e.Message;
-        var team = message.Team;
+        TeamStatUpdateMessage message = e.Message;
+        Team team = message.Team;
 
         if (team.TeamOrdinal != i_teamOrdinal)
         {
@@ -900,12 +903,12 @@
         InvokeAsyncStateHasChanged();
     }
 
-    private void ReceiveTeamAliasChangeEvent(object sender, ScrimMessageEventArgs<TeamAliasChangeMessage> e)
+    private void ReceiveTeamAliasChangeEvent(object? sender, ScrimMessageEventArgs<TeamAliasChangeMessage> e)
     {
-        var message = e.Message;
+        TeamAliasChangeMessage message = e.Message;
 
-        var teamOrdinal = message.Ordinal;
-        var newAlias = message.NewAlias;
+        TeamDefinition teamOrdinal = message.Ordinal;
+        string newAlias = message.NewAlias;
 
         if (teamOrdinal != i_teamOrdinal)
         {
@@ -917,12 +920,12 @@
         InvokeAsyncStateHasChanged();
     }
 
-    private void ReceiveTeamFactionChangeEvent(object sender, ScrimMessageEventArgs<TeamFactionChangeMessage> e)
+    private void ReceiveTeamFactionChangeEvent(object? sender, ScrimMessageEventArgs<TeamFactionChangeMessage> e)
     {
-        var message = e.Message;
+        TeamFactionChangeMessage message = e.Message;
 
-        var teamOrdinal = message.Ordinal;
-        var newFactionId = message.NewFactionId;
+        TeamDefinition teamOrdinal = message.Ordinal;
+        FactionDefinition? newFactionId = message.NewFactionId;
 
         if (teamOrdinal != i_teamOrdinal)
         {
@@ -937,10 +940,10 @@
         InvokeAsyncStateHasChanged();
     }
 
-    private void ReceiveTeamLockStatusChangeEvent(object sender, ScrimMessageEventArgs<TeamLockStatusChangeMessage> e)
+    private void ReceiveTeamLockStatusChangeEvent(object? sender, ScrimMessageEventArgs<TeamLockStatusChangeMessage> e)
     {
-        var teamOrdinal = e.Message.TeamOrdinal;
-        var newIsLocked = e.Message.IsLocked;
+        TeamDefinition teamOrdinal = e.Message.TeamOrdinal;
+        bool newIsLocked = e.Message.IsLocked;
 
         if (teamOrdinal != _renderedTeamOrdinal)
         {
@@ -951,7 +954,7 @@
         {
             _isTeamLocked = newIsLocked;
 
-            _showRemovals = _isTeamLocked ? false : _showRemovals;
+            _showRemovals = !_isTeamLocked && _showRemovals;
 
             InvokeAsyncStateHasChanged();
         }
@@ -960,35 +963,21 @@
 
     private string GetHeaderCardClass()
     {
-        return (_team != null && _team.FactionId != null)
+        return _team is { FactionId: { } }
             ? SqCssHelper.GetFactionClassFromId(_team.FactionId)
             : "default";
     }
 
     private double GetStatOpacity(int value)
-    {
-        return (value != 0)
-            ? 1.0
-            : 0.5;
-    }
+        => value != 0 ? 1.0 : 0.5;
 
     private string GetPointsDisplay(int points)
     {
-        if (points >= 0)
-        {
-            return $"+{points.ToString()}";
-        }
-        else
-        {
-            return $"{points.ToString()}";
-        }
+        return points >= 0
+            ? $"+{points.ToString()}"
+            : $"{points.ToString()}";
     }
 
     private void InvokeAsyncStateHasChanged()
-    {
-        InvokeAsync(() =>
-        {
-            StateHasChanged();
-        });
-    }
+        => InvokeAsync(StateHasChanged);
 }

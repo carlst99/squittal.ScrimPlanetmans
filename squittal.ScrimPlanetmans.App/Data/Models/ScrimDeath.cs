@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using DbgCensus.Core.Objects;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
@@ -24,6 +25,12 @@ public class ScrimDeath
     public required ScrimActionType ActionType { get; init; }
 
     public ulong? AttackerCharacterId { get; init; }
+
+    // Do not remove! Used in SQL views
+    public FactionDefinition? AttackerFactionId { get; init; }
+
+    // Do not remove! Used in SQL views
+    public uint AttackerLoadoutId { get; init; }
     public DeathEventType DeathType { get; init; }
     public TeamDefinition? AttackerTeamOrdinal { get; init; }
     public TeamDefinition? VictimTeamOrdinal { get; init; }

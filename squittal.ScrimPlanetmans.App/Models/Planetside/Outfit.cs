@@ -11,7 +11,7 @@ public class Outfit
 
     public int MemberCount { get; set; }
     public int MembersOnlineCount { get; set; }
-    public int? FactionId { get; set; }
+    public FactionDefinition? FactionId { get; set; }
     public WorldDefinition? WorldId { get; set; }
     public TeamDefinition? TeamOrdinal { get; set; }
 

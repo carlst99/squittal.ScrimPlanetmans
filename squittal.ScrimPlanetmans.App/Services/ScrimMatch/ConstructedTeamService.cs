@@ -109,7 +109,7 @@ public class ConstructedTeamService : IConstructedTeamService
     public async Task<IEnumerable<ulong>> GetConstructedTeamFactionMemberIdsAsync
     (
         int teamId,
-        int factionId,
+        FactionDefinition factionId,
         CancellationToken ct = default
     )
     {
@@ -125,7 +125,7 @@ public class ConstructedTeamService : IConstructedTeamService
     private async Task<List<ConstructedTeamPlayerMembership>> GetConstructedTeamFactionMembersAsync
     (
         int teamId,
-        int factionId,
+        FactionDefinition factionId,
         CancellationToken ct = default
     )
     {
@@ -140,7 +140,7 @@ public class ConstructedTeamService : IConstructedTeamService
     public async Task<IEnumerable<CensusCharacter>> GetConstructedTeamFactionCharactersAsync
     (
         int teamId,
-        int factionId,
+        FactionDefinition factionId,
         CancellationToken ct = default
     )
     {
@@ -177,7 +177,7 @@ public class ConstructedTeamService : IConstructedTeamService
             (
                 member.CharacterId,
                 new CensusCharacter.CharacterName($"Unknown{member.CharacterId}"),
-                (FactionDefinition)member.FactionId,
+                member.FactionId,
                 0,
                 WorldDefinition.Jaeger,
                 null
@@ -192,7 +192,7 @@ public class ConstructedTeamService : IConstructedTeamService
     public async Task<IEnumerable<ConstructedTeamMemberDetails>> GetConstructedTeamFactionMemberDetailsAsync
     (
         int teamId,
-        int factionId,
+        FactionDefinition factionId,
         CancellationToken ct = default
     )
     {
@@ -266,7 +266,7 @@ public class ConstructedTeamService : IConstructedTeamService
     public async Task<IEnumerable<Player>> GetConstructedTeamFactionPlayersAsync
     (
         int teamId,
-        int factionId,
+        FactionDefinition factionId,
         CancellationToken ct = default
     )
     {
@@ -310,7 +310,7 @@ public class ConstructedTeamService : IConstructedTeamService
             (
                 member.CharacterId,
                 new CensusCharacter.CharacterName($"Unknown{member.CharacterId}"),
-                (FactionDefinition)member.FactionId,
+                member.FactionId,
                 0,
                 WorldDefinition.Jaeger,
                 null
@@ -560,7 +560,7 @@ public class ConstructedTeamService : IConstructedTeamService
             (
                 teamId,
                 characterId,
-                (int)character.FactionId,
+                character.FactionId,
                 playerAlias,
                 ct
             );
@@ -572,7 +572,7 @@ public class ConstructedTeamService : IConstructedTeamService
             {
                 ConstructedTeamId = teamId,
                 CharacterId = characterId,
-                FactionId = (int)character.FactionId,
+                FactionId = character.FactionId,
                 Alias = playerAlias
             };
 
@@ -619,7 +619,7 @@ public class ConstructedTeamService : IConstructedTeamService
             (
                 teamId,
                 character.CharacterId,
-                (int)character.FactionId,
+                character.FactionId,
                 playerAlias,
                 ct
             );
@@ -631,7 +631,7 @@ public class ConstructedTeamService : IConstructedTeamService
             {
                 ConstructedTeamId = teamId,
                 CharacterId = character.CharacterId,
-                FactionId = (int)character.FactionId,
+                FactionId = character.FactionId,
                 Alias = playerAlias
             };
 
@@ -648,7 +648,7 @@ public class ConstructedTeamService : IConstructedTeamService
     (
         int teamId,
         ulong characterId,
-        int factionId,
+        FactionDefinition factionId,
         string alias,
         CancellationToken ct = default
     )
@@ -657,7 +657,7 @@ public class ConstructedTeamService : IConstructedTeamService
         PlanetmansDbContext dbContext = factory.GetDbContext();
 
         // Don't allow NSO characters onto teams
-        if (factionId is > 3 or <= 0)
+        if (factionId is not (FactionDefinition.NC or FactionDefinition.TR or FactionDefinition.VS))
             return false;
 
         ConstructedTeamPlayerMembership newEntity = new()
