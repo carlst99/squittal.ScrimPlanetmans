@@ -24,4 +24,10 @@ public class ScrimDamageAssist
     public TeamDefinition? AttackerTeamOrdinal { get; init; }
     public TeamDefinition? VictimTeamOrdinal { get; init; }
     public int Points { get; init; }
+
+    // Do not remove! Used in SQL views
+    public int ExperienceGainId { get; set; }
+
+    // Do not remove! Used in SQL views
+    public int ExperienceGainAmount { get; set; }
 }

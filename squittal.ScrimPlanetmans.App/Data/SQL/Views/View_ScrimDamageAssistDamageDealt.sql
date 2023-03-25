@@ -1,5 +1,3 @@
-USE [PlanetmansDbContext];
-
 IF (NOT EXISTS (SELECT 1 FROM sys.views WHERE name = 'View_ScrimDamageAssistDamageDealt'))
 BEGIN
     EXECUTE('CREATE VIEW View_ScrimDamageAssistDamageDealt as SELECT 1 as x');
@@ -15,7 +13,7 @@ ALTER VIEW View_ScrimDamageAssistDamageDealt AS
          damages.Timestamp,
          damages.AttackerCharacterId,
          damages.AttackerTeamOrdinal,
-         damages.AttackerLoadoutId,
+         deaths.AttackerLoadoutId,
          damages.VictimCharacterId,
          deaths.VictimLoadoutId,
          damages.VictimTeamOrdinal,

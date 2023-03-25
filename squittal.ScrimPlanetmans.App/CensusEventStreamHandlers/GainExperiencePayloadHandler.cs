@@ -358,6 +358,8 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
             AttackerTeamOrdinal = assistEvent.AttackerPlayer?.TeamOrdinal,
             VictimTeamOrdinal = assistEvent.VictimPlayer?.TeamOrdinal,
             Points = assistEvent.Points,
+            ExperienceGainId = assistEvent.ExperienceGainInfo.Id,
+            ExperienceGainAmount = assistEvent.ExperienceGainInfo.Amount
         };
 
         _dbContext.ScrimDamageAssists.Add(dataModel);

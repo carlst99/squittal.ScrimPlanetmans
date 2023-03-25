@@ -1,5 +1,3 @@
-USE [PlanetmansDbContext2];
-
 IF (NOT EXISTS (SELECT 1 FROM sys.views WHERE name = 'View_ScrimMatchReportInfantryDeaths'))
 BEGIN
     EXECUTE('CREATE VIEW View_ScrimMatchReportInfantryDeaths as SELECT 1 as x');
