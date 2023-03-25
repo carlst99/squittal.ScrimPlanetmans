@@ -25,8 +25,6 @@ public class ScrimMatchReportInfantryDeath
     public int IsHeadshot { get; set; }
     public int WeaponId { get; set; }
     public string WeaponName { get; set; }
-    public int ZoneId { get; set; }
-    public int WorldId { get; set; }
     public int DamageAssists { get; set; }
     public int GrenadeAssists { get; set; }
     public int ConcussionGrenadeAssists { get; set; }

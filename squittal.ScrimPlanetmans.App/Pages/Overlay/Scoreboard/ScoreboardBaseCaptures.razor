@@ -1,4 +1,5 @@
 ﻿@using squittal.ScrimPlanetmans.App.Models
+@using DbgCensus.Core.Objects
 @if (_renderedCaptureCount == 1)
 {
     <div class="capture-flag-container @SqCssHelper.GetFactionClassFromId(_renderedFactionId) @_teamCssClass">
@@ -28,8 +29,8 @@ else
     private int _renderedCaptureCount { get; set; } = 0;
 
     [Parameter]
-    public int? i_factionId { get; set; }
-    private int? _renderedFactionId { get; set; } = (int?)null;
+    public FactionDefinition? i_factionId { get; set; }
+    private FactionDefinition? _renderedFactionId { get; set; } = null;
 
     [Parameter]
     public int i_teamOrdinal { get; set; }

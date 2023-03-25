@@ -31,9 +31,18 @@ public class ScrimDeath
 
     // Do not remove! Used in SQL views
     public uint AttackerLoadoutId { get; init; }
-    public DeathEventType DeathType { get; init; }
+
     public TeamDefinition? AttackerTeamOrdinal { get; init; }
+
+    // Do not remove! Used in SQL views
+    public FactionDefinition VictimFactionId { get; init; }
+
+    // Do not remove! Used in SQL views
+    public uint VictimLoadoutId { get; init; }
+
     public TeamDefinition? VictimTeamOrdinal { get; init; }
+
+    public DeathEventType DeathType { get; init; }
     public bool IsHeadshot { get; init; }
     public int Points { get; init; }
     public uint? WeaponId { get; init; }

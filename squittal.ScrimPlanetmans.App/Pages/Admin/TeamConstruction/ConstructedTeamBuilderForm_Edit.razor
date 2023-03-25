@@ -1,4 +1,5 @@
 ﻿@using System.Collections.Concurrent;
+@using DbgCensus.Core.Objects
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
 @using squittal.ScrimPlanetmans.App.Data.Models
 @using squittal.ScrimPlanetmans.App.Models.CensusRest
@@ -158,13 +159,13 @@
             <div style="display: flex; flex-wrap: wrap;">
 
                 @* VS Members *@
-                <ConstructedTeamBuilderForm_EditFactionMembers i_factionId=1 i_teamId=@_renderedTeamId />
+                <ConstructedTeamBuilderForm_EditFactionMembers i_factionId="FactionDefinition.VS" i_teamId=@_renderedTeamId />
 
                 @* NC MEMBERS*@
-                <ConstructedTeamBuilderForm_EditFactionMembers i_factionId=2 i_teamId=@_renderedTeamId />
+                <ConstructedTeamBuilderForm_EditFactionMembers i_factionId="FactionDefinition.NC" i_teamId=@_renderedTeamId />
 
                 @* TR Members *@
-                <ConstructedTeamBuilderForm_EditFactionMembers i_factionId=3 i_teamId=@_renderedTeamId />
+                <ConstructedTeamBuilderForm_EditFactionMembers i_factionId="FactionDefinition.TR" i_teamId=@_renderedTeamId />
 
             </div>
         </div>
