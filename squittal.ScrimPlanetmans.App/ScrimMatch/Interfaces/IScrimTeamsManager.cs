@@ -23,7 +23,7 @@ public interface IScrimTeamsManager
     Task<bool> TryAddFreeTextInputCharacterToTeamAsync(TeamDefinition teamOrdinal, string inputString);
     Task UpdatePlayerStats(ulong characterId, ScrimEventAggregate updates);
     void SetPlayerOnlineStatus(ulong characterId, bool isOnline);
-    void SetPlayerLoadoutId(ulong characterId, int? loadoutId);
+    void SetPlayerLoadoutId(ulong characterId, uint? loadoutId);
     void SetPlayerBenchedStatus(ulong characterId, bool isBenched);
     Task SaveRoundEndScores(int round);
     Task RollBackAllTeamStats(int currentRound);

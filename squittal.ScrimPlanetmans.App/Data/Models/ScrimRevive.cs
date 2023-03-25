@@ -29,8 +29,8 @@ public class ScrimRevive
     public TeamDefinition? MedicTeamOrdinal { get; set; }
     public TeamDefinition? RevivedTeamOrdinal { get; set; }
 
-    public int? MedicLoadoutId { get; set; }
-    public int? RevivedLoadoutId { get; set; }
+    public uint? MedicLoadoutId { get; set; }
+    public uint? RevivedLoadoutId { get; set; }
 
     public int ExperienceGainId { get; set; }
     public int ExperienceGainAmount { get; set; }

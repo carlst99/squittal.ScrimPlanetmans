@@ -41,7 +41,7 @@ public class ScrimExperienceGainActionEvent : ScrimActionEvent
 
     public ExperienceType ExperienceType { get; set; }
 
-    public int LoadoutId { get; set; }
+    public uint LoadoutId { get; set; }
 
     public int Points { get; set; }
 }

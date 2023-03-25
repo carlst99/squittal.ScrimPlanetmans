@@ -118,7 +118,7 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
 
                 if (attackerPlayer != null)
                 {
-                    _teamsManager.SetPlayerLoadoutId(attackerId, (int)destructionEvent.AttackerLoadoutId);
+                    _teamsManager.SetPlayerLoadoutId(attackerId, destructionEvent.AttackerLoadoutId);
                     involvesBenchedPlayer = involvesBenchedPlayer || attackerPlayer.IsBenched;
                 }
             }

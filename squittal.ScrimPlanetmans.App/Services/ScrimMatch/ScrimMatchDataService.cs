@@ -21,9 +21,9 @@ public class ScrimMatchDataService : IScrimMatchDataService
     public int CurrentMatchRound { get; set; } = 0;
     public int CurrentMatchRulesetId { get; set; }
 
-    private readonly KeyedSemaphoreSlim _scrimMatchLock = new KeyedSemaphoreSlim();
-    private readonly KeyedSemaphoreSlim _scrimMatchRoundConfigurationLock = new KeyedSemaphoreSlim();
-    private readonly KeyedSemaphoreSlim _scrimMatchParticipatingPlayerLock = new KeyedSemaphoreSlim();
+    private readonly KeyedSemaphoreSlim _scrimMatchLock = new();
+    private readonly KeyedSemaphoreSlim _scrimMatchRoundConfigurationLock = new();
+    private readonly KeyedSemaphoreSlim _scrimMatchParticipatingPlayerLock = new();
 
     public ScrimMatchDataService(IDbContextHelper dbContextHelper, ILogger<ScrimMatchDataService> logger)
     {
@@ -93,7 +93,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
             {
                 CurrentMatchId = oldMatchId;
 
-                _logger.LogError(ex.ToString());
+                _logger.LogError(ex, "Failed to save the current match");
             }
         }
     }
@@ -140,7 +140,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.ToString());
+                _logger.LogError(ex, "Failed to save a match round configuration");
             }
         }
     }
@@ -173,7 +173,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.ToString());
+                _logger.LogError(ex, "Failed to remove a match round configuration ({RoundId})", roundToDelete);
             }
         }
     }
@@ -222,7 +222,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.ToString());
+                _logger.LogError(ex, "Failed to save a match player ({PlayerId})", player.Id);
             }
         }
     }
@@ -274,6 +274,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
             TeamOrdinal = player.TeamOrdinal,
             NameDisplay = player.NameDisplay,
             FactionId = player.FactionId,
+            PrestigeLevel = player.PrestigeLevel,
             IsFromOutfit = player.IsOutfitless,
             OutfitId = player.IsOutfitless ? null : player.OutfitId,
             IsFromConstructedTeam = player.IsFromConstructedTeam,

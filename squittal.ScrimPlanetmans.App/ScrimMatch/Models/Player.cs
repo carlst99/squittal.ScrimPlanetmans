@@ -46,7 +46,7 @@ public class Player
     public bool IsFromConstructedTeam => ConstructedTeamId != null;
 
     // Dynamic Attributes
-    public int? LoadoutId { get; set; }
+    public uint? LoadoutId { get; set; }
     public PlayerStatus Status { get; set; } = PlayerStatus.Unknown;
 
     public bool IsOnline { get; set; }

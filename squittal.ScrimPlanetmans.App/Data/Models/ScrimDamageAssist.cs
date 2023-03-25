@@ -23,6 +23,7 @@ public class ScrimDamageAssist
     public ulong? VictimCharacterId { get; init; }
     public TeamDefinition? AttackerTeamOrdinal { get; init; }
     public TeamDefinition? VictimTeamOrdinal { get; init; }
+    public uint? AttackerLoadoutId { get; init; }
     public int Points { get; init; }
 
     // Do not remove! Used in SQL views

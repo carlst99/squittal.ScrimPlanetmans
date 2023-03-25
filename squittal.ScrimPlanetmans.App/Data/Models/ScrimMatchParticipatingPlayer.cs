@@ -19,6 +19,7 @@ public class ScrimMatchParticipatingPlayer
     public required string NameDisplay { get; init; }
 
     public FactionDefinition FactionId { get; init; }
+    public int PrestigeLevel { get; init; }
     public bool IsFromOutfit { get; init; }
     public ulong? OutfitId { get; init; }
     public bool IsFromConstructedTeam { get; init; }

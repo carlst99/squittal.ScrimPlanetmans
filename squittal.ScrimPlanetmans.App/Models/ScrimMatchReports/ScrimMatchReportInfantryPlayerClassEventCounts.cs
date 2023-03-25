@@ -10,9 +10,7 @@ public class ScrimMatchReportInfantryPlayerClassEventCounts
     public int TeamOrdinal { get; set; }
     public string CharacterId { get; set; }
     public string NameDisplay { get; set; }
-    public string NameFull { get; set; }
     public int FactionId { get; set; }
-    public int WorldId { get; set; }
     public int PrestigeLevel { get; set; }
     public int EventsAsHeavyAssault { get; set; }
     public int EventsAsInfiltrator { get; set; }
@@ -45,7 +43,7 @@ public class ScrimMatchReportInfantryPlayerClassEventCounts
 
     public IEnumerable<PlanetsideClassEventCount> GetOrderedPlanetsideClassEventCountsList()
     {
-        List<PlanetsideClassEventCount> classCountsList = new List<PlanetsideClassEventCount>()
+        List<PlanetsideClassEventCount> classCountsList = new()
         {
             new(CensusProfileType.HeavyAssault, EventsAsHeavyAssault),
             new(CensusProfileType.LightAssault, EventsAsLightAssault),

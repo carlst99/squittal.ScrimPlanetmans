@@ -62,7 +62,7 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
             ZoneId = (int)payload.ZoneID.CombinedId,
             ExperienceType = experienceType,
             ExperienceGainInfo = new ScrimActionExperienceGainInfo(experienceId, (int)payload.Amount),
-            LoadoutId = (int)payload.LoadoutID
+            LoadoutId = payload.LoadoutID
         };
 
         try
@@ -202,7 +202,7 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
         {
             isRevivedMax = await _loadoutService.IsLoadoutOfProfileTypeAsync
             (
-                (uint)loadoutId,
+                loadoutId,
                 CensusProfileType.MAX,
                 ct
             );
@@ -357,6 +357,7 @@ public class GainExperiencePayloadHandler : IPayloadHandler<IGainExperience>
             ActionType = assistEvent.ActionType,
             AttackerTeamOrdinal = assistEvent.AttackerPlayer?.TeamOrdinal,
             VictimTeamOrdinal = assistEvent.VictimPlayer?.TeamOrdinal,
+            AttackerLoadoutId = assistEvent.AttackerPlayer?.LoadoutId,
             Points = assistEvent.Points,
             ExperienceGainId = assistEvent.ExperienceGainInfo.Id,
             ExperienceGainAmount = assistEvent.ExperienceGainInfo.Amount

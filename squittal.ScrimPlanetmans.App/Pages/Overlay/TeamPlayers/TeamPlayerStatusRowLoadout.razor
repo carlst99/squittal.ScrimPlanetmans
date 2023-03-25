@@ -1,15 +1,16 @@
-﻿@inject IScrimMessageBroadcastService MessageService
-
-@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
+﻿@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
+
 @implements IDisposable
+
+@inject IScrimMessageBroadcastService MessageService
 
 <div class="playerLoadoutIcon ps2-icon @_loadoutClass"></div>
 
 @code {
     [Parameter]
-    public Player i_player { get; set; }
+    public Player? i_player { get; set; }
 
     private string _loadoutClass = "unknown";
 
@@ -34,36 +35,26 @@
 
     protected override void OnParametersSet()
     {
-        if (i_player.Id != _renderedPlayerId)
+        if (i_player is not null && i_player.Id != _renderedPlayerId)
         {
             _renderedPlayerId = i_player.Id;
 
             if (TryUpdateLoadoutClass())
-            {
-                InvokeAsync(() =>
-                {
-                    StateHasChanged();
-                });
-            }
+                InvokeAsync(StateHasChanged);
         }
         else
         {
             if (TryUpdateLoadoutClass())
-            {
-                InvokeAsync(() =>
-                {
-                    StateHasChanged();
-                });
-            }
+                InvokeAsync(StateHasChanged);
         }
     }
     #endregion Initialization Methods
 
     #region Event Handling
-    private void ReceivePlayerStatUpdateEvent(object sender, ScrimMessageEventArgs<PlayerStatUpdateMessage> e)
+    private void ReceivePlayerStatUpdateEvent(object? sender, ScrimMessageEventArgs<PlayerStatUpdateMessage> e)
     {
-        var message = e.Message;
-        var player = message.Player;
+        PlayerStatUpdateMessage message = e.Message;
+        Player player = message.Player;
 
         if (player != i_player)
         {
@@ -71,17 +62,12 @@
         }
 
         if (TryUpdateLoadoutClass())
-        {
-            InvokeAsync(() =>
-            {
-                StateHasChanged();
-            });
-        }
+            InvokeAsync(StateHasChanged);
     }
 
-    private void ReceivePlayerLoginEvent(object sender, ScrimMessageEventArgs<PlayerLoginMessage> e)
+    private void ReceivePlayerLoginEvent(object? sender, ScrimMessageEventArgs<PlayerLoginMessage> e)
     {
-        var player = e.Message.Player;
+        Player player = e.Message.Player;
 
         if (player != i_player)
         {
@@ -89,17 +75,12 @@
         }
 
         if (TryUpdateLoadoutClass())
-        {
-            InvokeAsync(() =>
-            {
-                StateHasChanged();
-            });
-        }
+            InvokeAsync(StateHasChanged);
     }
 
-    private void ReceivePlayerLogoutEvent(object sender, ScrimMessageEventArgs<PlayerLogoutMessage> e)
+    private void ReceivePlayerLogoutEvent(object? sender, ScrimMessageEventArgs<PlayerLogoutMessage> e)
     {
-        var player = e.Message.Player;
+        Player player = e.Message.Player;
 
         if (player != i_player)
         {
@@ -107,60 +88,33 @@
         }
 
         if (TryUpdateLoadoutClass())
-        {
-            InvokeAsync(() =>
-            {
-                StateHasChanged();
-            });
-        }
+            InvokeAsync(StateHasChanged);
     }
     #endregion
 
     private bool TryUpdateLoadoutClass()
     {
-        var loadoutId = i_player.LoadoutId;
-        var newLoadoutClass = GetLoadoutIconFromLoadoutId(loadoutId);
+        uint? loadoutId = i_player?.LoadoutId;
+        string newLoadoutClass = GetLoadoutIconFromLoadoutId(loadoutId);
 
         if (newLoadoutClass == _loadoutClass)
-        {
             return false;
-        }
-        else
-        {
-            _loadoutClass = newLoadoutClass;
-            return true;
-        }
+
+        _loadoutClass = newLoadoutClass;
+        return true;
     }
 
-    private string GetLoadoutIconFromLoadoutId(int? loadoutId)
+    private string GetLoadoutIconFromLoadoutId(uint? loadoutId)
     {
-        if (loadoutId == 1 || loadoutId == 8 || loadoutId == 15 || loadoutId == 28)
+        return loadoutId switch
         {
-            return "infil";
-        }
-        else if (loadoutId == 3 || loadoutId == 10 || loadoutId == 17 || loadoutId == 29)
-        {
-            return "la";
-        }
-        else if (loadoutId == 4 || loadoutId == 11 || loadoutId == 18 || loadoutId == 30)
-        {
-            return "medic";
-        }
-        else if (loadoutId == 5 || loadoutId == 12 || loadoutId == 19 || loadoutId == 31)
-        {
-            return "engy";
-        }
-        else if (loadoutId == 6 || loadoutId == 13 || loadoutId == 20 || loadoutId == 32)
-        {
-            return "heavy";
-        }
-        else if (loadoutId == 7 || loadoutId == 14 || loadoutId == 21 || loadoutId == 45)
-        {
-            return "max";
-        }
-        else
-        {
-            return "unknown";
-        }
+            1 or 8 or 15 or 28 => "infil",
+            3 or 10 or 17 or 29 => "la",
+            4 or 11 or 18 or 30 => "medic",
+            5 or 12 or 19 or 31 => "engy",
+            6 or 13 or 20 or 32 => "heavy",
+            7 or 14 or 21 or 45 => "max",
+            _ => "unknown"
+        };
     }
 }

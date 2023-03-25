@@ -2873,7 +2873,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         SendPlayerStatUpdateMessage(player);
     }
 
-    public void SetPlayerLoadoutId(ulong characterId, int? loadoutId)
+    public void SetPlayerLoadoutId(ulong characterId, uint? loadoutId)
     {
         if (loadoutId is null or <= 0)
             return;

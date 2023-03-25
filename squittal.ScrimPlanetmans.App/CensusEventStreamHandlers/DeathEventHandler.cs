@@ -107,12 +107,12 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
 
         try
         {
-            _teamsManager.SetPlayerLoadoutId(victimId, (int)payload.CharacterLoadoutID);
+            _teamsManager.SetPlayerLoadoutId(victimId, payload.CharacterLoadoutID);
             involvesBenchedPlayer = involvesBenchedPlayer || victimPlayer.IsBenched;
 
             if (attackerPlayer is not null)
             {
-                _teamsManager.SetPlayerLoadoutId(attackerId, (int)payload.AttackerLoadoutID);
+                _teamsManager.SetPlayerLoadoutId(attackerId, payload.AttackerLoadoutID);
                 involvesBenchedPlayer = involvesBenchedPlayer || attackerPlayer.IsBenched;
             }
 
