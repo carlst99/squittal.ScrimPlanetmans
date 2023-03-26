@@ -1,5 +1,3 @@
-USE [PlanetmansDbContext];
-
 IF (NOT EXISTS (SELECT 1 FROM sys.views WHERE name = 'View_ScrimMatchReportInfantryPlayerRoundStats'))
 BEGIN
     EXECUTE('CREATE VIEW View_ScrimMatchReportInfantryPlayerRoundStats as SELECT 1 as x');
@@ -12,12 +10,9 @@ ALTER VIEW View_ScrimMatchReportInfantryPlayerRoundStats AS
 
   SELECT match_players.ScrimMatchId,
          match_rounds.ScrimMatchRound,
-         match_players.TeamOrdinal,
          match_players.CharacterId,
          match_players.NameDisplay,
-         match_players.NameFull,
          match_players.FactionId,
-         match_players.WorldId,
          match_players.PrestigeLevel,
          COALESCE( kill_sums.Points, 0 ) Points,
          COALESCE( kill_sums.NetScore, 0 ) NetScore,
@@ -74,8 +69,8 @@ ALTER VIEW View_ScrimMatchReportInfantryPlayerRoundStats AS
          CAST( ROUND( COALESCE( kill_sums.KillDamageDealt, 0 ), 0 ) AS int ) KillDamageDealt,
          CAST( ROUND( COALESCE( damage_sums.AssistDamageDealt, 0 ), 0 ) AS int ) AssistDamageDealt,
          CAST( ROUND( COALESCE( kill_sums.KillDamageDealt, 0 ) + COALESCE( damage_sums.AssistDamageDealt, 0 ), 0 ) AS int ) TotalDamageDealt
-    FROM [PlanetmansDbContext].[dbo].ScrimMatchParticipatingPlayer match_players
-      INNER JOIN [PlanetmansDbContext].[dbo].ScrimMatchRoundConfiguration match_rounds
+    FROM [dbo].ScrimMatchParticipatingPlayer match_players
+      INNER JOIN [dbo].ScrimMatchRoundConfiguration match_rounds
         ON match_players.ScrimMatchId = match_rounds.ScrimMatchId
       LEFT OUTER JOIN ( SELECT match_players.ScrimMatchId,
                                kills.ScrimMatchRound,
@@ -146,7 +141,7 @@ ALTER VIEW View_ScrimMatchReportInfantryPlayerRoundStats AS
                                                        WHEN kills.NextEventTimeDiff >= 6 AND kills.PrevEventTimeDiff > 3 THEN 1
                                                        ELSE 0 END
                                            ELSE 0 END ) TrickleDeaths_6s
-                          FROM [PlanetmansDbContext].[dbo].ScrimMatchParticipatingPlayer match_players
+                          FROM [dbo].ScrimMatchParticipatingPlayer match_players
                             LEFT OUTER JOIN ( SELECT ScrimMatchId,
                                                      ScrimMatchRound,
                                                      Timestamp,
@@ -159,7 +154,7 @@ ALTER VIEW View_ScrimMatchReportInfantryPlayerRoundStats AS
                                                      Points,
                                                      DATEDIFF(SECOND, Timestamp, LAG( Timestamp ) OVER ( PARTITION BY ScrimMatchId, ScrimMatchRound ORDER BY Timestamp DESC ) ) NextEventTimeDiff,
                                                      DATEDIFF(SECOND, LEAD( Timestamp ) OVER ( PARTITION BY ScrimMatchId, ScrimMatchRound ORDER BY Timestamp DESC ), Timestamp ) PrevEventTimeDiff
-                                                FROM [PlanetmansDbContext].[dbo].ScrimDeath ) kills
+                                                FROM [dbo].ScrimDeath ) kills
                               ON match_players.ScrimMatchId = kills.ScrimMatchId
                                 AND ( match_players.CharacterId = kills.AttackerCharacterId
                                       OR match_players.CharacterId = kills.VictimCharacterId ) 
@@ -170,7 +165,7 @@ ALTER VIEW View_ScrimMatchReportInfantryPlayerRoundStats AS
                                                      SUM( CASE WHEN damages.ActionType = 312 THEN 1 ELSE 0 END ) SelfDamages,
                                                      AVG( CASE WHEN damages.ActionType = 304 THEN AdjustedAssistDamageDealt ELSE 0 END ) AvgVictimDamageReceived,
                                                      MIN( CASE WHEN damages.ActionType = 304 THEN AdjustedAssistDamageDealt ELSE 0 END ) MinVictimDamageReceived
-                                                FROM [PlanetmansDbContext].[dbo].View_ScrimDamageAssistDamageDealt damages
+                                                FROM [dbo].View_ScrimDamageAssistDamageDealt damages
                                                 GROUP BY ScrimMatchId, Timestamp, VictimCharacterId ) damage_sums
                               ON kills.ScrimMatchId = damage_sums.ScrimMatchId
                                 AND kills.Timestamp = damage_sums.Timestamp
@@ -180,14 +175,14 @@ ALTER VIEW View_ScrimMatchReportInfantryPlayerRoundStats AS
                                                      SUM( CASE WHEN grenades.ActionType = 306 THEN 1 ELSE 0 END ) EnemyGrenades,
                                                      SUM( CASE WHEN grenades.ActionType = 311 THEN 1 ELSE 0 END ) TeamGrenades,
                                                      SUM( CASE WHEN grenades.ActionType = 313 THEN 1 ELSE 0 END ) SelfGrenades
-                                                FROM [PlanetmansDbContext].[dbo].[ScrimGrenadeAssist] grenades
+                                                FROM [dbo].[ScrimGrenadeAssist] grenades
                                                 GROUP BY ScrimMatchId, Timestamp, VictimCharacterId ) grenade_sums
                               ON kills.ScrimMatchId = grenade_sums.ScrimMatchId
                                   AND kills.Timestamp = grenade_sums.Timestamp
                                   AND kills.VictimCharacterId = grenade_sums.VictimCharacterId
                             LEFT OUTER JOIN ( SELECT ScrimMatchId, VictimCharacterId, spots.Timestamp,
                                                      COUNT(*) TotalSpots
-                                                FROM [PlanetmansDbContext].[dbo].[ScrimSpotAssist] spots
+                                                FROM [dbo].[ScrimSpotAssist] spots
                                                 GROUP BY ScrimMatchId, SpotterTeamOrdinal, Timestamp, VictimCharacterId ) spot_sums
                               ON kills.ScrimMatchId = spot_sums.ScrimMatchId
                                 AND kills.Timestamp = spot_sums.Timestamp
@@ -209,8 +204,8 @@ ALTER VIEW View_ScrimMatchReportInfantryPlayerRoundStats AS
                                  SUM( CASE WHEN CharacterId = damages.AttackerCharacterId AND damages.AttackerLoadoutId IN ( 6, 13, 20) THEN 1 ELSE 0 END ) DamageAssistsAsHeavyAssault,
                                  SUM( CASE WHEN CharacterId = damages.AttackerCharacterId AND damages.AttackerLoadoutId IN ( 7, 14, 21) THEN 1 ELSE 0 END ) DamageAssistsAsMax,
                                  SUM( CASE WHEN CharacterID = damages.AttackerCharacterId AND damages.ActionType = 304 THEN damages.AdjustedAssistDamageDealt ELSE 0 END ) AssistDamageDealt
-                            FROM [PlanetmansDbContext].[dbo].ScrimMatchParticipatingPlayer match_players
-                              INNER JOIN [PlanetmansDbContext].[dbo].View_ScrimDamageAssistDamageDealt damages
+                            FROM [dbo].ScrimMatchParticipatingPlayer match_players
+                              INNER JOIN [dbo].View_ScrimDamageAssistDamageDealt damages
                                 ON match_players.ScrimMatchId = damages.ScrimMatchId
                                     AND  match_players.CharacterId = damages.AttackerCharacterId
                             GROUP BY match_players.ScrimMatchId, damages.ScrimMatchRound, match_players.CharacterId ) damage_sums

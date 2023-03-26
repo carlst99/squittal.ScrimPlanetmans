@@ -8,7 +8,6 @@ public class ScrimMatchReportInfantryPlayerStats : ScrimMatchReportStats
     public string NameDisplay { get; set; }
     public string NameFull { get; set; }
     public int FactionId { get; set; }
-    public int WorldId { get; set; }
     public int PrestigeLevel { get; set; }
     //public bool IsFromOutfit { get; set; }
     //public string OutfitId { get; set; }

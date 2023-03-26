@@ -15,14 +15,12 @@ public class ScrimMatchReportInfantryPlayerWeaponStatsConfiguration : IEntityTyp
         builder.Ignore(p => p.HeadshotKillPercent);
         builder.Ignore(p => p.HeadshotDeathPercent);
 
-        builder.Property(e => e.WeaponFactionId).HasDefaultValue(4);
-
         builder.Property(e => e.PrestigeLevel).HasDefaultValue(0);
         builder.Property(e => e.Points).HasDefaultValue(0);
         builder.Property(e => e.Teamkills).HasDefaultValue(0);
         builder.Property(e => e.TeamkillDeaths).HasDefaultValue(0);
         builder.Property(e => e.Suicides).HasDefaultValue(0);
-            
+
         builder.Property(e => e.Kills).HasDefaultValue(0);
         builder.Property(e => e.Deaths).HasDefaultValue(0);
         builder.Property(e => e.HeadshotKills).HasDefaultValue(0);

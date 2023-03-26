@@ -37,7 +37,7 @@ public class CensusOutfitService : BaseCensusService, ICensusOutfitService
             .OnCollection("outfit")
             .Where("alias_lower", SearchModifier.Equals, outfitAlias.ToLower())
             .ShowFields("outfit_id", "name", "alias", "leader_character_id")
-            .AddJoin("outift_member", j =>
+            .AddJoin("outfit_member", j =>
             {
                 j.IsList()
                     .ShowFields("character_id")

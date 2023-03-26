@@ -273,6 +273,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
             CharacterId = player.Id,
             TeamOrdinal = player.TeamOrdinal,
             NameDisplay = player.NameDisplay,
+            NameFull = player.NameFull,
             FactionId = player.FactionId,
             PrestigeLevel = player.PrestigeLevel,
             IsFromOutfit = player.IsOutfitless,

@@ -495,7 +495,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
                     && e.CharacterId == characterId)
                 .OrderByDescending(e => e.Kills)
                 .ThenByDescending(e => e.Deaths)
-                .ThenBy(e => e.WeaponName)
+                .ThenBy(e => e.WeaponId)
                 .ToListAsync(cancellationToken);
         }
         catch (TaskCanceledException)

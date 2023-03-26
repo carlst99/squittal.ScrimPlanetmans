@@ -7,7 +7,7 @@ namespace squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
 public class ScrimMatchReportInfantryPlayerClassEventCounts
 {
     public string ScrimMatchId { get; set; }
-    public int TeamOrdinal { get; set; }
+    public TeamDefinition TeamOrdinal { get; set; }
     public string CharacterId { get; set; }
     public string NameDisplay { get; set; }
     public int FactionId { get; set; }

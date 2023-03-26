@@ -74,7 +74,7 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
             return;
 
         ScrimActionWeaponInfo weapon;
-        CensusItem? weaponItem = await _itemService.GetWeaponAsync(payload.AttackerWeaponID, ct);
+        CensusItem? weaponItem = await _itemService.GetByIdAsync(payload.AttackerWeaponID, ct);
 
         if (weaponItem is not null)
         {

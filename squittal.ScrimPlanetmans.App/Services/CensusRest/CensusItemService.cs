@@ -76,13 +76,6 @@ public class CensusItemService : BaseCensusService, ICensusItemService
         return retrieved;
     }
 
-    public async Task<CensusItem?> GetWeaponAsync(uint weaponItemId, CancellationToken ct = default)
-    {
-        IReadOnlyList<CensusItem>? allWeapons = await GetAllWeaponsAsync(ct);
-
-        return allWeapons?.FirstOrDefault(w => w.ItemId == weaponItemId);
-    }
-
     /// <inheritdoc />
     public async Task<IReadOnlyList<CensusItem>?> GetAllWeaponsAsync(CancellationToken ct = default)
     {

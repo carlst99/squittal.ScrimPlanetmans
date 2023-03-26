@@ -1,9 +1,13 @@
 ﻿@using squittal.ScrimPlanetmans.App.Pages.Shared;
 @using System.Threading;
+@using DbgCensus.Core.Objects
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
 @using squittal.ScrimPlanetmans.App.Models
+@using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports
 @using squittal.ScrimPlanetmans.App.Services.ScrimMatchReports.Interfaces
 
+@inject ICensusItemService ItemService
 @inject IScrimMatchReportDataService ReportDataService
 @inject NavigationManager NavManager
 
@@ -61,11 +65,17 @@ else
                         <th style="font-weight: 300; width: 70px; padding-bottom: 0.2rem;" title="Headshot Death Percent">DHSR</th>
                     </tr>
 
-                    @foreach (var weaponStats in _weaponStats)
+                    @foreach (ScrimMatchReportInfantryPlayerWeaponStats weaponStats in _weaponStats)
                     {
-                        <tr class="@SqCssHelper.GetFactionClassFromId(weaponStats.WeaponFactionId)" style="color: var(--sq-ov-ps2-primary-dark);">
-                            <td style="color: var(--sq-ps2-primary); text-align: left; line-height: 1.5rem;" title="@weaponStats.WeaponName [@(weaponStats.WeaponId)]">
-                                <span style="text-overflow: ellipsis; overflow: hidden; max-width: 150px; display: block;">@weaponStats.WeaponName</span>
+                        CensusItem? weaponItem = null;
+                        _weaponItems?.TryGetValue((uint)weaponStats.WeaponId, out weaponItem);
+
+                        FactionDefinition weaponFaction = weaponItem?.FactionId ?? FactionDefinition.None;
+                        string weaponName = weaponItem?.Name.English.GetValueOrDefault() ?? "Unknown Weapon";
+
+                        <tr class="@SqCssHelper.GetFactionClassFromId(weaponFaction)" style="color: var(--sq-ov-ps2-primary-dark);">
+                            <td style="color: var(--sq-ps2-primary); text-align: left; line-height: 1.5rem;" title="@weaponName [@(weaponStats.WeaponId)]">
+                                <span style="text-overflow: ellipsis; overflow: hidden; max-width: 150px; display: block;">@weaponName</span>
                             </td>
                             <td style="opacity: @GetStatOpacity(weaponStats.Points); text-align: right;">@weaponStats.Points</td>
                             <td style="opacity: @GetStatOpacity(weaponStats.Kills);">@weaponStats.Kills</td>
@@ -98,29 +108,30 @@ else
     public string i_playerId { get; set; }
     public string _renderedPlayerId { get; set; }
 
-    private List<ScrimMatchReportInfantryPlayerWeaponStats> _weaponStats { get; set; }
+    private List<ScrimMatchReportInfantryPlayerWeaponStats>? _weaponStats { get; set; }
+    private Dictionary<uint, CensusItem>? _weaponItems;
 
     private bool _isChangingScrimMatch { get; set; } = false;
     private bool _isLoadingStats { get; set; } = false;
 
     private bool _showWeaponsTable { get; set; } = true;
 
-    private CancellationTokenSource cts;
+    private CancellationTokenSource? _cts;
 
 
     #region Initialization Methods
     public void Dispose()
     {
-        if (cts != null)
+        if (_cts != null)
         {
-            cts.Cancel();
-            cts.Dispose();
+            _cts.Cancel();
+            _cts.Dispose();
         }
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        var paramsChanged = false;
+        bool paramsChanged = false;
 
 
         if (i_scrimMatchId != _renderedScrimMatchId || i_playerId != _renderedPlayerId)
@@ -151,27 +162,26 @@ else
         InvokeAsyncStateHasChanged();
 
         // If a process is already underway, cancel it
-        if (cts != null)
-        {
-            cts.Cancel();
-        }
+        _cts?.Cancel();
 
-        // Set cts to cancel the current process if another table refresh is requested
-        CancellationTokenSource newCTS = new CancellationTokenSource();
-        cts = newCTS;
+        // Set _cts to cancel the current process if another table refresh is requested
+        CancellationTokenSource newCTS = new();
+        _cts = newCTS;
 
         try
         {
-            var weaponStats = await ReportDataService.GetHistoricalScrimMatchInfantryPlayerWeaponStatsAsync(_renderedScrimMatchId, _renderedPlayerId, cts.Token);
+            _weaponStats = (await ReportDataService.GetHistoricalScrimMatchInfantryPlayerWeaponStatsAsync
+            (
+                _renderedScrimMatchId,
+                _renderedPlayerId,
+                _cts.Token
+            )).ToList();
 
-            cts.Token.ThrowIfCancellationRequested();
-
-            _weaponStats = new List<ScrimMatchReportInfantryPlayerWeaponStats>();
-
-            if (weaponStats != null && weaponStats.Any())
-            {
-                _weaponStats.AddRange(weaponStats);
-            }
+            _weaponItems = (await ItemService.GetByIdAsync
+            (
+                _weaponStats.Select(x => (uint)x.WeaponId),
+                _cts.Token
+            )).ToDictionary(x => x.ItemId, x => x);
         }
         catch
         {
@@ -179,9 +189,9 @@ else
         }
 
         // When the process is complete, signal that another process can proceed
-        if (cts == newCTS)
+        if (_cts == newCTS)
         {
-            cts = null;
+            _cts = null;
         }
 
         _isLoadingStats = false;
