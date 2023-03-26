@@ -10,6 +10,7 @@ using DbgCensus.Core.Objects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Data.Models;
@@ -19,7 +20,6 @@ using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
-using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.Util;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch;
@@ -125,8 +125,8 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         team.FactionId = factionId;
 
-        string abbrev = StringHelpers.GetFactionAbbreviation(factionId);
-        string oldAbbrev = StringHelpers.GetFactionAbbreviation(oldFactionId);
+        string abbrev = SqCssHelper.GetFactionAbbreviation(factionId);
+        string oldAbbrev = SqCssHelper.GetFactionAbbreviation(oldFactionId);
 
         _messageService.BroadcastTeamFactionChangeMessage(new TeamFactionChangeMessage(teamOrdinal, factionId, abbrev, oldFactionId, oldAbbrev));
         _logger.LogInformation

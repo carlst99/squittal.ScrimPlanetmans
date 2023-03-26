@@ -2,10 +2,10 @@
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
-@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.Util
 @using DbgCensus.Core.Objects
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch
 
 @inject IScrimMatchEngine ScrimMatchEngine
 @inject IScrimTeamsManager ScrimTeamsManager
@@ -122,7 +122,7 @@
         }
         else
         {
-            UpdateTeamFactionDisplay(TeamDefinition.Team1, StringHelpers.GetFactionAbbreviation(_teamFactionId1));
+            UpdateTeamFactionDisplay(TeamDefinition.Team1, SqCssHelper.GetFactionAbbreviation(_teamFactionId1));
         }
 
         if (_teamFactionId2 == null)
@@ -131,7 +131,7 @@
         }
         else
         {
-            UpdateTeamFactionDisplay(TeamDefinition.Team2, StringHelpers.GetFactionAbbreviation(_teamFactionId2));
+            UpdateTeamFactionDisplay(TeamDefinition.Team2, SqCssHelper.GetFactionAbbreviation(_teamFactionId2));
         }
     }
 

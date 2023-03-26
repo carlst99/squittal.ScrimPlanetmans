@@ -2,27 +2,27 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Abstractions.Services;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
-using squittal.ScrimPlanetmans.App.Services.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.Data;
 
 public class DbSeeder : IDbSeeder
 {
     private readonly IScrimRulesetManager _rulesetManager;
-    private readonly ISqlScriptRunner _sqlScriptRunner;
+    private readonly ISqlScriptService _sqlScriptService;
     private readonly ILogger<DbSeeder> _logger;
 
     public DbSeeder
     (
         IScrimRulesetManager rulesetManager,
-        ISqlScriptRunner sqlScriptRunner,
+        ISqlScriptService sqlScriptService,
         ILogger<DbSeeder> logger
     )
     {
         _rulesetManager = rulesetManager;
-        _sqlScriptRunner = sqlScriptRunner;
+        _sqlScriptService = sqlScriptService;
         _logger = logger;
     }
 
@@ -32,7 +32,7 @@ public class DbSeeder : IDbSeeder
         {
             await _rulesetManager.SeedScrimActionModelsAsync(cancellationToken);
 
-            _sqlScriptRunner.RunSqlDirectoryScripts("Views");
+            _sqlScriptService.RunSqlDirectoryScripts("Views");
             _logger.LogInformation("Compiled all SQL Views");
         }
         catch (Exception ex)

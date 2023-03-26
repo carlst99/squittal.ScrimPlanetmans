@@ -3,9 +3,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
-using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 

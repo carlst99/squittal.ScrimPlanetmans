@@ -1,6 +1,5 @@
 ﻿@using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
-@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside
 @using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.Models.Forms
@@ -10,6 +9,7 @@
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.Util
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch
 @using squittal.ScrimPlanetmans.App.Models.CensusRest
 
 @inject IScrimTeamsManager ScrimTeamsManager
@@ -133,7 +133,7 @@
                         .GetValueOrDefault() ?? outfit.WorldId.ToString())
                 </span>
                 <span>
-                    @StringHelpers.GetFactionAbbreviation(outfit.FactionId)
+                    @SqCssHelper.GetFactionAbbreviation(outfit.FactionId)
                 </span>
             </h5>
 

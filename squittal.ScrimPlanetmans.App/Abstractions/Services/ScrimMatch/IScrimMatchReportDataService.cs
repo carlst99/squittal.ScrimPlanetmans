@@ -6,7 +6,7 @@ using squittal.ScrimPlanetmans.App.Models.Forms;
 using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
-namespace squittal.ScrimPlanetmans.App.Services.ScrimMatchReports.Interfaces;
+namespace squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 
 public interface IScrimMatchReportDataService
 {

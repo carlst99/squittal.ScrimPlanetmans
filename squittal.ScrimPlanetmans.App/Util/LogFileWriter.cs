@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace squittal.ScrimPlanetmans.App.Logging;
+namespace squittal.ScrimPlanetmans.App.Util;
 
 public sealed class LogFileWriter : IDisposable
 {

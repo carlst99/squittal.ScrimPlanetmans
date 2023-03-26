@@ -11,10 +11,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
+using squittal.ScrimPlanetmans.App.Abstractions.Services;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusEventStream;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Rulesets;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers;
 using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.Control;
 using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.PreDispatch;
@@ -26,13 +28,9 @@ using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset;
 using squittal.ScrimPlanetmans.App.Services;
 using squittal.ScrimPlanetmans.App.Services.CensusEventStream;
 using squittal.ScrimPlanetmans.App.Services.CensusRest;
-using squittal.ScrimPlanetmans.App.Services.Interfaces;
 using squittal.ScrimPlanetmans.App.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Services.Rulesets;
 using squittal.ScrimPlanetmans.App.Services.ScrimMatch;
-using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
-using squittal.ScrimPlanetmans.App.Services.ScrimMatchReports;
-using squittal.ScrimPlanetmans.App.Services.ScrimMatchReports.Interfaces;
 using squittal.ScrimPlanetmans.App.Workers;
 
 namespace squittal.ScrimPlanetmans.App;
@@ -105,8 +103,7 @@ public class Program
         services.AddTransient<DbInitializerService>();
         services.AddSingleton<IDbContextHelper, DbContextHelper>();
         services.AddSingleton<IDbSeeder, DbSeeder>();
-        services.AddTransient<ISqlScriptRunner, SqlScriptRunner>();
-        services.AddTransient<DatabaseMaintenanceService>();
+        services.AddTransient<ISqlScriptService, SqlScriptService>();
 
         // Register Census REST services
         builder.Services.Configure<CensusQueryOptions>(builder.Configuration.GetSection(nameof(CensusQueryOptions)))

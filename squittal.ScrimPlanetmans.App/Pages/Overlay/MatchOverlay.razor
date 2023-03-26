@@ -1,5 +1,6 @@
 ﻿@page "/Overlay"
 @using Microsoft.AspNetCore.WebUtilities 
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch
 @using squittal.ScrimPlanetmans.App.Models
 @*for QueryHelpers*@
 @using squittal.ScrimPlanetmans.App.Pages.Overlay.TeamPlayers;
@@ -8,7 +9,6 @@
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models
-@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 
 @inject IScrimRulesetManager RulesetManager 
 @inject IScrimMessageBroadcastService MessageService

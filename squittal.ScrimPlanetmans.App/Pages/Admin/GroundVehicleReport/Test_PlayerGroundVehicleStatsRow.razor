@@ -1,8 +1,7 @@
 ﻿@inject IScrimMessageBroadcastService MessageService
-
-@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch
 @implements IDisposable
 
 <td style="opacity: @GetStatOpacity(EventAggregate.FlashesDestroyed);">@(EventAggregate.FlashesDestroyed)</td>

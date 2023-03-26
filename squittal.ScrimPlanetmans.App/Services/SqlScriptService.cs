@@ -5,19 +5,19 @@ using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.SqlServer.Management.Smo;
-using squittal.ScrimPlanetmans.App.Services.Interfaces;
+using squittal.ScrimPlanetmans.App.Abstractions.Services;
 
 namespace squittal.ScrimPlanetmans.App.Services;
 
-public class SqlScriptRunner : ISqlScriptRunner
+public class SqlScriptService : ISqlScriptService
 {
-    private readonly ILogger<SqlScriptRunner> _logger;
+    private readonly ILogger<SqlScriptService> _logger;
     private readonly string _sqlDirectory = Path.Combine("Data", "SQL");
     private readonly string _scriptDirectory;
     private readonly string _adhocScriptDirectory;
     private readonly Server _server;
 
-    public SqlScriptRunner(ILogger<SqlScriptRunner> logger, IConfiguration configuration)
+    public SqlScriptService(ILogger<SqlScriptService> logger, IConfiguration configuration)
     {
         _logger = logger;
 
@@ -101,5 +101,16 @@ public class SqlScriptRunner : ISqlScriptRunner
         {
             _logger.LogError(ex, "Error running SQL scripts in directory {Name}", directoryName);
         }
+    }
+
+    public IEnumerable<string> GetAdHocSqlFileNames()
+    {
+        if (!Directory.Exists(_adhocScriptDirectory))
+            return Array.Empty<string>();
+
+        return Directory.GetFiles(_adhocScriptDirectory)
+            .Where(f => f.EndsWith(".sql"))
+            .Select(f => Path.GetFileName(f))
+            .OrderBy(f => f);
     }
 }

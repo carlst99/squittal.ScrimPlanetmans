@@ -6,22 +6,22 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Forms;
 using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
-using squittal.ScrimPlanetmans.App.Services.ScrimMatchReports.Interfaces;
 
-namespace squittal.ScrimPlanetmans.App.Services.ScrimMatchReports;
+namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 
 public class ScrimMatchReportDataService : IScrimMatchReportDataService
 {
+    private const int SCRIM_MATCH_BROWSER_PAGE_SIZE = 15;
+
     private readonly IDbContextHelper _dbContextHelper;
     private readonly ILogger<ScrimMatchReportDataService> _logger;
-
-    private readonly int _scrimMatchBrowserPageSize = 15;
 
     public ScrimMatchReportDataService(IDbContextHelper dbContextHelper, ILogger<ScrimMatchReportDataService> logger)
     {
@@ -49,7 +49,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
             (
                 scrimMatchesQuery.OrderByDescending(m => m.StartTime),
                 pageIndex ?? 1,
-                _scrimMatchBrowserPageSize,
+                SCRIM_MATCH_BROWSER_PAGE_SIZE,
                 cancellationToken
             );
 
@@ -518,7 +518,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
 
     //        var scrimMatchesQuery = dbContext.ScrimMatchReportInfantryDeaths.Where(d => d.ScrimMatchId == scrimMatchId).AsQueryable();
 
-    //        var paginatedList = await PaginatedList<ScrimMatchReportInfantryDeath>.CreateAsync(scrimMatchesQuery.AsNoTracking().OrderByDescending(d => d.Timestamp), pageIndex ?? 1, _scrimMatchBrowserPageSize);
+    //        var paginatedList = await PaginatedList<ScrimMatchReportInfantryDeath>.CreateAsync(scrimMatchesQuery.AsNoTracking().OrderByDescending(d => d.Timestamp), pageIndex ?? 1, SCRIM_MATCH_BROWSER_PAGE_SIZE);
 
     //        if (paginatedList == null)
     //        {

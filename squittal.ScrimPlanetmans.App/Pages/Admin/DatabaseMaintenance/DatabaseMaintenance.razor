@@ -1,8 +1,8 @@
 ﻿@page "/DbAdmin"
-@using squittal.ScrimPlanetmans.App.Services
-@using squittal.ScrimPlanetmans.App.Models
 
-@inject DatabaseMaintenanceService DbMaintenance
+@using squittal.ScrimPlanetmans.App.Abstractions.Services
+
+@inject ISqlScriptService SqlScriptService
 
 <div class="container-fluid">
     <div class="row">
@@ -12,30 +12,6 @@
             <div class="header-card-container default sans-serif-font">
 
                 <h4 class="sans-serif-font">Database Maintenance</h4>
-
-                <h5 class="sans-serif-font" style="margin: 0;">Planetside Collections</h5>
-
-                @if (_comparisons != null && _comparisons.Any())
-                {
-                    <table class="table-responsive-sm table-striped-light mono-font ">
-                        <thead>
-                            <tr>
-                                <th style="vertical-align: bottom;">Collection</th>
-                                <th colspan="2" style="text-align: right;">Database<br />Count</th>
-                                <th colspan="2" style="text-align: right;">Census<br />Count</th>
-                                <th></th>
-                                <th></th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            @foreach (var comparison in _comparisons)
-                            {
-                                <DatabaseMaintenanceComparisonRow i_comparison="@comparison" />
-                            }
-                        </tbody>
-                    </table>
-                }
 
                 <h5 style="margin: 0.5rem 0 0 0;">Run Ad-Hoc SQL Scripts</h5>
 
@@ -55,7 +31,7 @@
                             <InputSelect style="margin-right: 5px; width: 350px; padding: 0.1rem; margin-bottom: 0.2rem;" @bind-Value="@_selectedAdHocSqlFile">
                                 <option value=@string.Empty style="font-style: italic;">No File Selected</option>
 
-                                @foreach (var fileName in _adhocSqlFiles)
+                                @foreach (string fileName in _adhocSqlFiles)
                                 {
                                     <option value=@fileName label="@fileName"></option>
                                 }
@@ -76,6 +52,10 @@
                         </div>
 
                     </EditForm>
+                }
+                else
+                {
+                    <p>No ad-hoc scripts found.</p>
                 }
 
                 @if (!string.IsNullOrWhiteSpace(_adHocInfo))
@@ -103,37 +83,28 @@
 
 
 @code {
-    private List<CensusStoreDataComparisonRow> _comparisons = new List<CensusStoreDataComparisonRow>();
-
-    private List<string> _adhocSqlFiles = new List<string>();
-
+    private List<string> _adhocSqlFiles = new();
     private string _selectedAdHocSqlFile = string.Empty;
-
     private string _adHocInfo = string.Empty;
-
-    private bool? _adHocWasSuccess = null;
+    private bool? _adHocWasSuccess;
 
     protected override void OnInitialized()
     {
-        _comparisons = DbMaintenance.Comparisons;
-
         UpdateAdHocSqlFileNames();
     }
 
     private void UpdateAdHocSqlFileNames()
     {
-        var fileNames = DbMaintenance.GetAdHocSqlFileNames();
+        IEnumerable<string> fileNames = SqlScriptService.GetAdHocSqlFileNames();
         _adhocSqlFiles = fileNames.ToList();
     }
 
     private void TryRunSelectedAdHocSqlFile()
     {
         if (string.IsNullOrWhiteSpace(_selectedAdHocSqlFile))
-        {
             return;
-        }
 
-        var success = DbMaintenance.TryRunAdHocSqlScript(_selectedAdHocSqlFile, out var info);
+        bool success = SqlScriptService.TryRunAdHocSqlScript(_selectedAdHocSqlFile, out string info);
 
         if (success)
         {

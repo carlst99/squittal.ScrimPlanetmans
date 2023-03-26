@@ -3,13 +3,13 @@
 @using System.Diagnostics.CodeAnalysis
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch
 @using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.Models.CensusRest
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
-@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.Util
 
 @inject IScrimTeamsManager TeamsManager
@@ -27,7 +27,7 @@
     <div class="sq-mini-card-12 @SqCssHelper.GetFactionClassFromId(_renderedOutfit.FactionId)">
 
         <h5 class="@SqCssHelper.GetFactionClassFromId(_renderedOutfit.FactionId)" style="color: var(--sq-ps2-primary); margin-bottom: 0.1rem; padding: 8px 0 0 15px;">
-            <b><span class="mono-font">[@_renderedOutfit.Alias]</span> @_renderedOutfit.Name</b> (@_renderedOutfit.MemberCount | @_renderedOutfit.MembersOnlineCount) <span>@_worlds?.FirstOrDefault(w => w.WorldId == _renderedOutfit.WorldId)?.Name.English.GetValueOrDefault()</span><span> @StringHelpers.GetFactionAbbreviation(_renderedOutfit.FactionId)</span>
+            <b><span class="mono-font">[@_renderedOutfit.Alias]</span> @_renderedOutfit.Name</b> (@_renderedOutfit.MemberCount | @_renderedOutfit.MembersOnlineCount) <span>@_worlds?.FirstOrDefault(w => w.WorldId == _renderedOutfit.WorldId)?.Name.English.GetValueOrDefault()</span><span> @SqCssHelper.GetFactionAbbreviation(_renderedOutfit.FactionId)</span>
         </h5>
 
         <p style="margin: 0 0 0.1rem 0;  padding-left: 16px;">

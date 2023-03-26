@@ -1,5 +1,6 @@
 ﻿@using System.Collections.Concurrent;
 @using DbgCensus.Core.Objects
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch
 @using squittal.ScrimPlanetmans.App.Data.Models
 @using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.Models.CensusRest
@@ -7,7 +8,6 @@
 @using squittal.ScrimPlanetmans.App.Models.Planetside
 @using squittal.ScrimPlanetmans.App.Pages.Shared;
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
-@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.Util
 
 @inject IConstructedTeamService ConstructedTeamsService
@@ -127,7 +127,7 @@
         if (i_teamId != _renderedTeamId || i_factionId != _renderedFactionId || viewOnlyChanged)
         {
             _renderedFactionId = i_factionId;
-            _renderedFactionAbbreviation = StringHelpers.GetFactionAbbreviation(_renderedFactionId);
+            _renderedFactionAbbreviation = SqCssHelper.GetFactionAbbreviation(_renderedFactionId);
 
             _renderedTeamId = i_teamId;
 

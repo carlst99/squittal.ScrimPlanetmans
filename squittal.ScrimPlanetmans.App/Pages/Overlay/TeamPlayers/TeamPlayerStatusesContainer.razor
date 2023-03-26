@@ -1,13 +1,14 @@
 ﻿@using System.Collections.Concurrent;
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside
+@using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch
 @using squittal.ScrimPlanetmans.App.Models
 @using squittal.ScrimPlanetmans.App.ScrimMatch
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Models
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models
-@using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces
+@using squittal.ScrimPlanetmans.App.Util
 
 @inject IScrimTeamsManager ScrimTeamsManager
 @inject IScrimMatchEngine ScrimMatchEngine

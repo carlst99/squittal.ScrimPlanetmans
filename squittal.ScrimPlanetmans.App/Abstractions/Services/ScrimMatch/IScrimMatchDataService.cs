@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
+namespace squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 
 public interface IScrimMatchDataService
 {

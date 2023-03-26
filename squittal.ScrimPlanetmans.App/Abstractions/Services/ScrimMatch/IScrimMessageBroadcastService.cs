@@ -1,7 +1,7 @@
 ﻿using System;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 
-namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
+namespace squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 
 public interface IScrimMessageBroadcastService
 {

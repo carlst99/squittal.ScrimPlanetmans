@@ -10,13 +10,13 @@ using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Rulesets;
+using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
-using squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset;
 

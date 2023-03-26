@@ -7,7 +7,7 @@ using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
-namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch.Interfaces;
+namespace squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 
 public interface IConstructedTeamService
 {

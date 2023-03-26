@@ -1,6 +1,6 @@
 ﻿using DbgCensus.Core.Objects;
 
-namespace squittal.ScrimPlanetmans.App.Models;
+namespace squittal.ScrimPlanetmans.App.Util;
 
 public static class SqCssHelper
 {
@@ -42,4 +42,9 @@ public static class SqCssHelper
             "Oshur" => "🌊",
             _ => "❔",
         };
+
+    public static string GetFactionAbbreviation(FactionDefinition? factionId)
+        => factionId is null
+            ? "None"
+            : factionId.Value.ToString();
 }
