@@ -240,7 +240,7 @@ public partial class RulesetDataService : IRulesetDataService
         {
             await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
-            IQueryable<Ruleset> rulesetQuery = dbContext.Rulesets;
+            IQueryable<Ruleset> rulesetQuery = dbContext.Rulesets.AsTracking();
 
             if (includeCollections)
             {
