@@ -114,7 +114,8 @@ public class Program
 
         // Register Census REST services
         builder.Services.Configure<CensusQueryOptions>(builder.Configuration.GetSection(nameof(CensusQueryOptions)))
-            .Configure<CensusQueryOptions>(o => o.LanguageCode = CensusLanguage.English);
+            .Configure<CensusQueryOptions>(o => o.LanguageCode = CensusLanguage.English)
+            .Configure<CensusQueryOptions>(o => o.Limit = 50);
 
         // Configure a second query options to point towards Sanctuary.Census
         services.Configure<CensusQueryOptions>
@@ -129,6 +130,7 @@ public class Program
                 {
                     o.RootEndpoint = "https://census.lithafalcon.cc";
                     o.LanguageCode = CensusLanguage.English;
+                    o.Limit = 50;
                 }
             );
 
