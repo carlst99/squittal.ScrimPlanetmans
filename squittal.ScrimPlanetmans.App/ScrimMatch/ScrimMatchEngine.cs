@@ -175,7 +175,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
             _timer.Halt();
         }
 
-        await _teamsManager.SaveRoundEndScores(_currentRound);
+        await _teamsManager.SaveRoundEndScoresAsync(_currentRound);
 
         _messageService.BroadcastSimpleMessage($"Round {_currentRound} ended; scoring diabled");
 
@@ -207,7 +207,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
                 RulesetId = MatchRuleset?.Id ?? 0
             };
 
-            await _matchDataService.SaveToCurrentMatch(scrimMatch);
+            await _matchDataService.SaveToCurrentMatchAsync(scrimMatch);
         }
     }
 
@@ -234,7 +234,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
 
         _timer.Configure(TimeSpan.FromSeconds(_roundSecondsMax));
 
-        await _matchDataService.SaveCurrentMatchRoundConfiguration(MatchConfiguration);
+        await _matchDataService.SaveCurrentMatchRoundConfigurationAsync(MatchConfiguration);
     }
 
     public void StartRound()
@@ -276,9 +276,9 @@ public class ScrimMatchEngine : IScrimMatchEngine
         _timer.Reset();
         _eventFilter.IsScoringEnabled = false;
 
-        await _teamsManager.RollBackAllTeamStats(_currentRound);
+        await _teamsManager.RollBackAllTeamStatsAsync(_currentRound);
 
-        await _matchDataService.RemoveMatchRoundConfiguration(_currentRound);
+        await _matchDataService.RemoveMatchRoundConfigurationAsync(_currentRound);
 
         _currentRound -= 1;
 

@@ -16,7 +16,7 @@ public interface IRulesetDataService
 
     Task RefreshRulesetsAsync(CancellationToken ct = default);
 
-    Task<PaginatedList<Ruleset>> GetRulesetListAsync(int? pageIndex, CancellationToken cancellationToken);
+    Task<PaginatedList<Ruleset>> GetRulesetListAsync(int? pageIndex, CancellationToken ct);
     Task<Ruleset?> GetRulesetFromIdAsync(int rulesetId, CancellationToken cancellationToken, bool includeCollections = true, bool includeOverlayConfiguration = true);
     Task<IEnumerable<Ruleset>> GetAllRulesetsAsync(CancellationToken cancellationToken);
 
@@ -27,7 +27,7 @@ public interface IRulesetDataService
     Task<IEnumerable<RulesetFacilityRule>> GetRulesetFacilityRulesAsync(int rulesetId, CancellationToken ct);
     Task<IEnumerable<RulesetFacilityRule>> GetUnusedRulesetFacilityRulesAsync(int rulesetId, CancellationToken ct);
 
-    Task<Ruleset?> GetRulesetWithFacilityRules(int rulesetId, CancellationToken cancellationToken);
+    Task<Ruleset?> GetRulesetWithFacilityRules(int rulesetId, CancellationToken ct);
     Task<IEnumerable<RulesetItemCategoryRule>> GetRulesetItemCategoryRulesDeferringToItemRules(int rulesetId, CancellationToken ct);
     Task<IEnumerable<ItemCategory>?> GetItemCategoriesDeferringToItemRulesAsync
     (
@@ -41,13 +41,13 @@ public interface IRulesetDataService
     Task SaveRulesetActionRules(int rulesetId, IEnumerable<RulesetActionRule> rules, CancellationToken ct = default);
     Task SaveRulesetItemCategoryRules(int rulesetId, IEnumerable<RulesetItemCategoryRule> rules, CancellationToken ct = default);
     Task SaveRulesetItemRules(int rulesetId, IEnumerable<RulesetItemRule> rules, CancellationToken ct = default);
-    Task SaveRulesetFacilityRules(int rulesetId, IEnumerable<RulesetFacilityRuleChange> rules);
+    Task SaveRulesetFacilityRulesAsync(int rulesetId, IEnumerable<RulesetFacilityRuleChange> rules, CancellationToken ct = default);
 
     void SetActiveRulesetId(int rulesetId);
     Task<Ruleset?> SetCustomDefaultRulesetAsync(int rulesetId, CancellationToken ct = default);
 
     Task<bool> CanDeleteRuleset(int rulesetId, CancellationToken cancellationToken);
-    Task<bool> HasRulesetBeenUsedAsync(int rulesetId, CancellationToken cancellationToken);
+    Task<bool> HasRulesetBeenUsedAsync(int rulesetId, CancellationToken ct);
     Task<bool> DeleteRulesetAsync(int rulesetId, CancellationToken ct = default);
 
     Task<bool> ExportRulesetToJsonFile(int rulesetId, CancellationToken ct);

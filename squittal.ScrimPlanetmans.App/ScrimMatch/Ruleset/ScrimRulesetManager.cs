@@ -12,7 +12,6 @@ using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Rulesets;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Data;
-using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
@@ -25,7 +24,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
     private const int DEFAULT_RULESET_ID = 1;
 
     private readonly ILogger<ScrimRulesetManager> _logger;
-    private readonly IDbContextHelper _dbContextHelper;
+    private readonly IDbContextFactory<PlanetmansDbContext> _dbContextFactory;
     private readonly IItemCategoryService _itemCategoryService;
     private readonly ICensusItemService _itemService;
     private readonly IRulesetDataService _rulesetDataService;
@@ -36,7 +35,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
     public ScrimRulesetManager
     (
-        IDbContextHelper dbContextHelper,
+        IDbContextFactory<PlanetmansDbContext> dbContextFactory,
         IItemCategoryService itemCategoryService,
         ICensusItemService itemService,
         IRulesetDataService rulesetDataService,
@@ -44,7 +43,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
         ILogger<ScrimRulesetManager> logger
     )
     {
-        _dbContextHelper = dbContextHelper;
+        _dbContextFactory = dbContextFactory;
         _itemCategoryService = itemCategoryService;
         _itemService = itemService;
         _rulesetDataService = rulesetDataService;
@@ -119,8 +118,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
     public async Task<bool> ActivateDefaultRulesetAsync(CancellationToken ct = default)
     {
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
         Models.Ruleset? ruleset = await dbContext.Rulesets.FirstOrDefaultAsync
         (
@@ -256,8 +254,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
     public async Task<Models.Ruleset?> GetDefaultRulesetAsync(CancellationToken ct = default)
     {
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
         Models.Ruleset? ruleset = await dbContext.Rulesets.FirstOrDefaultAsync(r => r.IsDefault, cancellationToken: ct);
 
@@ -287,8 +284,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
         Stopwatch stopWatchTotal = Stopwatch.StartNew();
         stopWatchSetup.Start();
 
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
         Models.Ruleset? storeRuleset = await dbContext.Rulesets.FirstOrDefaultAsync
         (
@@ -463,34 +459,37 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
         List<RulesetItemCategoryRule> allItemCategoryRules = new();
 
-        foreach (uint categoryId in allWeaponItemCategoryIds)
+        if (allWeaponItemCategoryIds is not null)
         {
-            RulesetItemCategoryRule? storeEntity = storeItemCategoryRules?.FirstOrDefault(r => r.ItemCategoryId == categoryId);
-            RulesetItemCategoryRule? defaultEntity = defaultItemCategoryRules.FirstOrDefault(r => r.ItemCategoryId == categoryId);
-
-            if (storeEntity is null)
+            foreach (uint categoryId in allWeaponItemCategoryIds)
             {
-                if (defaultEntity is not null)
+                RulesetItemCategoryRule? storeEntity = storeItemCategoryRules?.FirstOrDefault(r => r.ItemCategoryId == categoryId);
+                RulesetItemCategoryRule? defaultEntity = defaultItemCategoryRules.FirstOrDefault(r => r.ItemCategoryId == categoryId);
+
+                if (storeEntity is null)
                 {
-                    defaultEntity.RulesetId = DEFAULT_RULESET_ID;
-                    createdItemCategoryRules.Add(defaultEntity);
-                    allItemCategoryRules.Add(defaultEntity);
+                    if (defaultEntity is not null)
+                    {
+                        defaultEntity.RulesetId = DEFAULT_RULESET_ID;
+                        createdItemCategoryRules.Add(defaultEntity);
+                        allItemCategoryRules.Add(defaultEntity);
+                    }
+                    else
+                    {
+                        RulesetItemCategoryRule newEntity = BuildRulesetItemCategoryRule(DEFAULT_RULESET_ID, categoryId);
+                        createdItemCategoryRules.Add(newEntity);
+                        allItemCategoryRules.Add(newEntity);
+                    }
                 }
                 else
                 {
-                    RulesetItemCategoryRule newEntity = BuildRulesetItemCategoryRule(DEFAULT_RULESET_ID, categoryId);
-                    createdItemCategoryRules.Add(newEntity);
-                    allItemCategoryRules.Add(newEntity);
-                }
-            }
-            else
-            {
-                storeEntity.Points = defaultEntity?.Points ?? 0;
-                storeEntity.IsBanned = defaultEntity?.IsBanned ?? false;
-                storeEntity.DeferToItemRules = defaultEntity?.DeferToItemRules ?? false;
+                    storeEntity.Points = defaultEntity?.Points ?? 0;
+                    storeEntity.IsBanned = defaultEntity?.IsBanned ?? false;
+                    storeEntity.DeferToItemRules = defaultEntity?.DeferToItemRules ?? false;
 
-                dbContext.RulesetItemCategoryRules.Update(storeEntity);
-                allItemCategoryRules.Add(storeEntity);
+                    dbContext.RulesetItemCategoryRules.Update(storeEntity);
+                    allItemCategoryRules.Add(storeEntity);
+                }
             }
         }
 
@@ -506,7 +505,6 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
         #region Item Rules
 
-        IReadOnlyList<CensusItem>? allWeaponItems = await _itemService.GetAllWeaponsAsync(ct);
 
         RulesetItemRule[] defaultItemRules = GetDefaultItemRules();
         List<RulesetItemRule> createdItemRules = new();
@@ -517,64 +515,72 @@ public class ScrimRulesetManager : IScrimRulesetManager
             allItemIds.AddRange(storeItemRules.Where(r => !allItemIds.Contains(r.ItemId)).Select(r => r.ItemId));
         }
 
-        allItemIds.AddRange(allWeaponItems.Where(r => !allItemIds.Contains(r.ItemId)).Select(r => r.ItemId));
-
+        IReadOnlyList<CensusItem>? allWeaponItems = await _itemService.GetAllWeaponsAsync(ct);
         List<RulesetItemRule> allItemRules = new();
 
-        foreach (uint itemId in allItemIds)
+        if (allWeaponItems is not null)
         {
-            bool isWeaponItem = allWeaponItems.Any(r => r.ItemId == itemId);
-            RulesetItemRule? storeEntity = storeItemRules?.FirstOrDefault(r => r.ItemId == itemId);
-            RulesetItemRule? defaultEntity = defaultItemRules.FirstOrDefault(r => r.ItemId == itemId);
-            uint? categoryId = allWeaponItems.FirstOrDefault(i => i.ItemId == itemId)?.ItemCategoryId;
+            allItemIds.AddRange
+            (
+                allWeaponItems.Where(r => !allItemIds.Contains(r.ItemId))
+                    .Select(r => r.ItemId)
+            );
 
-            bool categoryDefersToItems = false;
-
-            if (categoryId != null)
+            foreach (uint itemId in allItemIds)
             {
-                categoryDefersToItems = allItemCategoryRules.Any(r => r.ItemCategoryId == categoryId && r.DeferToItemRules);
-            }
+                bool isWeaponItem = allWeaponItems.Any(r => r.ItemId == itemId);
+                RulesetItemRule? storeEntity = storeItemRules?.FirstOrDefault(r => r.ItemId == itemId);
+                RulesetItemRule? defaultEntity = defaultItemRules.FirstOrDefault(r => r.ItemId == itemId);
+                uint? categoryId = allWeaponItems.FirstOrDefault(i => i.ItemId == itemId)?.ItemCategoryId;
 
-            if (storeEntity == null)
-            {
-                if (defaultEntity != null)
+                bool categoryDefersToItems = false;
+
+                if (categoryId != null)
                 {
-                    defaultEntity.RulesetId = DEFAULT_RULESET_ID;
-
-                    createdItemRules.Add(defaultEntity);
-                    allItemRules.Add(defaultEntity);
+                    categoryDefersToItems = allItemCategoryRules.Any(r => r.ItemCategoryId == categoryId && r.DeferToItemRules);
                 }
-                else if (isWeaponItem && categoryDefersToItems)
-                {
-                    int defaultPoints = allItemCategoryRules.Where(r => r.ItemCategoryId == categoryId)
-                        .Select(r => r.Points)
-                        .FirstOrDefault();
 
-                    RulesetItemRule newEntity = BuildRulesetItemRule(DEFAULT_RULESET_ID, itemId, categoryId ?? 0, defaultPoints);
-
-                    createdItemRules.Add(newEntity);
-                    allItemRules.Add(newEntity);
-                }
-            }
-            else
-            {
-                if (defaultEntity != null)
+                if (storeEntity == null)
                 {
-                    if (categoryId.HasValue && categoryId != defaultEntity.ItemCategoryId)
+                    if (defaultEntity != null)
                     {
-                        defaultEntity.ItemCategoryId = categoryId.Value;
+                        defaultEntity.RulesetId = DEFAULT_RULESET_ID;
+
+                        createdItemRules.Add(defaultEntity);
+                        allItemRules.Add(defaultEntity);
                     }
+                    else if (isWeaponItem && categoryDefersToItems)
+                    {
+                        int defaultPoints = allItemCategoryRules.Where(r => r.ItemCategoryId == categoryId)
+                            .Select(r => r.Points)
+                            .FirstOrDefault();
 
-                    defaultEntity.RulesetId = DEFAULT_RULESET_ID;
+                        RulesetItemRule newEntity = BuildRulesetItemRule(DEFAULT_RULESET_ID, itemId, categoryId ?? 0, defaultPoints);
 
-                    storeEntity = defaultEntity;
-
-                    dbContext.RulesetItemRules.Update(storeEntity);
-                    allItemRules.Add(storeEntity);
+                        createdItemRules.Add(newEntity);
+                        allItemRules.Add(newEntity);
+                    }
                 }
-                else if (!isWeaponItem || !categoryDefersToItems)
+                else
                 {
-                    dbContext.RulesetItemRules.Remove(storeEntity);
+                    if (defaultEntity != null)
+                    {
+                        if (categoryId.HasValue && categoryId != defaultEntity.ItemCategoryId)
+                        {
+                            defaultEntity.ItemCategoryId = categoryId.Value;
+                        }
+
+                        defaultEntity.RulesetId = DEFAULT_RULESET_ID;
+
+                        storeEntity = defaultEntity;
+
+                        dbContext.RulesetItemRules.Update(storeEntity);
+                        allItemRules.Add(storeEntity);
+                    }
+                    else if (!isWeaponItem || !categoryDefersToItems)
+                    {
+                        dbContext.RulesetItemRules.Remove(storeEntity);
+                    }
                 }
             }
         }
@@ -1065,8 +1071,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
     public async Task SeedScrimActionModelsAsync(CancellationToken ct = default)
     {
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
         List<ScrimAction> createdEntities = new();
         List<ScrimActionType> allActionTypeValues = new(Enum.GetValues<ScrimActionType>());

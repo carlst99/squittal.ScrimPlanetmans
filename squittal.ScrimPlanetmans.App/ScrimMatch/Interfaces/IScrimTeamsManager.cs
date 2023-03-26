@@ -25,15 +25,15 @@ public interface IScrimTeamsManager
     void SetPlayerOnlineStatus(ulong characterId, bool isOnline);
     void SetPlayerLoadoutId(ulong characterId, uint? loadoutId);
     void SetPlayerBenchedStatus(ulong characterId, bool isBenched);
-    Task SaveRoundEndScores(int round);
-    Task RollBackAllTeamStats(int currentRound);
+    Task SaveRoundEndScoresAsync(int round, CancellationToken ct = default);
+    Task RollBackAllTeamStatsAsync(int currentRound, CancellationToken ct = default);
     WorldDefinition? GetNextWorldId(WorldDefinition previousWorldId);
     Team? GetFirstTeamWithFactionId(FactionDefinition factionId);
     void UpdateTeamStats(TeamDefinition teamOrdinal, ScrimEventAggregate updates);
-    Task AdjustTeamPoints(TeamDefinition teamOrdinal, PointAdjustment adjustment);
-    Task RemoveTeamPointAdjustment(TeamDefinition teamOrdinal, PointAdjustment adjustment);
+    Task AdjustTeamPointsAsync(TeamDefinition teamOrdinal, PointAdjustment adjustment, CancellationToken ct = default);
+    Task RemoveTeamPointAdjustmentAsync(TeamDefinition teamOrdinal, PointAdjustment adjustment, CancellationToken ct = default);
     Task<bool> RemoveOutfitFromTeamAndDbAsync(string aliasLower, CancellationToken ct = default);
-    Task<bool> RemoveCharacterFromTeamAndDb(ulong characterId);
+    Task<bool> RemoveCharacterFromTeamAndDbAsync(ulong characterId, CancellationToken ct = default);
     int GetTeamScoreDisplay(TeamDefinition teamOrdinal);
     Task<bool> UpdatePlayerTemporaryAliasAsync(ulong playerId, string newAlias);
     Task ClearPlayerDisplayNameAsync(ulong playerId);
@@ -48,7 +48,12 @@ public interface IScrimTeamsManager
         FactionDefinition factionId
     );
 
-    Task<bool> RemoveConstructedTeamFactionFromTeamAndDb(int constructedTeamId, FactionDefinition factionId);
+    Task<bool> RemoveConstructedTeamFactionFromTeamAndDbAsync
+    (
+        int constructedTeamId,
+        FactionDefinition factionId,
+        CancellationToken ct = default
+    );
     bool IsConstructedTeamFactionAvailable(int constructedTeamId, FactionDefinition factionId);
     bool IsConstructedTeamAnyFactionAvailable(int constructedTeamId);
     void ResetAllTeamsMatchData();

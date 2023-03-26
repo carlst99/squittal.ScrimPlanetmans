@@ -82,27 +82,45 @@ public class Program
 
         // Register the database
         services.AddDbContext<PlanetmansDbContext>
-        (
-            options => options.UseSqlServer
-                (
-                    builder.Configuration.GetConnectionString("PlanetmansDbContext"),
-                    sqlServerOptionsAction: sqlOptions =>
-                    {
-                        sqlOptions.EnableRetryOnFailure
-                        (
-                            maxRetryCount: 5,
-                            maxRetryDelay: TimeSpan.FromSeconds(30),
-                            errorNumbersToAdd: null
-                        );
-                    }
-                )
-                .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
-                .EnableSensitiveDataLogging(builder.Environment.IsDevelopment())
-        );
+            (
+                options => options.UseSqlServer
+                    (
+                        builder.Configuration.GetConnectionString("PlanetmansDbContext"),
+                        sqlServerOptionsAction: sqlOptions =>
+                        {
+                            sqlOptions.EnableRetryOnFailure
+                            (
+                                maxRetryCount: 5,
+                                maxRetryDelay: TimeSpan.FromSeconds(30),
+                                errorNumbersToAdd: null
+                            );
+                        }
+                    )
+                    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
+                    .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()),
+                optionsLifetime: ServiceLifetime.Singleton
+            )
+            .AddDbContextFactory<PlanetmansDbContext>
+            (
+                options => options.UseSqlServer
+                    (
+                        builder.Configuration.GetConnectionString("PlanetmansDbContext"),
+                        sqlServerOptionsAction: sqlOptions =>
+                        {
+                            sqlOptions.EnableRetryOnFailure
+                            (
+                                maxRetryCount: 5,
+                                maxRetryDelay: TimeSpan.FromSeconds(30),
+                                errorNumbersToAdd: null
+                            );
+                        }
+                    )
+                    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
+                    .EnableSensitiveDataLogging(builder.Environment.IsDevelopment())
+            );
 
         services.AddTransient<DbInitializerService>();
-        services.AddSingleton<IDbContextHelper, DbContextHelper>();
-        services.AddSingleton<IDbSeeder, DbSeeder>();
+        services.AddTransient<IDbSeeder, DbSeeder>();
         services.AddTransient<ISqlScriptService, SqlScriptService>();
 
         // Register Census REST services

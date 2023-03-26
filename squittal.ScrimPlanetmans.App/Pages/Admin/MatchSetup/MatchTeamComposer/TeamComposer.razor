@@ -629,7 +629,7 @@
 
         adjustment.Timestamp = DateTime.Now;
 
-        await TeamsManager.AdjustTeamPoints(i_teamOrdinal, adjustment);
+        await TeamsManager.AdjustTeamPointsAsync(i_teamOrdinal, adjustment);
 
         _inputPointAdjustment = new PointAdjustment();
 
@@ -645,7 +645,7 @@
 
     private void HandlePointAdjustmentRemove(PointAdjustment adjustment)
     {
-        TeamsManager.RemoveTeamPointAdjustment(i_teamOrdinal, adjustment);
+        TeamsManager.RemoveTeamPointAdjustmentAsync(i_teamOrdinal, adjustment);
     }
 
 

@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Data;
-using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Forms;
 using squittal.ScrimPlanetmans.App.Models.ScrimMatchReports;
@@ -20,12 +19,12 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
 {
     private const int SCRIM_MATCH_BROWSER_PAGE_SIZE = 15;
 
-    private readonly IDbContextHelper _dbContextHelper;
+    private readonly IDbContextFactory<PlanetmansDbContext> _dbContextFactory;
     private readonly ILogger<ScrimMatchReportDataService> _logger;
 
-    public ScrimMatchReportDataService(IDbContextHelper dbContextHelper, ILogger<ScrimMatchReportDataService> logger)
+    public ScrimMatchReportDataService(IDbContextFactory<PlanetmansDbContext> dbContextFactory, ILogger<ScrimMatchReportDataService> logger)
     {
-        _dbContextHelper = dbContextHelper;
+        _dbContextFactory = dbContextFactory;
         _logger = logger;
     }
 
@@ -33,13 +32,12 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     (
         int? pageIndex,
         ScrimMatchReportBrowserSearchFilter searchFilter,
-        CancellationToken cancellationToken
+        CancellationToken ct
     )
     {
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             IQueryable<ScrimMatchInfo> scrimMatchesQuery = dbContext.ScrimMatchInfo
                 .Where(GetHistoricalScrimMatchBrowserWhereExpression(searchFilter))
@@ -50,7 +48,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
                 scrimMatchesQuery.OrderByDescending(m => m.StartTime),
                 pageIndex ?? 1,
                 SCRIM_MATCH_BROWSER_PAGE_SIZE,
-                cancellationToken
+                ct
             );
 
             foreach (ScrimMatchInfo match in paginatedList.Contents)
@@ -166,49 +164,46 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         return whereExpression;
     }
 
-    public async Task<ScrimMatchInfo?> GetHistoricalScrimMatchInfoAsync(string scrimMatchId, CancellationToken cancellationToken)
+    public async Task<ScrimMatchInfo?> GetHistoricalScrimMatchInfoAsync(string scrimMatchId, CancellationToken ct)
     {
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
         ScrimMatchInfo? scrimMatchInfo = await dbContext.ScrimMatchInfo
-            .FirstOrDefaultAsync(m => m.ScrimMatchId == scrimMatchId, cancellationToken);
+            .FirstOrDefaultAsync(m => m.ScrimMatchId == scrimMatchId, ct);
 
         scrimMatchInfo?.SetTeamAliases();
 
         return scrimMatchInfo;
     }
 
-    public async Task<IEnumerable<uint>> GetScrimMatchBrowserFacilityIdsListAsync(CancellationToken cancellationToken)
+    public async Task<IEnumerable<uint>> GetScrimMatchBrowserFacilityIdsListAsync(CancellationToken ct)
     {
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
         return await dbContext.ScrimMatchRoundConfigurations
             .Where(m => m.FacilityId != null)
             .Distinct()
             .Select(m => m.FacilityId!.Value)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
     }
 
-    public async Task<IEnumerable<Ruleset>> GetScrimMatchBrowseRulesetIdsListAsync(CancellationToken cancellationToken)
+    public async Task<IEnumerable<Ruleset>> GetScrimMatchBrowseRulesetIdsListAsync(CancellationToken ct)
     {
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             List<int> distinctRulesetIds = await dbContext.ScrimMatchInfo
                 .Select(m => m.RulesetId)
                 .Distinct()
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
 
             if (!distinctRulesetIds.Any())
                 return Array.Empty<Ruleset>();
 
             return await dbContext.Rulesets
                 .Where(r => distinctRulesetIds.Contains(r.Id))
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
 
         }
         catch (Exception ex)
@@ -218,18 +213,17 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         }
     }
 
-    public async Task<IEnumerable<ScrimMatchReportInfantryPlayerStats>>  GetHistoricalScrimMatchInfantryPlayerStatsAsync(string scrimMatchId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ScrimMatchReportInfantryPlayerStats>>  GetHistoricalScrimMatchInfantryPlayerStatsAsync(string scrimMatchId, CancellationToken ct)
     {
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             return await dbContext.ScrimMatchReportInfantryPlayerStats
                 .AsNoTracking()
                 .Where(e => e.ScrimMatchId == scrimMatchId)
                 .OrderBy(e => e.NameDisplay)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
 
         }
         catch (TaskCanceledException)
@@ -250,19 +244,18 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         }
     }
 
-    public async Task<IEnumerable<ScrimMatchReportInfantryPlayerRoundStats>> GetHistoricalScrimMatchInfantryPlayerRoundStatsAsync(string scrimMatchId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ScrimMatchReportInfantryPlayerRoundStats>> GetHistoricalScrimMatchInfantryPlayerRoundStatsAsync(string scrimMatchId, CancellationToken ct)
     {
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             return await dbContext.ScrimMatchReportInfantryPlayerRoundStats
                 .AsNoTracking()
                 .Where(e => e.ScrimMatchId == scrimMatchId)
                 .OrderBy(e => e.NameDisplay)
                 .ThenBy(e => e.ScrimMatchRound)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
 
         }
         catch (TaskCanceledException)
@@ -283,18 +276,17 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         }
     }
 
-    public async Task<IEnumerable<ScrimMatchReportInfantryTeamStats>> GetHistoricalScrimMatchInfantryTeamStatsAsync(string scrimMatchId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ScrimMatchReportInfantryTeamStats>> GetHistoricalScrimMatchInfantryTeamStatsAsync(string scrimMatchId, CancellationToken ct)
     {
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             return await dbContext.ScrimMatchReportInfantryTeamStats
                 .AsNoTracking()
                 .Where(e => e.ScrimMatchId == scrimMatchId)
                 .OrderBy(e => e.TeamOrdinal)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
         }
         catch (TaskCanceledException)
         {
@@ -314,19 +306,18 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         }
     }
 
-    public async Task<IEnumerable<ScrimMatchReportInfantryTeamRoundStats>> GetHistoricalScrimMatchInfantryTeamRoundStatsAsync(string scrimMatchId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ScrimMatchReportInfantryTeamRoundStats>> GetHistoricalScrimMatchInfantryTeamRoundStatsAsync(string scrimMatchId, CancellationToken ct)
     {
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             return await dbContext.ScrimMatchReportInfantryTeamRoundStats
                 .AsNoTracking()
                 .Where(e => e.ScrimMatchId == scrimMatchId)
                 .OrderBy(e => e.TeamOrdinal)
                 .ThenBy(e => e.ScrimMatchRound)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
         }
         catch (TaskCanceledException)
         {
@@ -346,18 +337,17 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         }
     }
 
-    public async Task<IEnumerable<ScrimMatchReportInfantryDeath>> GetHistoricalScrimMatchInfantryDeathsAsync(string scrimMatchId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ScrimMatchReportInfantryDeath>> GetHistoricalScrimMatchInfantryDeathsAsync(string scrimMatchId, CancellationToken ct)
     {
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             return await dbContext.ScrimMatchReportInfantryDeaths
                 .AsNoTracking()
                 .Where(e => e.ScrimMatchId == scrimMatchId)
                 .OrderByDescending(e => e.Timestamp)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
         }
         catch (TaskCanceledException)
         {
@@ -377,12 +367,11 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         }
     }
 
-    public async Task<IEnumerable<ScrimMatchReportInfantryDeath>> GetHistoricalScrimMatchInfantryPlayerDeathsAsync(string scrimMatchId, string characterId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ScrimMatchReportInfantryDeath>> GetHistoricalScrimMatchInfantryPlayerDeathsAsync(string scrimMatchId, string characterId, CancellationToken ct)
     {
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             return await dbContext.ScrimMatchReportInfantryDeaths
                 .AsNoTracking()
@@ -390,7 +379,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
                     && ( e.AttackerCharacterId == characterId
                         || e.VictimCharacterId == characterId ) )
                 .OrderByDescending(e => e.Timestamp)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
         }
         catch (TaskCanceledException)
         {
@@ -410,12 +399,11 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         }
     }
 
-    public async Task<IEnumerable<ScrimMatchReportInfantryPlayerHeadToHeadStats>> GetHistoricalScrimMatchInfantryPlayerHeadToHeadStatsAsync(string scrimMatchId, string characterId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ScrimMatchReportInfantryPlayerHeadToHeadStats>> GetHistoricalScrimMatchInfantryPlayerHeadToHeadStatsAsync(string scrimMatchId, string characterId, CancellationToken ct)
     {
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             return await dbContext.ScrimMatchReportInfantryPlayerHeadToHeadStats
                 .AsNoTracking()
@@ -423,7 +411,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
                     && e.PlayerCharacterId == characterId)
                 .OrderByDescending(e => e.PlayerTeamOrdinal != e.OpponentTeamOrdinal)
                 .ThenBy(e => e.OpponentNameDisplay)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
         }
         catch (TaskCanceledException)
         {
@@ -443,19 +431,18 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         }
     }
 
-    public async Task<IEnumerable<ScrimMatchReportInfantryPlayerClassEventCounts>> GetHistoricalScrimMatchInfantryPlayeClassEventCountsAsync(string scrimMatchId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ScrimMatchReportInfantryPlayerClassEventCounts>> GetHistoricalScrimMatchInfantryPlayeClassEventCountsAsync(string scrimMatchId, CancellationToken ct)
     {
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             return await dbContext.ScrimMatchReportInfantryPlayerClassEventCounts
                 .AsNoTracking()
                 .Where(e => e.ScrimMatchId == scrimMatchId)
                 .OrderByDescending(e => e.TeamOrdinal)
                 .ThenBy(e => e.NameDisplay)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
         }
         catch (TaskCanceledException)
         {
@@ -475,12 +462,11 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         }
     }
 
-    public async Task<IEnumerable<ScrimMatchReportInfantryPlayerWeaponStats>> GetHistoricalScrimMatchInfantryPlayerWeaponStatsAsync(string scrimMatchId, string characterId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ScrimMatchReportInfantryPlayerWeaponStats>> GetHistoricalScrimMatchInfantryPlayerWeaponStatsAsync(string scrimMatchId, string characterId, CancellationToken ct)
     {
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             return await dbContext.ScrimMatchReportInfantryPlayerWeaponStats
                 .AsNoTracking()
@@ -489,7 +475,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
                 .OrderByDescending(e => e.Kills)
                 .ThenByDescending(e => e.Deaths)
                 .ThenBy(e => e.WeaponId)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
         }
         catch (TaskCanceledException)
         {
@@ -513,7 +499,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
     //{
     //    try
     //    {
-    //        using var factory = _dbContextHelper.GetFactory();
+    //        using var factory = _dbContextFactory.GetFactory();
     //        var dbContext = factory.GetDbContext();
 
     //        var scrimMatchesQuery = dbContext.ScrimMatchReportInfantryDeaths.Where(d => d.ScrimMatchId == scrimMatchId).AsQueryable();

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
@@ -10,15 +11,15 @@ public interface IScrimMatchDataService
     int CurrentMatchRound { get; set; }
     int CurrentMatchRulesetId { get; set; }
 
-    Task SaveToCurrentMatch(Data.Models.ScrimMatch scrimMatch);
+    Task SaveToCurrentMatchAsync(Data.Models.ScrimMatch scrimMatch, CancellationToken ct = default);
 
-    Task SaveCurrentMatchRoundConfiguration(MatchConfiguration matchConfiguration);
-    Task RemoveMatchRoundConfiguration(int roundToDelete);
+    Task SaveCurrentMatchRoundConfigurationAsync(MatchConfiguration matchConfiguration, CancellationToken ct = default);
+    Task RemoveMatchRoundConfigurationAsync(int roundToDelete, CancellationToken ct = default);
 
 
-    Task<Data.Models.ScrimMatch> GetCurrentMatch();
+    Task<Data.Models.ScrimMatch?> GetCurrentMatchAsync(CancellationToken ct = default);
 
     IEnumerable<Data.Models.ScrimMatch> GetAllMatches();
-    Task<bool> TryRemoveMatchParticipatingPlayer(ulong characterId);
-    Task SaveMatchParticipatingPlayer(Player player);
+    Task<bool> TryRemoveMatchParticipatingPlayerAsync(ulong characterId, CancellationToken ct = default);
+    Task SaveMatchParticipatingPlayerAsync(Player player, CancellationToken ct = default);
 }

@@ -290,7 +290,7 @@ else
     {
         if (!_isLoadingMembers)
         {
-            await TeamsManager.RemoveConstructedTeamFactionFromTeamAndDb(_renderedConstructedTeamMatchInfo.ConstructedTeam.Id, _renderedConstructedTeamMatchInfo.ActiveFactionId);
+            await TeamsManager.RemoveConstructedTeamFactionFromTeamAndDbAsync(_renderedConstructedTeamMatchInfo.ConstructedTeam.Id, _renderedConstructedTeamMatchInfo.ActiveFactionId);
         }
     }
     #endregion Form Submission & Validation

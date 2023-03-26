@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.CensusRest;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Data;
-using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
@@ -23,7 +22,7 @@ namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 
 public class ConstructedTeamService : IConstructedTeamService
 {
-    private readonly IDbContextHelper _dbContextHelper;
+    private readonly IDbContextFactory<PlanetmansDbContext> _dbContextFactory;
     private readonly ICensusCharacterService _characterService;
     private readonly IScrimPlayersService _playerService;
     private readonly IScrimMessageBroadcastService _messageService;
@@ -39,14 +38,14 @@ public class ConstructedTeamService : IConstructedTeamService
 
     public ConstructedTeamService
     (
-        IDbContextHelper dbContextHelper,
+        IDbContextFactory<PlanetmansDbContext> dbContextFactory,
         ICensusCharacterService characterService,
         IScrimPlayersService playerService,
         IScrimMessageBroadcastService messageService,
         ILogger<ConstructedTeamService> logger
     )
     {
-        _dbContextHelper = dbContextHelper;
+        _dbContextFactory = dbContextFactory;
         _characterService = characterService;
         _playerService = playerService;
         _messageService = messageService;
@@ -72,8 +71,7 @@ public class ConstructedTeamService : IConstructedTeamService
 
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             team.PlayerMemberships = await dbContext.ConstructedTeamPlayerMemberships
                 .Where(m => m.ConstructedTeamId == teamId)
@@ -92,8 +90,7 @@ public class ConstructedTeamService : IConstructedTeamService
     {
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             return await dbContext.ConstructedTeamPlayerMemberships
                 .Where(m => m.ConstructedTeamId == teamId)
@@ -113,8 +110,7 @@ public class ConstructedTeamService : IConstructedTeamService
         CancellationToken ct = default
     )
     {
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
         return await dbContext.ConstructedTeamPlayerMemberships
             .Where(m => m.ConstructedTeamId == teamId && m.FactionId == factionId)
@@ -129,8 +125,7 @@ public class ConstructedTeamService : IConstructedTeamService
         CancellationToken ct = default
     )
     {
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
         return await dbContext.ConstructedTeamPlayerMemberships
             .Where(m => m.ConstructedTeamId == teamId && m.FactionId == factionId)
@@ -408,8 +403,7 @@ public class ConstructedTeamService : IConstructedTeamService
         {
             try
             {
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
                 ConstructedTeam? storeEntity = await GetConstructedTeamAsync(updateId, true, ct);
 
@@ -461,8 +455,7 @@ public class ConstructedTeamService : IConstructedTeamService
         {
             try
             {
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
                 dbContext.ConstructedTeams.Add(constructedTeam);
 
@@ -653,8 +646,7 @@ public class ConstructedTeamService : IConstructedTeamService
         CancellationToken ct = default
     )
     {
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
         // Don't allow NSO characters onto teams
         if (factionId is not (FactionDefinition.NC or FactionDefinition.TR or FactionDefinition.VS))
@@ -725,8 +717,7 @@ public class ConstructedTeamService : IConstructedTeamService
         CancellationToken ct = default
     )
     {
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
         try
         {
@@ -798,8 +789,7 @@ public class ConstructedTeamService : IConstructedTeamService
         CancellationToken ct
     )
     {
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
         try
         {
@@ -845,8 +835,7 @@ public class ConstructedTeamService : IConstructedTeamService
     {
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             List<ConstructedTeam> teams = await dbContext.ConstructedTeams.ToListAsync(cancellationToken: ct);
 
@@ -881,8 +870,7 @@ public class ConstructedTeamService : IConstructedTeamService
         CancellationToken ct = default
     )
     {
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
         return await dbContext.ConstructedTeamPlayerMemberships.AnyAsync
         (
@@ -912,8 +900,7 @@ public class ConstructedTeamService : IConstructedTeamService
         CancellationToken ct = default
     )
     {
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
         return await dbContext.ScrimMatchParticipatingPlayers.AnyAsync
         (
@@ -922,15 +909,6 @@ public class ConstructedTeamService : IConstructedTeamService
                 && p.CharacterId == characterId,
             cancellationToken: ct
         );
-    }
-
-    public async Task<bool> GetIsConstructedTeamMatchParticipant(int teamId)
-    {
-        using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-        PlanetmansDbContext dbContext = factory.GetDbContext();
-
-        return await dbContext.ScrimMatchParticipatingPlayers.AnyAsync(p => p.IsFromConstructedTeam
-            && p.ConstructedTeamId == teamId);
     }
 
     public static bool IsValidConstructedTeamName(string name)

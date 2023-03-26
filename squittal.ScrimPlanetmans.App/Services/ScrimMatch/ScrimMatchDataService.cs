@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Data;
-using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 
@@ -14,7 +14,7 @@ namespace squittal.ScrimPlanetmans.App.Services.ScrimMatch;
 
 public class ScrimMatchDataService : IScrimMatchDataService
 {
-    private readonly IDbContextHelper _dbContextHelper;
+    private readonly IDbContextFactory<PlanetmansDbContext> _dbContextFactory;
     private readonly ILogger<ScrimMatchDataService> _logger;
 
     public string CurrentMatchId { get ; set; }
@@ -25,9 +25,9 @@ public class ScrimMatchDataService : IScrimMatchDataService
     private readonly KeyedSemaphoreSlim _scrimMatchRoundConfigurationLock = new();
     private readonly KeyedSemaphoreSlim _scrimMatchParticipatingPlayerLock = new();
 
-    public ScrimMatchDataService(IDbContextHelper dbContextHelper, ILogger<ScrimMatchDataService> logger)
+    public ScrimMatchDataService(IDbContextFactory<PlanetmansDbContext> dbContextFactory, ILogger<ScrimMatchDataService> logger)
     {
-        _dbContextHelper = dbContextHelper;
+        _dbContextFactory = dbContextFactory;
         _logger = logger;
     }
 
@@ -36,33 +36,31 @@ public class ScrimMatchDataService : IScrimMatchDataService
         throw new NotImplementedException();
     }
 
-    public async Task<Data.Models.ScrimMatch> GetCurrentMatch()
+    public async Task<Data.Models.ScrimMatch?> GetCurrentMatchAsync(CancellationToken ct = default)
     {
         string matchId = CurrentMatchId;
 
-        using (await _scrimMatchLock.WaitAsync(matchId))
+        using (await _scrimMatchLock.WaitAsync(matchId, ct))
         {
             try
             {
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
-                return await dbContext.ScrimMatches.FirstOrDefaultAsync(sm => sm.Id == matchId);
+                return await dbContext.ScrimMatches.FirstOrDefaultAsync(sm => sm.Id == matchId, ct);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.ToString());
-
+                _logger.LogError(ex, "Failed to get current match");
                 return null;
             }
         }
     }
 
-    public async Task SaveToCurrentMatch(Data.Models.ScrimMatch scrimMatch)
+    public async Task SaveToCurrentMatchAsync(Data.Models.ScrimMatch scrimMatch, CancellationToken ct = default)
     {
         string id = scrimMatch.Id;
 
-        using (await _scrimMatchLock.WaitAsync(id))
+        using (await _scrimMatchLock.WaitAsync(id, ct))
         {
             string oldMatchId = CurrentMatchId;
 
@@ -72,10 +70,10 @@ public class ScrimMatchDataService : IScrimMatchDataService
             {
                 CurrentMatchId = id;
 
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
-                Data.Models.ScrimMatch? storeEntity = await dbContext.ScrimMatches.FirstOrDefaultAsync(sm => sm.Id == id);
+                Data.Models.ScrimMatch? storeEntity = await dbContext.ScrimMatches
+                    .FirstOrDefaultAsync(sm => sm.Id == id, ct);
 
                 if (storeEntity == null)
                 {
@@ -87,7 +85,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
                     dbContext.ScrimMatches.Update(storeEntity);
                 }
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {
@@ -98,12 +96,16 @@ public class ScrimMatchDataService : IScrimMatchDataService
         }
     }
 
-    public async Task SaveCurrentMatchRoundConfiguration(MatchConfiguration matchConfiguration)
+    public async Task SaveCurrentMatchRoundConfigurationAsync
+    (
+        MatchConfiguration matchConfiguration,
+        CancellationToken ct = default
+    )
     {
         string matchId = CurrentMatchId;
         int round = CurrentMatchRound;
 
-        using (await _scrimMatchRoundConfigurationLock.WaitAsync($"{matchId}_{round}"))
+        using (await _scrimMatchRoundConfigurationLock.WaitAsync($"{matchId}_{round}", ct))
         {
             if (round <= 0)
             {
@@ -112,10 +114,10 @@ public class ScrimMatchDataService : IScrimMatchDataService
 
             try
             {
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
-                Data.Models.ScrimMatch? matchEntity = await dbContext.ScrimMatches.FirstOrDefaultAsync(sm => sm.Id == matchId);
+                Data.Models.ScrimMatch? matchEntity = await dbContext.ScrimMatches
+                    .FirstOrDefaultAsync(sm => sm.Id == matchId, ct);
 
                 if (matchEntity == null)
                 {
@@ -124,7 +126,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
 
                 ScrimMatchRoundConfiguration? storeEntity = await dbContext.ScrimMatchRoundConfigurations
                     .Where(rc => rc.ScrimMatchId == matchId && rc.ScrimMatchRound == round)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync(ct);
 
                 if (storeEntity == null)
                 {
@@ -136,7 +138,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
                     dbContext.ScrimMatchRoundConfigurations.Update(storeEntity);
                 }
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {
@@ -145,31 +147,25 @@ public class ScrimMatchDataService : IScrimMatchDataService
         }
     }
 
-    public async Task RemoveMatchRoundConfiguration(int roundToDelete)
+    public async Task RemoveMatchRoundConfigurationAsync(int roundToDelete, CancellationToken ct = default)
     {
         string matchId = CurrentMatchId;
 
-        using (await _scrimMatchRoundConfigurationLock.WaitAsync($"{matchId}_{roundToDelete}"))
+        using (await _scrimMatchRoundConfigurationLock.WaitAsync($"{matchId}_{roundToDelete}", ct))
         {
             try
             {
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
                 ScrimMatchRoundConfiguration? storeEntity = await dbContext.ScrimMatchRoundConfigurations
                     .Where(rc => rc.ScrimMatchId == matchId && rc.ScrimMatchRound == roundToDelete)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync(ct);
 
                 if (storeEntity == null)
-                {
                     return;
-                }
-                else
-                {
-                    dbContext.ScrimMatchRoundConfigurations.Remove(storeEntity);
-                }
 
-                await dbContext.SaveChangesAsync();
+                dbContext.ScrimMatchRoundConfigurations.Remove(storeEntity);
+                await dbContext.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {
@@ -193,20 +189,19 @@ public class ScrimMatchDataService : IScrimMatchDataService
         };
     }
 
-    public async Task SaveMatchParticipatingPlayer(Player player)
+    public async Task SaveMatchParticipatingPlayerAsync(Player player, CancellationToken ct = default)
     {
         string matchId = CurrentMatchId;
 
-        using (await _scrimMatchParticipatingPlayerLock.WaitAsync($"{player.Id}_{matchId}"))
+        using (await _scrimMatchParticipatingPlayerLock.WaitAsync($"{player.Id}_{matchId}", ct))
         {
             try
             {
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
                 ScrimMatchParticipatingPlayer? storeEntity = await dbContext.ScrimMatchParticipatingPlayers
                     .Where(p => p.CharacterId == player.Id && p.ScrimMatchId == matchId)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync(ct);
 
                 if (storeEntity == null)
                 {
@@ -218,7 +213,7 @@ public class ScrimMatchDataService : IScrimMatchDataService
                     dbContext.ScrimMatchParticipatingPlayers.Update(storeEntity);
                 }
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {
@@ -227,27 +222,26 @@ public class ScrimMatchDataService : IScrimMatchDataService
         }
     }
 
-    public async Task<bool> TryRemoveMatchParticipatingPlayer(ulong characterId)
+    public async Task<bool> TryRemoveMatchParticipatingPlayerAsync(ulong characterId, CancellationToken ct = default)
     {
         string matchId = CurrentMatchId;
 
-        using (await _scrimMatchParticipatingPlayerLock.WaitAsync($"{characterId}_{matchId}"))
+        using (await _scrimMatchParticipatingPlayerLock.WaitAsync($"{characterId}_{matchId}", ct))
         {
             try
             {
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
                 ScrimMatchParticipatingPlayer? storeEntity = await dbContext.ScrimMatchParticipatingPlayers
                     .Where(p => p.CharacterId == characterId && p.ScrimMatchId == matchId)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync(ct);
 
                 if (storeEntity == null)
                     return false;
 
 
                 dbContext.ScrimMatchParticipatingPlayers.Remove(storeEntity);
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
 
                 return true;
             }

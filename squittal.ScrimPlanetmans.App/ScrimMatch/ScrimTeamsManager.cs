@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Data;
-using squittal.ScrimPlanetmans.App.Data.Interfaces;
 using squittal.ScrimPlanetmans.App.Data.Models;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.Planetside;
@@ -33,7 +32,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
     private readonly IOutfitService _outfitService;
     private readonly IConstructedTeamService _constructedTeamService;
     private readonly IScrimMessageBroadcastService _messageService;
-    private readonly IDbContextHelper _dbContextHelper;
+    private readonly IDbContextFactory<PlanetmansDbContext> _dbContextFactory;
     private readonly IScrimMatchDataService _matchDataService;
 
     private readonly Dictionary<TeamDefinition, Team> _ordinalTeamMap = new();
@@ -51,7 +50,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         IScrimMessageBroadcastService messageService,
         IScrimMatchDataService matchDataService,
         IConstructedTeamService constructedTeamService,
-        IDbContextHelper dbContextHelper
+        IDbContextFactory<PlanetmansDbContext> dbContextFactory
     )
     {
         _logger = logger;
@@ -60,7 +59,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         _messageService = messageService;
         _matchDataService = matchDataService;
         _constructedTeamService = constructedTeamService;
-        _dbContextHelper = dbContextHelper;
+        _dbContextFactory = dbContextFactory;
 
         foreach (TeamDefinition teamDef in Enum.GetValues<TeamDefinition>())
             _ordinalTeamMap[teamDef] = new Team(teamDef.ToString(), teamDef.ToString(), teamDef);
@@ -189,7 +188,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         _messageService.BroadcastPlayerNameDisplayChangeMessage(new PlayerNameDisplayChangeMessage(player, newAlias, oldAlias));
 
         if (player.IsParticipating)
-            await _matchDataService.SaveMatchParticipatingPlayer(player);
+            await _matchDataService.SaveMatchParticipatingPlayerAsync(player);
 
         return true;
     }
@@ -213,7 +212,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         _messageService.BroadcastPlayerNameDisplayChangeMessage(new PlayerNameDisplayChangeMessage(player, string.Empty, oldAlias));
 
         if (player.IsParticipating)
-            await _matchDataService.SaveMatchParticipatingPlayer(player);
+            await _matchDataService.SaveMatchParticipatingPlayerAsync(player);
     }
 
     public async Task<bool> TryAddFreeTextInputCharacterToTeamAsync(TeamDefinition teamOrdinal, string inputString)
@@ -557,8 +556,8 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         if (teamOrdinal.HasValue)
             await RemoveOutfitMatchDataFromDbAsync(outfit.Id, teamOrdinal.Value, ct);
-        await TryUpdateAllTeamMatchResultsInDb();
-        await UpdateMatchParticipatingPlayers();
+        await TryUpdateAllTeamMatchResultsInDbAsync(ct);
+        await UpdateMatchParticipatingPlayersAsync(ct);
 
         return true;
     }
@@ -622,8 +621,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             List<ScrimMatchParticipatingPlayer> participatingPlayers = await dbContext.ScrimMatchParticipatingPlayers
                 .Where(e => e.ScrimMatchId == currentMatchId
@@ -635,7 +633,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
             // TODO: can a TaskList be used safely for this?
             foreach (ScrimMatchParticipatingPlayer player in participatingPlayers)
             {
-                await RemoveCharacterMatchDataFromDb(player.CharacterId, teamOrdinal);
+                await RemoveCharacterMatchDataFromDbAsync(player.CharacterId, teamOrdinal, ct);
             }
         }
         catch (Exception ex)
@@ -644,7 +642,12 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    public async Task<bool> RemoveConstructedTeamFactionFromTeamAndDb(int constructedTeamId, FactionDefinition factionId)
+    public async Task<bool> RemoveConstructedTeamFactionFromTeamAndDbAsync
+    (
+        int constructedTeamId,
+        FactionDefinition factionId,
+        CancellationToken ct = default
+    )
     {
         bool success = RemoveConstructedTeamFactionFromTeam(constructedTeamId, factionId);
 
@@ -655,14 +658,14 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         List<Task> TaskList = new();
 
-        await RemoveConstructedTeamFactionMatchDataFromDb(constructedTeamId, factionId);
+        await RemoveConstructedTeamFactionMatchDataFromDbAsync(constructedTeamId, factionId, ct);
 
-        Task updateTeamResultsToDbTask = TryUpdateAllTeamMatchResultsInDb();
+        Task updateTeamResultsToDbTask = TryUpdateAllTeamMatchResultsInDbAsync(ct);
         TaskList.Add(updateTeamResultsToDbTask);
 
         await Task.WhenAll(TaskList);
 
-        await UpdateMatchParticipatingPlayers();
+        await UpdateMatchParticipatingPlayersAsync(ct);
 
         return true;
     }
@@ -729,7 +732,12 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return anyPlayersRemoved;
     }
 
-    private async Task RemoveConstructedTeamFactionMatchDataFromDb(int constructedTeamId, FactionDefinition factionId)
+    private async Task RemoveConstructedTeamFactionMatchDataFromDbAsync
+    (
+        int constructedTeamId,
+        FactionDefinition factionId,
+        CancellationToken ct
+    )
     {
         Team? team = GetTeamFromConstructedTeamFaction(constructedTeamId, factionId);
 
@@ -749,29 +757,28 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             List<ScrimMatchParticipatingPlayer> participatingPlayers = await dbContext.ScrimMatchParticipatingPlayers
                 .Where(e => e.ScrimMatchId == currentMatchId
                     && e.IsFromConstructedTeam
                     && e.ConstructedTeamId == constructedTeamId
                     && e.FactionId == factionId)
-                .ToListAsync();
+                .ToListAsync(ct);
 
             // TODO: can a TaskList be used safely for this?
             foreach (ScrimMatchParticipatingPlayer player in participatingPlayers)
             {
-                await RemoveCharacterMatchDataFromDb(player.CharacterId, teamOrdinal);
+                await RemoveCharacterMatchDataFromDbAsync(player.CharacterId, teamOrdinal, ct);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            _logger.LogError(ex, "Failed to remove a constructed team's match data, given its faction ID");
         }
     }
 
-    public async Task<bool> RemoveCharacterFromTeamAndDb(ulong characterId)
+    public async Task<bool> RemoveCharacterFromTeamAndDbAsync(ulong characterId, CancellationToken ct = default)
     {
         TeamDefinition? teamOrdinal = GetTeamOrdinalFromPlayerId(characterId);
         if (teamOrdinal is null)
@@ -786,47 +793,57 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         List<Task> TaskList = new();
 
-        await RemoveCharacterMatchDataFromDb(characterId, teamOrdinal.Value);
+        await RemoveCharacterMatchDataFromDbAsync(characterId, teamOrdinal.Value, ct);
 
-        Task updateTeamResultsToDbTask = TryUpdateAllTeamMatchResultsInDb();
+        Task updateTeamResultsToDbTask = TryUpdateAllTeamMatchResultsInDbAsync(ct);
         TaskList.Add(updateTeamResultsToDbTask);
 
         await Task.WhenAll(TaskList);
 
-        await UpdateMatchParticipatingPlayers();
+        await UpdateMatchParticipatingPlayersAsync(ct);
 
         return true;
     }
 
-    private async Task RemoveCharacterMatchDataFromDb(ulong characterId, TeamDefinition teamOrdinal)
+    private async Task RemoveCharacterMatchDataFromDbAsync
+    (
+        ulong characterId,
+        TeamDefinition teamOrdinal,
+        CancellationToken ct
+    )
     {
         List<Task> TaskList = new();
 
-        Task deathsTask = RemoveCharacterMatchDeathsFromDb(characterId, teamOrdinal);
+        Task deathsTask = RemoveCharacterMatchDeathsFromDbAsync(characterId, teamOrdinal, ct);
         TaskList.Add(deathsTask);
 
-        Task destructionsTask = RemoveCharacterMatchVehicleDestructionsFromDb(characterId);
+        Task destructionsTask = RemoveCharacterMatchVehicleDestructionsFromDbAsync(characterId, ct);
         TaskList.Add(destructionsTask);
 
-        Task revivesTask = RemoveCharacterMatchRevivesFromDb(characterId, teamOrdinal);
+        Task revivesTask = RemoveCharacterMatchRevivesFromDbAsync(characterId, teamOrdinal, ct);
         TaskList.Add(revivesTask);
 
-        Task damageAssistsTask = RemoveCharacterMatchDamageAssistsFromDb(characterId, teamOrdinal);
+        Task damageAssistsTask = RemoveCharacterMatchDamageAssistsFromDbAsync(characterId, teamOrdinal, ct);
         TaskList.Add(damageAssistsTask);
 
-        Task grenadeAssistsTask = RemoveCharacterMatchGrenadeAssistsFromDb(characterId, teamOrdinal);
+        Task grenadeAssistsTask = RemoveCharacterMatchGrenadeAssistsFromDbAsync(characterId, teamOrdinal, ct);
         TaskList.Add(grenadeAssistsTask);
 
-        Task spotAssistsTask = RemoveCharacterMatchSpotAssistsFromDb(characterId, teamOrdinal);
+        Task spotAssistsTask = RemoveCharacterMatchSpotAssistsFromDbAsync(characterId, teamOrdinal, ct);
         TaskList.Add(spotAssistsTask);
 
         await Task.WhenAll(TaskList);
 
-        await _matchDataService.TryRemoveMatchParticipatingPlayer(characterId); // TODO: add this to TaskList?
+        await _matchDataService.TryRemoveMatchParticipatingPlayerAsync(characterId, ct); // TODO: add this to TaskList?
     }
 
     #region Remove Character Match Events From DB
-    private async Task RemoveCharacterMatchDeathsFromDb(ulong characterId, TeamDefinition teamOrdinal)
+    private async Task RemoveCharacterMatchDeathsFromDbAsync
+    (
+        ulong characterId,
+        TeamDefinition teamOrdinal,
+        CancellationToken ct
+    )
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
         int currentMatchRound = _matchDataService.CurrentMatchRound;
@@ -836,18 +853,17 @@ public class ScrimTeamsManager : IScrimTeamsManager
             return;
         }
 
-        using (await _characterMatchDataLock.WaitAsync("Deaths"))
+        using (await _characterMatchDataLock.WaitAsync("Deaths", ct))
         {
             try
             {
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
                 List<ScrimDeath>? allDeathEvents = await dbContext.ScrimDeaths
                     .Where(e => e.ScrimMatchId == currentMatchId
                         && (e.AttackerCharacterId == characterId
                             || e.VictimCharacterId == characterId))
-                    .ToListAsync();
+                    .ToListAsync(ct);
 
                 if (allDeathEvents.Count is 0)
                     return;
@@ -1018,7 +1034,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
                 dbContext.ScrimDeaths.RemoveRange(allDeathEvents);
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
 
             }
             catch (Exception ex)
@@ -1028,26 +1044,25 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    private async Task RemoveCharacterMatchVehicleDestructionsFromDb(ulong characterId)
+    private async Task RemoveCharacterMatchVehicleDestructionsFromDbAsync(ulong characterId, CancellationToken ct)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
 
-        using (await _characterMatchDataLock.WaitAsync("Destructions"))
+        using (await _characterMatchDataLock.WaitAsync("Destructions", ct))
         {
             try
             {
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
                 List<ScrimVehicleDestruction> destructionsToRemove = await dbContext.ScrimVehicleDestructions
                     .Where(e => e.ScrimMatchId == currentMatchId
                         && (e.AttackerCharacterId == characterId
                             || e.VictimCharacterId == characterId))
-                    .ToListAsync();
+                    .ToListAsync(ct);
 
                 dbContext.ScrimVehicleDestructions.RemoveRange(destructionsToRemove);
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {
@@ -1056,7 +1071,12 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    private async Task RemoveCharacterMatchRevivesFromDb(ulong characterId, TeamDefinition teamOrdinal)
+    private async Task RemoveCharacterMatchRevivesFromDbAsync
+    (
+        ulong characterId,
+        TeamDefinition teamOrdinal,
+        CancellationToken ct
+    )
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
         int currentMatchRound = _matchDataService.CurrentMatchRound;
@@ -1066,12 +1086,11 @@ public class ScrimTeamsManager : IScrimTeamsManager
             return;
         }
 
-        using (await _characterMatchDataLock.WaitAsync($"Revives"))
+        using (await _characterMatchDataLock.WaitAsync("Revives", ct))
         {
             try
             {
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
                 List<ScrimRevive> allReviveEvents = await dbContext.ScrimRevives
                     .Where
@@ -1079,7 +1098,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
                         e => e.ScrimMatchId == currentMatchId
                             && (e.MedicCharacterId == characterId || e.RevivedCharacterId == characterId)
                     )
-                    .ToListAsync();
+                    .ToListAsync(ct);
 
                 if (allReviveEvents.Count is 0)
                     return;
@@ -1204,7 +1223,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
                 dbContext.ScrimRevives.RemoveRange(allReviveEvents);
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {
@@ -1213,7 +1232,12 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    private async Task RemoveCharacterMatchDamageAssistsFromDb(ulong characterId, TeamDefinition teamOrdinal)
+    private async Task RemoveCharacterMatchDamageAssistsFromDbAsync
+    (
+        ulong characterId,
+        TeamDefinition teamOrdinal,
+        CancellationToken ct
+    )
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
         int currentMatchRound = _matchDataService.CurrentMatchRound;
@@ -1223,18 +1247,17 @@ public class ScrimTeamsManager : IScrimTeamsManager
             return;
         }
 
-        using (await _characterMatchDataLock.WaitAsync("Damages"))
+        using (await _characterMatchDataLock.WaitAsync("Damages", ct))
         {
             try
             {
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
                 List<ScrimDamageAssist>? allDamageAssistEvents = await dbContext.ScrimDamageAssists
                     .Where(e => e.ScrimMatchId == currentMatchId
                         && (e.AttackerCharacterId == characterId
                             || e.VictimCharacterId == characterId))
-                    .ToListAsync();
+                    .ToListAsync(ct);
 
                 if (allDamageAssistEvents.Count is 0)
                 {
@@ -1390,7 +1413,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
                 dbContext.ScrimDamageAssists.RemoveRange(allDamageAssistEvents);
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {
@@ -1399,7 +1422,12 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    private async Task RemoveCharacterMatchGrenadeAssistsFromDb(ulong characterId, TeamDefinition teamOrdinal)
+    private async Task RemoveCharacterMatchGrenadeAssistsFromDbAsync
+    (
+        ulong characterId,
+        TeamDefinition teamOrdinal,
+        CancellationToken ct
+    )
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
         int currentMatchRound = _matchDataService.CurrentMatchRound;
@@ -1409,18 +1437,17 @@ public class ScrimTeamsManager : IScrimTeamsManager
             return;
         }
 
-        using (await _characterMatchDataLock.WaitAsync($"Grenades"))
+        using (await _characterMatchDataLock.WaitAsync("Grenades", ct))
         {
             try
             {
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
                 List<ScrimGrenadeAssist>? allGrenadeAssistEvents = await dbContext.ScrimGrenadeAssists
                     .Where(e => e.ScrimMatchId == currentMatchId
                         && (e.AttackerCharacterId == characterId
                             || e.VictimCharacterId == characterId))
-                    .ToListAsync();
+                    .ToListAsync(ct);
 
                 if (allGrenadeAssistEvents.Count is 0)
                 {
@@ -1573,7 +1600,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
                 dbContext.ScrimGrenadeAssists.RemoveRange(allGrenadeAssistEvents);
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {
@@ -1582,7 +1609,12 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    private async Task RemoveCharacterMatchSpotAssistsFromDb(ulong characterId, TeamDefinition teamOrdinal)
+    private async Task RemoveCharacterMatchSpotAssistsFromDbAsync
+    (
+        ulong characterId,
+        TeamDefinition teamOrdinal,
+        CancellationToken ct
+    )
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
         int currentMatchRound = _matchDataService.CurrentMatchRound;
@@ -1593,18 +1625,17 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
 
 
-        using (await _characterMatchDataLock.WaitAsync("Spots"))
+        using (await _characterMatchDataLock.WaitAsync("Spots", ct))
         {
             try
             {
-                using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-                PlanetmansDbContext dbContext = factory.GetDbContext();
+                await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
                 List<ScrimSpotAssist>? allSpotAssistEvents = await dbContext.ScrimSpotAssists
                     .Where(e => e.ScrimMatchId == currentMatchId
                         && (e.SpotterCharacterId == characterId
                             || e.VictimCharacterId == characterId))
-                    .ToListAsync();
+                    .ToListAsync(ct);
 
                 if (allSpotAssistEvents == null || !allSpotAssistEvents.Any())
                 {
@@ -1732,7 +1763,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
                 dbContext.ScrimSpotAssists.RemoveRange(allSpotAssistEvents);
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(ct);
 
             }
             catch (Exception ex)
@@ -1843,14 +1874,13 @@ public class ScrimTeamsManager : IScrimTeamsManager
         return false;
     }
 
-    private async Task UpdateMatchParticipatingPlayers()
+    private async Task UpdateMatchParticipatingPlayersAsync(CancellationToken ct)
     {
         string matchId = _matchDataService.CurrentMatchId;
 
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             List<ulong> allMatchParticipatingPlayerIds = await dbContext.ScrimMatchParticipatingPlayers
                 .Where(e => e.ScrimMatchId == matchId)
@@ -2082,7 +2112,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
             List<Player> playersToRemove = team.Players.Where(p => !p.IsVisibleInTeamComposer).ToList();
 
-            Dictionary<Player, Task<bool>> removeTasks = playersToRemove.ToDictionary(p => p, p => RemoveCharacterFromTeamAndDb(p.Id));
+            Dictionary<Player, Task<bool>> removeTasks = playersToRemove.ToDictionary(p => p, p => RemoveCharacterFromTeamAndDbAsync(p.Id));
 
             await Task.WhenAll(removeTasks.Values);
 
@@ -2121,7 +2151,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
     #endregion Team Locking
 
     #region Roll Back Round
-    public async Task RollBackAllTeamStats(int currentRound)
+    public async Task RollBackAllTeamStatsAsync(int currentRound, CancellationToken ct = default)
     {
         List<Task> TaskList = new();
 
@@ -2129,14 +2159,14 @@ public class ScrimTeamsManager : IScrimTeamsManager
         {
             RollBackTeamStats(teamOrdinal, currentRound);
 
-            Task teamTask = SaveTeamMatchResultsToDb(teamOrdinal);
+            Task teamTask = SaveTeamMatchResultsToDbAsync(teamOrdinal, ct);
             TaskList.Add(teamTask);
         }
 
-        Task eventsDbTask = RemoveAllMatchRoundEventsFromDb(currentRound);
+        Task eventsDbTask = RemoveAllMatchRoundEventsFromDbAsync(currentRound, ct);
         TaskList.Add(eventsDbTask);
 
-        Task participatingPlayersTask = UpdateMatchParticipatingPlayers();
+        Task participatingPlayersTask = UpdateMatchParticipatingPlayersAsync(ct);
         TaskList.Add(participatingPlayersTask);
 
         await Task.WhenAll(TaskList);
@@ -2166,42 +2196,41 @@ public class ScrimTeamsManager : IScrimTeamsManager
     }
 
     #region Remove All Match Round Events From DB
-    private async Task RemoveAllMatchRoundEventsFromDb(int roundToRemove)
+    private async Task RemoveAllMatchRoundEventsFromDbAsync(int roundToRemove, CancellationToken ct)
     {
         List<Task> TaskList = new();
 
-        Task deathsTask = RemoveAllMatchRoundDeathsFromDb(roundToRemove);
+        Task deathsTask = RemoveAllMatchRoundDeathsFromDbAsync(roundToRemove, ct);
         TaskList.Add(deathsTask);
 
-        Task destructionsTask = RemoveAllMatchRoundVehicleDestructionsFromDb(roundToRemove);
+        Task destructionsTask = RemoveAllMatchRoundVehicleDestructionsFromDbAsync(roundToRemove, ct);
         TaskList.Add(destructionsTask);
 
-        Task revivesTask = RemoveAllMatchRoundRevivesFromDb(roundToRemove);
+        Task revivesTask = RemoveAllMatchRoundRevivesFromDbAsync(roundToRemove, ct);
         TaskList.Add(revivesTask);
 
-        Task damageAssistsTask = RemoveAllMatchRoundDamageAssistsFromDb(roundToRemove);
+        Task damageAssistsTask = RemoveAllMatchRoundDamageAssistsFromDbAsync(roundToRemove, ct);
         TaskList.Add(damageAssistsTask);
 
-        Task grenadeAssistsTask = RemoveAllMatchRoundGrenadeAssistsFromDb(roundToRemove);
+        Task grenadeAssistsTask = RemoveAllMatchRoundGrenadeAssistsFromDbAsync(roundToRemove, ct);
         TaskList.Add(grenadeAssistsTask);
 
-        Task spotAssistsTask = RemoveAllMatchRoundSpotAssistsFromDb(roundToRemove);
+        Task spotAssistsTask = RemoveAllMatchRoundSpotAssistsFromDbAsync(roundToRemove, ct);
         TaskList.Add(spotAssistsTask);
 
-        Task controlsTask = RemoveAllMatchRoundFacilityControlsFromDb(roundToRemove);
+        Task controlsTask = RemoveAllMatchRoundFacilityControlsFromDbAsync(roundToRemove, ct);
         TaskList.Add(controlsTask);
 
         await Task.WhenAll(TaskList);
     }
 
-    private async Task RemoveAllMatchRoundDeathsFromDb(int roundToRemove)
+    private async Task RemoveAllMatchRoundDeathsFromDbAsync(int roundToRemove, CancellationToken ct)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
 
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             IEnumerable<ScrimDeath> allDeathEvents = dbContext.ScrimDeaths
                 .Where(e => e.ScrimMatchId == currentMatchId
@@ -2210,24 +2239,22 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
             dbContext.ScrimDeaths.RemoveRange(allDeathEvents);
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(ct);
 
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
-            return;
+            _logger.LogError(ex, "Failed to remove all match round deaths from DB");
         }
     }
 
-    private async Task RemoveAllMatchRoundVehicleDestructionsFromDb(int roundToRemove)
+    private async Task RemoveAllMatchRoundVehicleDestructionsFromDbAsync(int roundToRemove, CancellationToken ct)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
 
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             IEnumerable<ScrimVehicleDestruction> destructionsToRemove = dbContext.ScrimVehicleDestructions
                 .Where(e => e.ScrimMatchId == currentMatchId
@@ -2236,22 +2263,21 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
             dbContext.ScrimVehicleDestructions.RemoveRange(destructionsToRemove);
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            _logger.LogError(ex, "Failed to remove all match round vehicle destructions from DB");
         }
     }
 
-    private async Task RemoveAllMatchRoundRevivesFromDb(int roundToRemove)
+    private async Task RemoveAllMatchRoundRevivesFromDbAsync(int roundToRemove, CancellationToken ct)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
 
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             IEnumerable<ScrimRevive> revivesToRemove = dbContext.ScrimRevives
                 .Where(e => e.ScrimMatchId == currentMatchId
@@ -2260,7 +2286,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
             dbContext.ScrimRevives.RemoveRange(revivesToRemove);
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(ct);
         }
         catch (Exception ex)
         {
@@ -2268,14 +2294,13 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    private async Task RemoveAllMatchRoundDamageAssistsFromDb(int roundToRemove)
+    private async Task RemoveAllMatchRoundDamageAssistsFromDbAsync(int roundToRemove, CancellationToken ct)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
 
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             IEnumerable<ScrimDamageAssist> damageAssistsToRemove = dbContext.ScrimDamageAssists
                 .Where(e => e.ScrimMatchId == currentMatchId
@@ -2284,7 +2309,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
             dbContext.ScrimDamageAssists.RemoveRange(damageAssistsToRemove);
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(ct);
         }
         catch (Exception ex)
         {
@@ -2292,14 +2317,13 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    private async Task RemoveAllMatchRoundGrenadeAssistsFromDb(int roundToRemove)
+    private async Task RemoveAllMatchRoundGrenadeAssistsFromDbAsync(int roundToRemove, CancellationToken ct)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
 
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             IEnumerable<ScrimGrenadeAssist> grenadeAssistsToRemove = dbContext.ScrimGrenadeAssists
                 .Where(e => e.ScrimMatchId == currentMatchId
@@ -2308,7 +2332,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
             dbContext.ScrimGrenadeAssists.RemoveRange(grenadeAssistsToRemove);
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(ct);
         }
         catch (Exception ex)
         {
@@ -2316,14 +2340,13 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    private async Task RemoveAllMatchRoundSpotAssistsFromDb(int roundToRemove)
+    private async Task RemoveAllMatchRoundSpotAssistsFromDbAsync(int roundToRemove, CancellationToken ct)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
 
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             IEnumerable<ScrimSpotAssist> spotAssistsToRemove = dbContext.ScrimSpotAssists
                 .Where(e => e.ScrimMatchId == currentMatchId
@@ -2332,7 +2355,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
             dbContext.ScrimSpotAssists.RemoveRange(spotAssistsToRemove);
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(ct);
         }
         catch (Exception ex)
         {
@@ -2340,14 +2363,13 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    private async Task RemoveAllMatchRoundFacilityControlsFromDb(int roundToRemove)
+    private async Task RemoveAllMatchRoundFacilityControlsFromDbAsync(int roundToRemove, CancellationToken ct)
     {
         string currentMatchId = _matchDataService.CurrentMatchId;
 
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             IEnumerable<ScrimFacilityControl> allControlEvents = dbContext.ScrimFacilityControls
                 .Where(e => e.ScrimMatchId == currentMatchId
@@ -2356,7 +2378,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
             dbContext.ScrimFacilityControls.RemoveRange(allControlEvents);
 
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(ct);
 
         }
         catch (Exception ex)
@@ -2574,13 +2596,13 @@ public class ScrimTeamsManager : IScrimTeamsManager
     #endregion Team/Player Stats Handling
 
     #region Match Results/Scores
-    public async Task SaveRoundEndScores(int round)
+    public async Task SaveRoundEndScoresAsync(int round, CancellationToken ct = default)
     {
         foreach (TeamDefinition teamOrdinal in _ordinalTeamMap.Keys.ToList())
         {
             SaveTeamRoundEndScores(teamOrdinal, round);
 
-            await SaveTeamMatchResultsToDb(teamOrdinal);
+            await SaveTeamMatchResultsToDbAsync(teamOrdinal, ct);
         }
     }
 
@@ -2598,7 +2620,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
     }
 
 
-    private async Task TryUpdateAllTeamMatchResultsInDb()
+    private async Task TryUpdateAllTeamMatchResultsInDbAsync(CancellationToken ct)
     {
         int currentMatchRound = _matchDataService.CurrentMatchRound;
 
@@ -2611,7 +2633,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         foreach (TeamDefinition teamOrdinal in _ordinalTeamMap.Keys)
         {
-            Task<bool> teamTask = TryUpdateTeamMatchResultsInDb(teamOrdinal);
+            Task<bool> teamTask = TryUpdateTeamMatchResultsInDbAsync(teamOrdinal, ct);
             TaskList.Add(teamTask);
         }
 
@@ -2620,7 +2642,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
     // Update the ScrimMatchTeamResults row in the database if it exists, but don't create one if it doesn't.
     // Returns false if the result entry didn't exist or an error was encountered
-    private async Task<bool> TryUpdateTeamMatchResultsInDb(TeamDefinition teamOrdinal)
+    private async Task<bool> TryUpdateTeamMatchResultsInDbAsync(TeamDefinition teamOrdinal, CancellationToken ct)
     {
         int currentMatchRound = _matchDataService.CurrentMatchRound;
 
@@ -2633,20 +2655,23 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
-            ScrimMatchTeamResult? storeResultEntity = await dbContext.ScrimMatchTeamResults.FirstOrDefaultAsync(result => result.ScrimMatchId == currentScrimMatchId
-                && result.TeamOrdinal == teamOrdinal);
+            ScrimMatchTeamResult? storeResultEntity = await dbContext.ScrimMatchTeamResults
+                .FirstOrDefaultAsync
+                (
+                    result => result.ScrimMatchId == currentScrimMatchId && result.TeamOrdinal == teamOrdinal,
+                    ct
+                );
 
             if (storeResultEntity == null)
             {
                 return false;
             }
 
-            await SaveTeamMatchResultsToDb(teamOrdinal);
+            await SaveTeamMatchResultsToDbAsync(teamOrdinal, ct);
 
-            _logger.LogInformation($"Saved Team {teamOrdinal} team match results to database");
+            _logger.LogInformation("Saved Team {TeamOrdinal} team match results to database", teamOrdinal);
 
             return true;
         }
@@ -2658,7 +2683,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
         }
     }
 
-    public async Task SaveTeamMatchResultsToDb(TeamDefinition teamOrdinal)
+    public async Task SaveTeamMatchResultsToDbAsync(TeamDefinition teamOrdinal, CancellationToken ct)
     {
         string currentScrimMatchId = _matchDataService.CurrentMatchId;
 
@@ -2691,8 +2716,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         try
         {
-            using DbContextHelper.DbContextFactory factory = _dbContextHelper.GetFactory();
-            PlanetmansDbContext dbContext = factory.GetDbContext();
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
             ScrimMatchTeamResult? storeResultEntity = await dbContext.ScrimMatchTeamResults.FirstOrDefaultAsync(result => result.ScrimMatchId == currentScrimMatchId && result.TeamOrdinal == teamOrdinal);
 
@@ -2711,7 +2735,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
             List<ScrimMatchTeamPointAdjustment> storeAdjustmentEntities = await dbContext.ScrimMatchTeamPointAdjustments
                 .Where(adj => adj.ScrimMatchId == currentScrimMatchId && adj.TeamOrdinal == teamOrdinal)
-                .ToListAsync();
+                .ToListAsync(ct);
 
             List<PointAdjustment> allAdjustments = new();
 
@@ -2783,7 +2807,12 @@ public class ScrimTeamsManager : IScrimTeamsManager
         };
     }
 
-    public async Task AdjustTeamPoints(TeamDefinition teamOrdinal, PointAdjustment adjustment)
+    public async Task AdjustTeamPointsAsync
+    (
+        TeamDefinition teamOrdinal,
+        PointAdjustment adjustment,
+        CancellationToken ct = default
+    )
     {
         ScrimEventAggregate statUpdate = new();
 
@@ -2795,13 +2824,18 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         if (_matchDataService.CurrentMatchRound > 0)
         {
-            await SaveTeamMatchResultsToDb(teamOrdinal);
+            await SaveTeamMatchResultsToDbAsync(teamOrdinal, ct);
         }
 
         SendTeamStatUpdateMessage(team);
     }
 
-    public async Task RemoveTeamPointAdjustment(TeamDefinition teamOrdinal, PointAdjustment adjustment)
+    public async Task RemoveTeamPointAdjustmentAsync
+    (
+        TeamDefinition teamOrdinal,
+        PointAdjustment adjustment,
+        CancellationToken ct = default
+    )
     {
         ScrimEventAggregate statUpdate = new();
 
@@ -2813,7 +2847,7 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         if (_matchDataService.CurrentMatchRound > 0)
         {
-            await SaveTeamMatchResultsToDb(teamOrdinal);
+            await SaveTeamMatchResultsToDbAsync(teamOrdinal, ct);
         }
 
         SendTeamStatUpdateMessage(team);
@@ -2854,11 +2888,11 @@ public class ScrimTeamsManager : IScrimTeamsManager
 
         if (!isParticipating)
         {
-            await _matchDataService.TryRemoveMatchParticipatingPlayer(characterId);
+            await _matchDataService.TryRemoveMatchParticipatingPlayerAsync(characterId);
         }
         else if (isParticipating)
         {
-            await _matchDataService.SaveMatchParticipatingPlayer(player);
+            await _matchDataService.SaveMatchParticipatingPlayerAsync(player);
         }
     }
 

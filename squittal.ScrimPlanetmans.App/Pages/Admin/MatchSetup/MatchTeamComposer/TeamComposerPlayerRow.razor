@@ -229,7 +229,7 @@
     #region UI & Form Controls
     private async void RemovePlayer()
     {
-        await ScrimTeamsManager.RemoveCharacterFromTeamAndDb(Player.Id);
+        await ScrimTeamsManager.RemoveCharacterFromTeamAndDbAsync(Player.Id);
     }
 
     private void HandleSubstitutePlayer()
