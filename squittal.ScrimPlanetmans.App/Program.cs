@@ -39,19 +39,6 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Information()
-            .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
-            .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-            .MinimumLevel.Override("Serilog.AspNetCore.RequestLoggingMiddleware", LogEventLevel.Warning)
-            .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
-            .Enrich.FromLogContext()
-            .WriteTo.Console
-            (
-                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}"
-            )
-            .CreateLogger();
-
         try
         {
             BuildAndRun(args);
@@ -69,8 +56,10 @@ public class Program
     private static void BuildAndRun(string[] args)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-        builder.Host.UseSerilog();
         builder.Host.UseSystemd();
+
+        SetupLogger(builder.Configuration, builder.Environment);
+        builder.Host.UseSerilog();
 
         IServiceCollection services = builder.Services;
 
@@ -239,5 +228,35 @@ public class Program
         return scope.ServiceProvider
             .GetRequiredService<DbInitializerService>()
             .Initialize();
+    }
+
+    private static void SetupLogger(IConfiguration configuration, IHostEnvironment environment)
+    {
+        string? seqIngestionEndpoint = configuration["LoggingOptions:SeqIngestionEndpoint"];
+        string? seqApiKey = configuration["LoggingOptions:SeqApiKey"];
+
+        LoggerConfiguration loggerConfig = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+            .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+            .MinimumLevel.Override("Serilog.AspNetCore.RequestLoggingMiddleware", LogEventLevel.Warning)
+            .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
+            .Enrich.FromLogContext()
+            .WriteTo.Console
+            (
+                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}"
+            );
+
+        bool useSeq = environment.IsProduction()
+            && !string.IsNullOrEmpty(seqIngestionEndpoint)
+            && !string.IsNullOrEmpty(seqApiKey);
+        if (useSeq)
+        {
+            Serilog.Core.LoggingLevelSwitch levelSwitch = new();
+            loggerConfig.MinimumLevel.ControlledBy(levelSwitch)
+                .WriteTo.Seq(seqIngestionEndpoint!, apiKey: seqApiKey, controlLevelSwitch: levelSwitch);
+        }
+
+        Log.Logger = loggerConfig.CreateLogger();
     }
 }
