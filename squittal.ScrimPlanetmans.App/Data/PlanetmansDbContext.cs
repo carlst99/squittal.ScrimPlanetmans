@@ -50,6 +50,7 @@ public class PlanetmansDbContext : DbContext
     #endregion
 
     #region Views
+    public DbSet<ScrimMatchInfo> ScrimMatchInfo { get; set; }
     public DbSet<ScrimMatchReportInfantryPlayerStats> ScrimMatchReportInfantryPlayerStats { get; set; }
     public DbSet<ScrimMatchReportInfantryPlayerRoundStats> ScrimMatchReportInfantryPlayerRoundStats { get; set; }
     public DbSet<ScrimMatchReportInfantryTeamStats> ScrimMatchReportInfantryTeamStats { get; set; }
@@ -102,6 +103,7 @@ public class PlanetmansDbContext : DbContext
         #endregion
 
         #region Views
+        builder.ApplyConfiguration(new ScrimMatchInfoConfiguration());
         builder.ApplyConfiguration(new ScrimMatchReportInfantryPlayerStatsConfiguration());
         builder.ApplyConfiguration(new ScrimMatchReportInfantryPlayerRoundStatsConfiguration());
         builder.ApplyConfiguration(new ScrimMatchReportInfantryTeamStatsConfiguration());

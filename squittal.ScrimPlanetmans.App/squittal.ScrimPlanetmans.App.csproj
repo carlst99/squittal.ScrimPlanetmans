@@ -8,95 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Migrations\20200216183753_AddScrimActionModel.cs" />
-    <Compile Remove="Migrations\20200216183753_AddScrimActionModel.Designer.cs" />
-    <Compile Remove="Migrations\20200216192554_AddActionPointsItemCategoryModels.cs" />
-    <Compile Remove="Migrations\20200216192554_AddActionPointsItemCategoryModels.Designer.cs" />
-    <Compile Remove="Migrations\20200219191750_LetEFGenRulesetId.cs" />
-    <Compile Remove="Migrations\20200219191750_LetEFGenRulesetId.Designer.cs" />
-    <Compile Remove="Migrations\20200501171033_AddScrimMatchScrimDeathModels.cs" />
-    <Compile Remove="Migrations\20200501171033_AddScrimMatchScrimDeathModels.Designer.cs" />
-    <Compile Remove="Migrations\20200504154405_AddWorldToScrimDeathModel.cs" />
-    <Compile Remove="Migrations\20200504154405_AddWorldToScrimDeathModel.Designer.cs" />
-    <Compile Remove="Migrations\20200504161641_AddScrimMatchDeathVehDestructionModels.cs" />
-    <Compile Remove="Migrations\20200504161641_AddScrimMatchDeathVehDestructionModels.Designer.cs" />
-    <Compile Remove="Migrations\20200504190517_AddMatchTeamResultsModels.cs" />
-    <Compile Remove="Migrations\20200504190517_AddMatchTeamResultsModels.Designer.cs" />
-    <Compile Remove="Migrations\20200504192150_AddMatchRoundColumnsToEventTables.cs" />
-    <Compile Remove="Migrations\20200504192150_AddMatchRoundColumnsToEventTables.Designer.cs" />
-    <Compile Remove="Migrations\20200505185504_AdjustScrimVehDestPK.cs" />
-    <Compile Remove="Migrations\20200505185504_AdjustScrimVehDestPK.Designer.cs" />
-    <Compile Remove="Migrations\20200505190235_AdjustScrimVehDustModelTypesAndPK.cs" />
-    <Compile Remove="Migrations\20200505190235_AdjustScrimVehDustModelTypesAndPK.Designer.cs" />
-    <Compile Remove="Migrations\20200506172728_AddScrimMatchResultsAndEvents.cs" />
-    <Compile Remove="Migrations\20200506172728_AddScrimMatchResultsAndEvents.Designer.cs" />
-    <Compile Remove="Migrations\20200507150855_AddTimestampToTeamPointAdjPK.cs" />
-    <Compile Remove="Migrations\20200507150855_AddTimestampToTeamPointAdjPK.Designer.cs" />
-    <Compile Remove="Migrations\20200513170822_AddVehicleClassAndDeathTypeModles.cs" />
-    <Compile Remove="Migrations\20200513170822_AddVehicleClassAndDeathTypeModles.Designer.cs" />
-    <Compile Remove="Migrations\20200602170937_AddConstructedTeamModels.cs" />
-    <Compile Remove="Migrations\20200602170937_AddConstructedTeamModels.Designer.cs" />
-    <Compile Remove="Migrations\20200605152100_AddFactionIdToConstructedTeamMembershipModel.cs" />
-    <Compile Remove="Migrations\20200605152100_AddFactionIdToConstructedTeamMembershipModel.Designer.cs" />
-    <Compile Remove="Migrations\20200611174904_AddHideFromSelectionToConstructedTeamModel.cs" />
-    <Compile Remove="Migrations\20200611174904_AddHideFromSelectionToConstructedTeamModel.Designer.cs" />
-    <Compile Remove="Migrations\20200617163549_AddMoreScrimMatchDataModels.cs" />
-    <Compile Remove="Migrations\20200617163549_AddMoreScrimMatchDataModels.Designer.cs" />
-    <Compile Remove="Migrations\20200619184306_AddActionTypeToScrimFacilityControl.cs" />
-    <Compile Remove="Migrations\20200619184306_AddActionTypeToScrimFacilityControl.Designer.cs" />
-    <Compile Remove="Migrations\20200731192358_AddScrimMatchInfoView.cs" />
-    <Compile Remove="Migrations\20200731192358_AddScrimMatchInfoView.Designer.cs" />
-    <Compile Remove="Migrations\20200803205259_AddInfantryPlayerStatsReportView.cs" />
-    <Compile Remove="Migrations\20200803205259_AddInfantryPlayerStatsReportView.Designer.cs" />
-    <Compile Remove="Migrations\20200804204221_AddInfantryTeamStatsReportView.cs" />
-    <Compile Remove="Migrations\20200804204221_AddInfantryTeamStatsReportView.Designer.cs" />
-    <Compile Remove="Migrations\20200811164854_AddRulesetNavPropertyConfigs.cs" />
-    <Compile Remove="Migrations\20200811164854_AddRulesetNavPropertyConfigs.Designer.cs" />
-    <Compile Remove="Migrations\20200818161834_AddRulesetIdToScrimMatchModel.cs" />
-    <Compile Remove="Migrations\20200818161834_AddRulesetIdToScrimMatchModel.Designer.cs" />
-    <Compile Remove="Migrations\20200819145208_AddRulesetFacilityRuleModel.cs" />
-    <Compile Remove="Migrations\20200819145208_AddRulesetFacilityRuleModel.Designer.cs" />
-    <Compile Remove="Migrations\20200819145319_AddRulesetFacilityRuleModel.cs" />
-    <Compile Remove="Migrations\20200819145319_AddRulesetFacilityRuleModel.Designer.cs" />
-    <Compile Remove="Migrations\20200819155817_AddRulesetFacilityRuleModel.cs" />
-    <Compile Remove="Migrations\20200819155817_AddRulesetFacilityRuleModel.Designer.cs" />
-    <Compile Remove="Migrations\20200819160924_AddRulesetFacilityRuleModel.cs" />
-    <Compile Remove="Migrations\20200819160924_AddRulesetFacilityRuleModel.Designer.cs" />
-    <Compile Remove="Migrations\20200819161916_AddRulesetFacilityRuleModel.cs" />
-    <Compile Remove="Migrations\20200819161916_AddRulesetFacilityRuleModel.Designer.cs" />
-    <Compile Remove="Migrations\20200819205340_AddRulesetFacilityRuleModel.cs" />
-    <Compile Remove="Migrations\20200819205340_AddRulesetFacilityRuleModel.Designer.cs" />
-    <Compile Remove="Migrations\20200819210420_AddRulesetFacilityRuleModel.cs" />
-    <Compile Remove="Migrations\20200819210420_AddRulesetFacilityRuleModel.Designer.cs" />
-    <Compile Remove="Migrations\20200819210812_AddRulesetFacilityRuleModel.cs" />
-    <Compile Remove="Migrations\20200819210812_AddRulesetFacilityRuleModel.Designer.cs" />
-    <Compile Remove="Migrations\20200819215851_AddRulesetFacilityRuleModel.cs" />
-    <Compile Remove="Migrations\20200819215851_AddRulesetFacilityRuleModel.Designer.cs" />
-    <Compile Remove="Migrations\20200819220816_AddRulesetFacilityRuleModel.cs" />
-    <Compile Remove="Migrations\20200819220816_AddRulesetFacilityRuleModel.Designer.cs" />
-    <Compile Remove="Migrations\20200819221228_AddRulesetFacilityRuleModel.cs" />
-    <Compile Remove="Migrations\20200819221228_AddRulesetFacilityRuleModel.Designer.cs" />
-    <Compile Remove="Migrations\20200824191359_AddRulesetMatchTitleRemoveIsActive.cs" />
-    <Compile Remove="Migrations\20200824191359_AddRulesetMatchTitleRemoveIsActive.Designer.cs" />
-    <Compile Remove="Migrations\20200824191632_AddRulesetMatchTitleRemoveIsActive.cs" />
-    <Compile Remove="Migrations\20200824191632_AddRulesetMatchTitleRemoveIsActive.Designer.cs" />
-    <Compile Remove="Migrations\20201001173644_AddRulesetItemRules.cs" />
-    <Compile Remove="Migrations\20201001173644_AddRulesetItemRules.Designer.cs" />
-    <Compile Remove="Migrations\20201002184137_AddRulesetItemRuleModel.cs" />
-    <Compile Remove="Migrations\20201002184137_AddRulesetItemRuleModel.Designer.cs" />
-    <Compile Remove="Migrations\20201009141541_RemoveRulesetRuleForeignKeys.cs" />
-    <Compile Remove="Migrations\20201009141541_RemoveRulesetRuleForeignKeys.Designer.cs" />
-    <Compile Remove="Migrations\20201009142315_RemoveRulesetRuleForeignKeys.cs" />
-    <Compile Remove="Migrations\20201009142315_RemoveRulesetRuleForeignKeys.Designer.cs" />
-    <Compile Remove="Migrations\20201011174957_AddIsDeprecatedToMapRegionModel.cs" />
-    <Compile Remove="Migrations\20201011174957_AddIsDeprecatedToMapRegionModel.Designer.cs" />
-    <Compile Remove="Migrations\20201011190616_AddIsCurrentToMapRegionModel.cs" />
-    <Compile Remove="Migrations\20201011190616_AddIsCurrentToMapRegionModel.Designer.cs" />
-    <Compile Remove="Migrations\20201216161329_AddOverlayRulesetSettings.cs" />
-    <Compile Remove="Migrations\20201216161329_AddOverlayRulesetSettings.Designer.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="DbgCensus.Core" Version="2.0.1" />
     <PackageReference Include="DbgCensus.EventStream.EventHandlers" Version="3.4.0" />
     <PackageReference Include="DbgCensus.Rest" Version="3.5.0" />
@@ -136,6 +47,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Data\SQL\MigrationHelpers\Backfill_ScrimMatchRulesetId.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Data\SQL\Views\View_ScrimMatchInfo.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Data\SQL\Views\View_ScrimDamageAssistDamageDealt.sql">
