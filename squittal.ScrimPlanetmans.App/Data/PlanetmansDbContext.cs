@@ -21,7 +21,6 @@ public class PlanetmansDbContext : DbContext
     #endregion
 
     #region Scrim Match DbSets
-    public DbSet<ScrimAction> ScrimActions { get; set; }
     public DbSet<Ruleset> Rulesets { get; set; }
     public DbSet<RulesetOverlayConfiguration> RulesetOverlayConfigurations { get; set; }
     public DbSet<RulesetActionRule> RulesetActionRules { get; set; }
@@ -73,7 +72,6 @@ public class PlanetmansDbContext : DbContext
         #endregion
 
         #region Scrim Match DbSets
-        builder.ApplyConfiguration(new ScrimActionConfiguration());
         builder.ApplyConfiguration(new RulesetConfiguration());
         builder.ApplyConfiguration(new RulesetOverlayConfigurationConfiguration());
         builder.ApplyConfiguration(new RulesetActionRuleConfiguration());

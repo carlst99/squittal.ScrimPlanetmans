@@ -12,6 +12,7 @@ using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Rulesets;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Data;
+using squittal.ScrimPlanetmans.App.Extensions;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.Models.Forms;
@@ -1092,7 +1093,7 @@ public partial class RulesetDataService : IRulesetDataService
             ScrimActionType = actionType,
             Points = points,
             DeferToItemCategoryRules = deferToItemCategoryRules,
-            ScrimActionTypeDomain = ScrimAction.GetDomainFromActionType(actionType)
+            ScrimActionTypeDomain = actionType.GetDomain()
         };
     }
 

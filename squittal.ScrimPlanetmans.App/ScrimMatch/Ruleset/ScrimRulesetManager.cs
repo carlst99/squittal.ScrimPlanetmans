@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +11,7 @@ using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Rulesets;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Data;
+using squittal.ScrimPlanetmans.App.Extensions;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
@@ -19,7 +19,7 @@ using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset;
 
-public class ScrimRulesetManager : IScrimRulesetManager
+public partial class ScrimRulesetManager : IScrimRulesetManager
 {
     private const int DEFAULT_RULESET_ID = 1;
 
@@ -428,7 +428,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
                 else
                 {
                     storeEntity.Points = 0;
-                    storeEntity.ScrimActionTypeDomain = ScrimAction.GetDomainFromActionType(storeEntity.ScrimActionType);
+                    storeEntity.ScrimActionTypeDomain = storeEntity.ScrimActionType.GetDomain();
                 }
 
                 dbContext.RulesetActionRules.Update(storeEntity);
@@ -895,7 +895,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
             ScrimActionType = actionType,
             Points = points,
             DeferToItemCategoryRules = deferToItemCategoryRules,
-            ScrimActionTypeDomain = ScrimAction.GetDomainFromActionType(actionType)
+            ScrimActionTypeDomain = actionType.GetDomain()
         };
     }
 
@@ -911,7 +911,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
             ScrimActionType = actionType,
             Points = points,
             DeferToItemCategoryRules = deferToItemCategoryRules,
-            ScrimActionTypeDomain = ScrimAction.GetDomainFromActionType(actionType)
+            ScrimActionTypeDomain = actionType.GetDomain()
         };
     }
 
@@ -1068,62 +1068,4 @@ public class ScrimRulesetManager : IScrimRulesetManager
         {
             FacilityId = facilityId
         };
-
-    public async Task SeedScrimActionModelsAsync(CancellationToken ct = default)
-    {
-        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
-
-        List<ScrimAction> createdEntities = new();
-        List<ScrimActionType> allActionTypeValues = new(Enum.GetValues<ScrimActionType>());
-        List<ScrimAction> storeEntities = await dbContext.ScrimActions.ToListAsync(cancellationToken: ct);
-
-        allActionTypeValues.AddRange(storeEntities.Where(a => !allActionTypeValues.Contains(a.Action)).Select(a => a.Action).ToList());
-
-        foreach (ScrimActionType value in allActionTypeValues.Distinct())
-        {
-            try
-            {
-                ScrimAction? storeEntity = storeEntities.FirstOrDefault(e => e.Action == value);
-
-                if (storeEntity is null)
-                {
-                    createdEntities.Add(ConvertToDbModel(value));
-                }
-                else if (Enum.IsDefined(value))
-                {
-                    storeEntity = ConvertToDbModel(value);
-                    dbContext.ScrimActions.Update(storeEntity);
-                }
-                else
-                {
-                    dbContext.ScrimActions.Remove(storeEntity);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to seed a scrim action model");
-            }
-        }
-
-        if (createdEntities.Any())
-            dbContext.ScrimActions.AddRange(createdEntities);
-
-        await dbContext.SaveChangesAsync(ct);
-
-        _logger.LogInformation("Seeded Scrim Actions store");
-    }
-
-    private static ScrimAction ConvertToDbModel(ScrimActionType value)
-    {
-        string? name = Enum.GetName(value);
-        name ??= "Unknown action";
-
-        return new ScrimAction
-        {
-            Action = value,
-            Name = name,
-            Description = Regex.Replace(name, @"(\p{Ll})(\p{Lu})", "$1 $2"),
-            Domain = ScrimAction.GetDomainFromActionType(value)
-        };
-    }
 }

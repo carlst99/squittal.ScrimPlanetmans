@@ -18,5 +18,4 @@ public interface IScrimRulesetManager
 
     Task SetUpActiveRulesetAsync(CancellationToken ct = default);
     Task SeedDefaultRulesetAsync(CancellationToken ct = default);
-    Task SeedScrimActionModelsAsync(CancellationToken ct = default);
 }

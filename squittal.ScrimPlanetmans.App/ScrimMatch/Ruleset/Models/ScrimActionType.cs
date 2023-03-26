@@ -1,92 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
-
-public class ScrimAction
-{
-    [Required]
-    public ScrimActionType Action { get; set; }
-
-    [Required]
-    public string Name { get; set; }
-
-    public string Description { get; set; }
-    public ScrimActionTypeDomain Domain { get; set; }
-
-    public static ScrimActionTypeDomain GetDomainFromActionType(ScrimActionType action)
-    {
-        if ((int)action >= 10 && (int)action < 100)
-        {
-            return ScrimActionTypeDomain.Objective;
-        }
-        else if ((int)action >= 300 && (int)action < 399)
-        {
-            return ScrimActionTypeDomain.Support;
-        }
-        else if ((int)action >= 100 && (int)action < 200)
-        {
-            return ScrimActionTypeDomain.Infantry;
-        }
-        else if ((int)action >= 200 && (int)action < 300)
-        {
-            return ScrimActionTypeDomain.MAX;
-        }
-        else if ((int)action >= 400 && (int)action < 500)
-        {
-            return ScrimActionTypeDomain.Vehicle;
-        }
-        else if ((int)action >= 500 && (int)action < 1999)
-        {
-            return ScrimActionTypeDomain.AirVehicle;
-        }
-        else if ((int)action >= 2000 && (int)action < 2999)
-        {
-            return ScrimActionTypeDomain.GroundVehicle;
-        }
-        else
-        {
-            return ScrimActionTypeDomain.Other;
-        }
-    }
-
-    public ScrimActionTypeDomain SetDomain()
-    {
-        if ((int)Action >= 10 && (int)Action < 100)
-        {
-            Domain = ScrimActionTypeDomain.Objective;
-        }
-        else if ((int)Action >= 300 && (int)Action < 399)
-        {
-            Domain = ScrimActionTypeDomain.Support;
-        }
-        else if ((int)Action >= 100 && (int)Action < 200)
-        {
-            Domain = ScrimActionTypeDomain.Infantry;
-        }
-        else if ((int)Action >= 200 && (int)Action < 300)
-        {
-            Domain = ScrimActionTypeDomain.MAX;
-        }
-        else if ((int)Action >= 400 && (int)Action < 500)
-        {
-            Domain = ScrimActionTypeDomain.Vehicle;
-        }
-        else if ((int)Action >= 500 && (int)Action < 1999)
-        {
-            Domain = ScrimActionTypeDomain.AirVehicle;
-        }
-        else if ((int)Action >= 2000 && (int)Action < 2999)
-        {
-            Domain = ScrimActionTypeDomain.GroundVehicle;
-        }
-        else
-        {
-            Domain = ScrimActionTypeDomain.Other;
-        }
-            
-        return Domain;
-    }
-}
+﻿namespace squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
 public enum ScrimActionType
 {
@@ -507,4 +419,4 @@ public enum ScrimActionType
     OutsideInterference = 9000,
     Unknown             = 9001
     #endregion Warnings & Errors: 9000+
-};
+}
