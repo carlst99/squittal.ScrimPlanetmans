@@ -36,7 +36,7 @@ public class RulesetItemCategoryRule
     public bool MaxIsBanned { get; set; }
     public int MaxPoints { get; set; }
 
-    public Ruleset Ruleset { get; set; }
+    public Ruleset? Ruleset { get; set; }
 
     public void SetPlanetsideClassSettings(PlanetsideClassRuleSettings settings)
     {

@@ -10,5 +10,5 @@ public class RulesetFacilityRule
     [Required]
     public required uint FacilityId { get; init; }
 
-    public Ruleset Ruleset { get; set; }
+    public Ruleset? Ruleset { get; set; }
 }

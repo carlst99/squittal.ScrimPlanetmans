@@ -30,7 +30,6 @@ public class Ruleset
     public ICollection<RulesetItemCategoryRule>? RulesetItemCategoryRules { get; set; }
     public ICollection<RulesetItemRule>? RulesetItemRules { get; set; }
     public ICollection<RulesetFacilityRule>? RulesetFacilityRules { get; set; }
-
     public RulesetOverlayConfiguration? RulesetOverlayConfiguration { get; set; }
 
     public Ruleset()

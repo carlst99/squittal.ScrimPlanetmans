@@ -17,8 +17,8 @@ public interface IRulesetDataService
     Task RefreshRulesetsAsync(CancellationToken ct = default);
 
     Task<PaginatedList<Ruleset>> GetRulesetListAsync(int? pageIndex, CancellationToken ct);
-    Task<Ruleset?> GetRulesetFromIdAsync(int rulesetId, CancellationToken cancellationToken, bool includeCollections = true, bool includeOverlayConfiguration = true);
-    Task<IEnumerable<Ruleset>> GetAllRulesetsAsync(CancellationToken cancellationToken);
+    Task<Ruleset?> GetRulesetFromIdAsync(int rulesetId, CancellationToken ct, bool includeCollections = true, bool includeOverlayConfiguration = true);
+    Task<IEnumerable<Ruleset>> GetAllRulesetsAsync(CancellationToken ct);
 
     Task<IEnumerable<RulesetActionRule>> GetRulesetActionRulesAsync(int rulesetId, CancellationToken ct);
     Task<RulesetOverlayConfiguration?> GetRulesetOverlayConfigurationAsync(int rulesetId, CancellationToken ct);

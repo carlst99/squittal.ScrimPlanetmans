@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -37,7 +36,6 @@ public partial class RulesetDataService : IRulesetDataService
     private readonly IScrimMessageBroadcastService _messageService;
     private readonly IRulesetFileService _rulesetFileService;
 
-    private readonly ConcurrentDictionary<int, Ruleset> _rulesetsMap = new();
     private readonly KeyedSemaphoreSlim _rulesetLock = new();
     private readonly KeyedSemaphoreSlim _overlayConfigurationLock = new();
     private readonly KeyedSemaphoreSlim _actionRulesLock = new();
@@ -223,68 +221,39 @@ public partial class RulesetDataService : IRulesetDataService
         return paginatedList;
     }
 
-    public async Task<IEnumerable<Ruleset>> GetAllRulesetsAsync(CancellationToken cancellationToken)
+    public async Task<IEnumerable<Ruleset>> GetAllRulesetsAsync(CancellationToken ct)
     {
-        if (_rulesetsMap.IsEmpty)
-            await SetUpRulesetsMapAsync(cancellationToken);
+        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
-        if (!_rulesetsMap.Any())
-            return Array.Empty<Ruleset>();
-
-        return _rulesetsMap.Values.ToList();
+        return await dbContext.Rulesets.ToListAsync(ct);
     }
 
     public async Task<Ruleset?> GetRulesetFromIdAsync
     (
         int rulesetId,
-        CancellationToken cancellationToken,
+        CancellationToken ct,
         bool includeCollections = true,
         bool includeOverlayConfiguration = true
     )
     {
         try
         {
-            if (_rulesetsMap.IsEmpty)
-                await SetUpRulesetsMapAsync(cancellationToken);
+            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
-            if (_rulesetsMap.IsEmpty)
-                return null;
-
-            if (!_rulesetsMap.TryGetValue(rulesetId, out Ruleset? ruleset))
-                return null;
+            IQueryable<Ruleset> rulesetQuery = dbContext.Rulesets;
 
             if (includeCollections)
             {
-                Task<IEnumerable<RulesetActionRule>> actionRulesTask = GetRulesetActionRulesAsync(rulesetId, cancellationToken);
-                Task<IEnumerable<RulesetItemCategoryRule>> itemCategoryRulesTask = GetRulesetItemCategoryRulesAsync(rulesetId, cancellationToken);
-                Task<IEnumerable<RulesetItemRule>> itemRulesTask = GetRulesetItemRulesAsync(rulesetId, cancellationToken);
-                Task<IEnumerable<RulesetFacilityRule>> facilityRulesTask = GetRulesetFacilityRulesAsync(rulesetId, cancellationToken);
-                await Task.WhenAll(actionRulesTask, itemCategoryRulesTask, itemRulesTask, facilityRulesTask);
-
-                ruleset.RulesetActionRules = (await actionRulesTask).ToList();
-                ruleset.RulesetItemCategoryRules = (await itemCategoryRulesTask).ToList();
-                ruleset.RulesetItemRules = (await itemRulesTask).ToList();
-                ruleset.RulesetFacilityRules = (await facilityRulesTask).ToList();
+                rulesetQuery.Include(r => r.RulesetActionRules)
+                    .Include(r => r.RulesetItemCategoryRules)
+                    .Include(r => r.RulesetItemRules)
+                    .Include(r => r.RulesetFacilityRules);
             }
 
             if (includeOverlayConfiguration)
-            {
-                ruleset.RulesetOverlayConfiguration = await GetRulesetOverlayConfigurationAsync(rulesetId, cancellationToken);
-            }
+                rulesetQuery.Include(r => r.RulesetOverlayConfiguration);
 
-            cancellationToken.ThrowIfCancellationRequested();
-
-            return ruleset;
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation("Task Request cancelled: GetRulesetFromIdAsync rulesetId {ID}", rulesetId);
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("Request cancelled: GetRulesetFromIdAsync rulesetId {ID}", rulesetId);
-            return null;
+            return await rulesetQuery.FirstOrDefaultAsync(r => r.Id == rulesetId, ct);
         }
         catch (Exception ex)
         {
@@ -494,8 +463,6 @@ public partial class RulesetDataService : IRulesetDataService
                 dbContext.Rulesets.Update(storeEntity);
 
                 await dbContext.SaveChangesAsync(ct);
-
-                await SetUpRulesetsMapAsync(ct);
 
                 RulesetSettingChangeMessage changeMessage = new(storeEntity, oldRuleset);
                 _messageService.BroadcastRulesetSettingChangeMessage(changeMessage);
@@ -957,15 +924,10 @@ public partial class RulesetDataService : IRulesetDataService
             try
             {
                 if (ruleset.DateCreated == default)
-                {
                     ruleset.DateCreated = DateTime.UtcNow;
-                }
 
                 dbContext.Rulesets.Add(ruleset);
-
                 await dbContext.SaveChangesAsync(ct);
-
-                await SetUpRulesetsMapAsync(ct);
 
                 return ruleset;
             }
@@ -1406,7 +1368,6 @@ public partial class RulesetDataService : IRulesetDataService
                 dbContext.Rulesets.Remove(storeRuleset);
 
                 await dbContext.SaveChangesAsync(ct);
-                await SetUpRulesetsMapAsync(ct);
 
                 return true;
             }
@@ -1420,36 +1381,6 @@ public partial class RulesetDataService : IRulesetDataService
     }
 
     #region Helper Methods
-
-    private async Task SetUpRulesetsMapAsync(CancellationToken ct)
-    {
-        try
-        {
-            await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
-
-            List<Ruleset> rulesets = await dbContext.Rulesets.ToListAsync(ct);
-
-            ct.ThrowIfCancellationRequested();
-
-            foreach (int rulesetId in _rulesetsMap.Keys)
-            {
-                if (rulesets.All(t => t.Id != rulesetId))
-                    _rulesetsMap.TryRemove(rulesetId, out _);
-            }
-
-            foreach (Ruleset ruleset in rulesets)
-            {
-                _rulesetsMap.AddOrUpdate(ruleset.Id, ruleset, (_, _) => ruleset);
-            }
-
-            Ruleset? customDefaultRuleset = rulesets.FirstOrDefault(r => r.IsCustomDefault);
-            CustomDefaultRulesetId = customDefaultRuleset?.Id ?? DefaultRulesetId;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed setting up RulesetsMap");
-        }
-    }
 
     public async Task<bool> CanDeleteRuleset(int rulesetId, CancellationToken cancellationToken)
     {

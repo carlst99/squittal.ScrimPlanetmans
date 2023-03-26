@@ -15,6 +15,5 @@ public class RulesetActionRule
 
     public ScrimActionTypeDomain ScrimActionTypeDomain { get; set; }
 
-
-    public Ruleset Ruleset { get; set; }
+    public Ruleset? Ruleset { get; set; }
 }

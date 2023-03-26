@@ -10,5 +10,5 @@ public class RulesetOverlayConfiguration
     public OverlayStatsDisplayType StatsDisplayType { get; set; }
     public bool? ShowStatusPanelScores { get; set; }
 
-    public Ruleset Ruleset { get; set; }
+    public Ruleset? Ruleset { get; set; }
 }

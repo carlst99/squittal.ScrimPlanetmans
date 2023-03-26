@@ -19,7 +19,7 @@ using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset;
 
-public partial class ScrimRulesetManager : IScrimRulesetManager
+public class ScrimRulesetManager : IScrimRulesetManager
 {
     private const int DEFAULT_RULESET_ID = 1;
 
@@ -330,30 +330,24 @@ public partial class ScrimRulesetManager : IScrimRulesetManager
         }
         else
         {
-            DateTime utcNow = DateTime.UtcNow;
-            Models.Ruleset newRuleset = new()
+            storeRuleset = new Models.Ruleset
             {
                 Name = "Default",
-                DateCreated = utcNow
+                DefaultMatchTitle = "PS2 Scrim",
+                DateCreated = DateTime.UtcNow,
+                IsDefault = true,
+                DefaultEndRoundOnFacilityCapture = false
             };
-
-            storeRuleset = newRuleset;
         }
 
-        storeRuleset.DefaultMatchTitle = "PS2 Scrims";
-        storeRuleset.IsDefault = true;
-        storeRuleset.DefaultEndRoundOnFacilityCapture = false;
-
-
         stopWatchSetup.Stop();
-
         stopWatchOverlay.Start();
 
         #region Overlay Configuration
 
         if (storeOverlayConfiguration == null)
         {
-            storeOverlayConfiguration = new RulesetOverlayConfiguration()
+            storeOverlayConfiguration = new RulesetOverlayConfiguration
             {
                 RulesetId = DEFAULT_RULESET_ID,
                 UseCompactLayout = false,
