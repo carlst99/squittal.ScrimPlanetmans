@@ -12,31 +12,24 @@ public class ApplicationDataLoader : IApplicationDataLoader
     private readonly ILogger<ApplicationDataLoader> _logger;
     private readonly IScrimRulesetManager _rulesetManager;
     private readonly IScrimMatchScorer _matchScorer;
-    private readonly IDbSeeder _dbSeeder;
 
     public ApplicationDataLoader
     (
         ILogger<ApplicationDataLoader> logger,
         IScrimRulesetManager rulesetManager,
-        IScrimMatchScorer matchScorer,
-        IDbSeeder dbSeeder
+        IScrimMatchScorer matchScorer
     )
     {
         _logger = logger;
         _rulesetManager = rulesetManager;
         _matchScorer = matchScorer;
-        _dbSeeder = dbSeeder;
     }
 
     public async Task OnApplicationStartup(CancellationToken cancellationToken)
     {
         try
         {
-
-            await _dbSeeder.SeedDatabase(cancellationToken);
-
             await _rulesetManager.SeedDefaultRulesetAsync(cancellationToken);
-
             await _rulesetManager.ActivateDefaultRulesetAsync(cancellationToken);
             await _rulesetManager.SetUpActiveRulesetAsync(cancellationToken);
             await _matchScorer.SetActiveRulesetAsync(cancellationToken);

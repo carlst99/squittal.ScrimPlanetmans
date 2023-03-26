@@ -109,7 +109,6 @@ public class Program
             );
 
         services.AddTransient<DbInitializerService>();
-        services.AddTransient<IDbSeeder, DbSeeder>();
         services.AddTransient<ISqlScriptService, SqlScriptService>();
 
         // Register Census REST services
