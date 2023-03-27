@@ -26,6 +26,11 @@ public class JsonRulesetItemRule
     public bool MaxIsBanned { get; set; }
     public int MaxPoints { get; set; }
 
+    // Used for JSON serialization, do not remove.
+    public JsonRulesetItemRule()
+    {
+    }
+
     public JsonRulesetItemRule(RulesetItemRule rule)
     {
         ItemId = rule.ItemId;

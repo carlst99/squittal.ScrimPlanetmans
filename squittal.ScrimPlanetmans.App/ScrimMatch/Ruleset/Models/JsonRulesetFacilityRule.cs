@@ -4,6 +4,11 @@ public class JsonRulesetFacilityRule
 {
     public uint FacilityId { get; set; }
 
+    // Used for JSON serialization, do not remove.
+    public JsonRulesetFacilityRule()
+    {
+    }
+
     public JsonRulesetFacilityRule(RulesetFacilityRule rule)
     {
         FacilityId = rule.FacilityId;

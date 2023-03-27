@@ -24,6 +24,11 @@ public class JsonRuleset
 
     public JsonRulesetOverlayConfiguration? RulesetOverlayConfiguration { get; set; }
 
+    // Used for JSON serialization, do not remove.
+    public JsonRuleset()
+    {
+    }
+
     public JsonRuleset(Ruleset ruleset, string fileName)
     {
         Name = ruleset.Name;

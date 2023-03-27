@@ -4,8 +4,10 @@ using System.IO;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.SqlServer.Management.Smo;
 using squittal.ScrimPlanetmans.App.Abstractions.Services;
+using squittal.ScrimPlanetmans.App.Models;
 
 namespace squittal.ScrimPlanetmans.App.Services;
 
@@ -17,14 +19,18 @@ public class SqlScriptService : ISqlScriptService
     private readonly string _adhocScriptDirectory;
     private readonly Server _server;
 
-    public SqlScriptService(ILogger<SqlScriptService> logger, IConfiguration configuration)
+    public SqlScriptService
+    (
+        ILogger<SqlScriptService> logger,
+        IConfiguration configuration,
+        IOptions<LooseFileOptions> looseFileOptions
+    )
     {
         _logger = logger;
 
         string basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
         _scriptDirectory = Path.Combine(basePath, _sqlDirectory);
-
-        _adhocScriptDirectory = Path.Combine(basePath, "..", "..", "..", "..", "sql_adhoc");
+        _adhocScriptDirectory = Path.Combine(basePath, looseFileOptions.Value.AdHocSqlScriptsDirectory);
 
         string? dbConnectionString = configuration.GetConnectionString("PlanetmansDbContext");
         if (dbConnectionString is null)

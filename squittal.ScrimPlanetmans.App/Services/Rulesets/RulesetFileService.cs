@@ -6,7 +6,9 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Rulesets;
+using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
 namespace squittal.ScrimPlanetmans.App.Services.Rulesets;
@@ -17,18 +19,21 @@ public class RulesetFileService : IRulesetFileService
     private static readonly JsonSerializerOptions JSON_OPTIONS = new() { WriteIndented = true };
 
     private readonly ILogger<RulesetFileService> _logger;
+    private readonly string _rulesetsDirectory;
 
-    public RulesetFileService(ILogger<RulesetFileService> logger)
+    public RulesetFileService(ILogger<RulesetFileService> logger, IOptions<LooseFileOptions> looseFileOptions)
     {
         _logger = logger;
+
+        string basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+        _rulesetsDirectory = Path.Combine(basePath, looseFileOptions.Value.RulesetsDirectory);
     }
 
     /// <inheritdoc />
     public async Task<bool> WriteToJsonFileAsync(string fileName, JsonRuleset ruleset, CancellationToken ct = default)
     {
-        string basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
         fileName = Path.GetFileNameWithoutExtension(fileName) + ".json";
-        string path = Path.Combine(basePath, "..", "..", "..", "..", "rulesets", fileName);
+        string path = Path.Combine(_rulesetsDirectory, fileName);
 
         try
         {
@@ -47,9 +52,8 @@ public class RulesetFileService : IRulesetFileService
     /// <inheritdoc />
     public async Task<JsonRuleset?> ReadFromJsonFileAsync(string fileName, CancellationToken ct = default)
     {
-        string basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
         fileName = Path.GetFileNameWithoutExtension(fileName) + ".json";
-        string path = Path.Combine(basePath, "..", "..", "..", "..", "rulesets", fileName);
+        string path = Path.Combine(_rulesetsDirectory, fileName);
 
         try
         {
@@ -68,12 +72,10 @@ public class RulesetFileService : IRulesetFileService
     /// <inheritdoc />
     public IEnumerable<string> GetJsonRulesetFileNames()
     {
-        string basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
-        string rulesetsDirectory = Path.Combine(basePath, "..", "..", "..", "..", "rulesets");
-        if (!Directory.Exists(rulesetsDirectory))
+        if (!Directory.Exists(_rulesetsDirectory))
             return Array.Empty<string>();
 
-        return Directory.GetFiles(rulesetsDirectory)
+        return Directory.GetFiles(_rulesetsDirectory)
             .Where(f => f.EndsWith(".json"))
             .Select(f => Path.GetFileName(f))
             .OrderBy(f => f);

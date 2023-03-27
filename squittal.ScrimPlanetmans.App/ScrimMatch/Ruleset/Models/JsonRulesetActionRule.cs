@@ -9,6 +9,7 @@ public class JsonRulesetActionRule
     public int Points { get; set; }
     public bool DeferToItemCategoryRules { get; set; }
 
+    // Used for JSON serialization, do not remove.
     public JsonRulesetActionRule()
     {
     }

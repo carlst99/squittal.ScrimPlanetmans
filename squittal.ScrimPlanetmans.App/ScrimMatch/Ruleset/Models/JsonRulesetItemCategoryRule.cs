@@ -31,6 +31,10 @@ public class JsonRulesetItemCategoryRule
 
     public ICollection<JsonRulesetItemRule>? RulesetItemRules { get; set; }
 
+    // Used for JSON serialization, do not remove.
+    public JsonRulesetItemCategoryRule()
+    {
+    }
 
     public JsonRulesetItemCategoryRule(RulesetItemCategoryRule rule)
     {

@@ -9,6 +9,7 @@ public class JsonRulesetOverlayConfiguration
     public OverlayStatsDisplayType? StatsDisplayType { get; set; }
     public bool? ShowStatusPanelScores { get; set; }
 
+    // Used for JSON serialization, do not remove.
     public JsonRulesetOverlayConfiguration()
     {
     }
