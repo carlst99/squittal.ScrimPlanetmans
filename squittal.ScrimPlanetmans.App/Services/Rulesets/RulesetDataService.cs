@@ -239,21 +239,21 @@ public partial class RulesetDataService : IRulesetDataService
         try
         {
             await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
-
-            IQueryable<Ruleset> rulesetQuery = dbContext.Rulesets.AsTracking();
+            IQueryable<Ruleset> rulesetQuery = dbContext.Rulesets;
 
             if (includeCollections)
             {
-                rulesetQuery.Include(r => r.RulesetActionRules)
+                rulesetQuery = rulesetQuery.Include(r => r.RulesetActionRules)
                     .Include(r => r.RulesetItemCategoryRules)
                     .Include(r => r.RulesetItemRules)
                     .Include(r => r.RulesetFacilityRules);
             }
 
             if (includeOverlayConfiguration)
-                rulesetQuery.Include(r => r.RulesetOverlayConfiguration);
+                rulesetQuery = rulesetQuery.Include(r => r.RulesetOverlayConfiguration);
 
-            return await rulesetQuery.FirstOrDefaultAsync(r => r.Id == rulesetId, ct);
+            return await rulesetQuery.AsSplitQuery()
+                .FirstOrDefaultAsync(r => r.Id == rulesetId, ct);
         }
         catch (Exception ex)
         {

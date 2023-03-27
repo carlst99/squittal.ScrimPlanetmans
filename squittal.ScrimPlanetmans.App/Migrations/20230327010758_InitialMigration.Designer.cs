@@ -12,7 +12,7 @@ using squittal.ScrimPlanetmans.App.Data;
 namespace squittal.ScrimPlanetmans.App.Migrations
 {
     [DbContext(typeof(PlanetmansDbContext))]
-    [Migration("20230324222453_InitialMigration")]
+    [Migration("20230327010758_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -88,7 +88,16 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                     b.Property<int>("ActionType")
                         .HasColumnType("int");
 
+                    b.Property<long?>("AttackerLoadoutId")
+                        .HasColumnType("bigint");
+
                     b.Property<int?>("AttackerTeamOrdinal")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExperienceGainAmount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExperienceGainId")
                         .HasColumnType("int");
 
                     b.Property<int>("Points")
@@ -124,6 +133,12 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                     b.Property<int>("ActionType")
                         .HasColumnType("int");
 
+                    b.Property<int?>("AttackerFactionId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("AttackerLoadoutId")
+                        .HasColumnType("bigint");
+
                     b.Property<int?>("AttackerTeamOrdinal")
                         .HasColumnType("int");
 
@@ -143,6 +158,12 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(-1);
+
+                    b.Property<int>("VictimFactionId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("VictimLoadoutId")
+                        .HasColumnType("bigint");
 
                     b.Property<int?>("VictimTeamOrdinal")
                         .HasColumnType("int");
@@ -206,6 +227,9 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .HasColumnType("int");
 
                     b.Property<int?>("AttackerTeamOrdinal")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExperienceGainId")
                         .HasColumnType("int");
 
                     b.Property<int>("Points")
@@ -273,8 +297,19 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<string>("NameDisplay")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NameFull")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<decimal?>("OutfitId")
                         .HasColumnType("decimal(20,0)");
+
+                    b.Property<int>("PrestigeLevel")
+                        .HasColumnType("int");
 
                     b.Property<int>("TeamOrdinal")
                         .HasColumnType("int");
@@ -477,8 +512,8 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                     b.Property<int>("ExperienceGainId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("MedicLoadoutId")
-                        .HasColumnType("int");
+                    b.Property<long?>("MedicLoadoutId")
+                        .HasColumnType("bigint");
 
                     b.Property<int?>("MedicTeamOrdinal")
                         .HasColumnType("int");
@@ -488,8 +523,8 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<int?>("RevivedLoadoutId")
-                        .HasColumnType("int");
+                    b.Property<long?>("RevivedLoadoutId")
+                        .HasColumnType("bigint");
 
                     b.Property<int?>("RevivedTeamOrdinal")
                         .HasColumnType("int");
@@ -588,6 +623,46 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                     b.ToTable("ScrimVehicleDestruction", (string)null);
                 });
 
+            modelBuilder.Entity("squittal.ScrimPlanetmans.App.Models.ScrimMatchReports.ScrimMatchInfo", b =>
+                {
+                    b.Property<long?>("FacilityId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("RoundCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RulesetId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RulesetName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ScrimMatchId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TeamOneFactionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TeamTwoFactionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("WorldId")
+                        .HasColumnType("int");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("View_ScrimMatchInfo", (string)null);
+                });
+
             modelBuilder.Entity("squittal.ScrimPlanetmans.App.Models.ScrimMatchReports.ScrimMatchReportInfantryDeath", b =>
                 {
                     b.Property<int>("ActionType")
@@ -604,10 +679,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("AttackerNameDisplay")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AttackerNameFull")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -683,10 +754,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("VictimNameFull")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("VictimTeamOrdinal")
                         .HasColumnType("int");
 
@@ -696,12 +763,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                     b.Property<string>("WeaponName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("WorldId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ZoneId")
-                        .HasColumnType("int");
 
                     b.ToTable((string)null);
 
@@ -817,10 +878,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("NameFull")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("PrestigeLevel")
                         .HasColumnType("int")
                         .HasDefaultValue(0);
@@ -830,9 +887,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("TeamOrdinal")
-                        .HasColumnType("int");
-
-                    b.Property<int>("WorldId")
                         .HasColumnType("int");
 
                     b.ToTable((string)null);
@@ -940,10 +994,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("PlayerNameDisplay")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PlayerNameFull")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -1166,10 +1216,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("NameFull")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("NetScore")
                         .HasColumnType("int")
                         .HasDefaultValue(0);
@@ -1223,9 +1269,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<int>("TeamOrdinal")
-                        .HasColumnType("int");
-
                     b.Property<int>("TotalDamageDealt")
                         .HasColumnType("int")
                         .HasDefaultValue(0);
@@ -1237,9 +1280,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                     b.Property<int>("UnassistedEnemyDeaths")
                         .HasColumnType("int")
                         .HasDefaultValue(0);
-
-                    b.Property<int>("WorldId")
-                        .HasColumnType("int");
 
                     b.Property<int>("ZeroPointDeaths")
                         .HasColumnType("int")
@@ -1478,9 +1518,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<int>("WorldId")
-                        .HasColumnType("int");
-
                     b.Property<int>("ZeroPointDeaths")
                         .HasColumnType("int")
                         .HasDefaultValue(0);
@@ -1562,10 +1599,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("NameFull")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("Points")
                         .HasColumnType("int")
                         .HasDefaultValue(0);
@@ -1620,16 +1653,8 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<int>("WeaponFactionId")
-                        .HasColumnType("int")
-                        .HasDefaultValue(4);
-
                     b.Property<int>("WeaponId")
                         .HasColumnType("int");
-
-                    b.Property<string>("WeaponName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("ZeroPointDeaths")
                         .HasColumnType("int")
@@ -2411,27 +2436,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                     b.HasKey("RulesetId");
 
                     b.ToTable("RulesetOverlayConfiguration", (string)null);
-                });
-
-            modelBuilder.Entity("squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models.ScrimAction", b =>
-                {
-                    b.Property<int>("Action")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Domain")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Action");
-
-                    b.ToTable("ScrimAction", (string)null);
                 });
 
             modelBuilder.Entity("squittal.ScrimPlanetmans.App.Data.Models.ConstructedTeamPlayerMembership", b =>

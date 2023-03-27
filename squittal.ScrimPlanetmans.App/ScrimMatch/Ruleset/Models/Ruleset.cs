@@ -26,10 +26,10 @@ public class Ruleset
     public int DefaultRoundLength { get; set; }
     public bool DefaultEndRoundOnFacilityCapture { get; set; }
 
-    public ICollection<RulesetActionRule>? RulesetActionRules { get; set; }
-    public ICollection<RulesetItemCategoryRule>? RulesetItemCategoryRules { get; set; }
-    public ICollection<RulesetItemRule>? RulesetItemRules { get; set; }
-    public ICollection<RulesetFacilityRule>? RulesetFacilityRules { get; set; }
+    public List<RulesetActionRule>? RulesetActionRules { get; set; }
+    public List<RulesetItemCategoryRule>? RulesetItemCategoryRules { get; set; }
+    public List<RulesetItemRule>? RulesetItemRules { get; set; }
+    public List<RulesetFacilityRule>? RulesetFacilityRules { get; set; }
     public RulesetOverlayConfiguration? RulesetOverlayConfiguration { get; set; }
 
     public Ruleset()

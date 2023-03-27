@@ -48,20 +48,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ScrimAction",
-                columns: table => new
-                {
-                    Action = table.Column<int>(type: "int", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Domain = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ScrimAction", x => x.Action);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "ScrimDamageAssist",
                 columns: table => new
                 {
@@ -73,7 +59,10 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                     ActionType = table.Column<int>(type: "int", nullable: false),
                     AttackerTeamOrdinal = table.Column<int>(type: "int", nullable: true),
                     VictimTeamOrdinal = table.Column<int>(type: "int", nullable: true),
-                    Points = table.Column<int>(type: "int", nullable: false, defaultValue: 0)
+                    AttackerLoadoutId = table.Column<long>(type: "bigint", nullable: true),
+                    Points = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    ExperienceGainId = table.Column<int>(type: "int", nullable: false),
+                    ExperienceGainAmount = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -90,9 +79,13 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                     AttackerCharacterId = table.Column<decimal>(type: "decimal(20,0)", nullable: false),
                     ScrimMatchRound = table.Column<int>(type: "int", nullable: false, defaultValue: -1),
                     ActionType = table.Column<int>(type: "int", nullable: false),
-                    DeathType = table.Column<int>(type: "int", nullable: false),
+                    AttackerFactionId = table.Column<int>(type: "int", nullable: true),
+                    AttackerLoadoutId = table.Column<long>(type: "bigint", nullable: false),
                     AttackerTeamOrdinal = table.Column<int>(type: "int", nullable: true),
+                    VictimFactionId = table.Column<int>(type: "int", nullable: false),
+                    VictimLoadoutId = table.Column<long>(type: "bigint", nullable: false),
                     VictimTeamOrdinal = table.Column<int>(type: "int", nullable: true),
+                    DeathType = table.Column<int>(type: "int", nullable: false),
                     IsHeadshot = table.Column<bool>(type: "bit", nullable: false),
                     Points = table.Column<int>(type: "int", nullable: false),
                     WeaponId = table.Column<long>(type: "bigint", nullable: true),
@@ -132,6 +125,7 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                     ScrimMatchRound = table.Column<int>(type: "int", nullable: false),
                     ActionType = table.Column<int>(type: "int", nullable: false),
                     Points = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    ExperienceGainId = table.Column<int>(type: "int", nullable: false),
                     AttackerTeamOrdinal = table.Column<int>(type: "int", nullable: true),
                     VictimTeamOrdinal = table.Column<int>(type: "int", nullable: true)
                 },
@@ -147,7 +141,10 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                     ScrimMatchId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     CharacterId = table.Column<decimal>(type: "decimal(20,0)", nullable: false),
                     TeamOrdinal = table.Column<int>(type: "int", nullable: false),
+                    NameDisplay = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    NameFull = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     FactionId = table.Column<int>(type: "int", nullable: false),
+                    PrestigeLevel = table.Column<int>(type: "int", nullable: false),
                     IsFromOutfit = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     OutfitId = table.Column<decimal>(type: "decimal(20,0)", nullable: true),
                     IsFromConstructedTeam = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
@@ -201,8 +198,8 @@ namespace squittal.ScrimPlanetmans.App.Migrations
                     ActionType = table.Column<int>(type: "int", nullable: false),
                     MedicTeamOrdinal = table.Column<int>(type: "int", nullable: true),
                     RevivedTeamOrdinal = table.Column<int>(type: "int", nullable: true),
-                    MedicLoadoutId = table.Column<int>(type: "int", nullable: true),
-                    RevivedLoadoutId = table.Column<int>(type: "int", nullable: true),
+                    MedicLoadoutId = table.Column<long>(type: "bigint", nullable: true),
+                    RevivedLoadoutId = table.Column<long>(type: "bigint", nullable: true),
                     ExperienceGainId = table.Column<int>(type: "int", nullable: false),
                     ExperienceGainAmount = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     ZoneId = table.Column<int>(type: "int", nullable: true),
@@ -494,9 +491,6 @@ namespace squittal.ScrimPlanetmans.App.Migrations
 
             migrationBuilder.DropTable(
                 name: "RulesetOverlayConfiguration");
-
-            migrationBuilder.DropTable(
-                name: "ScrimAction");
 
             migrationBuilder.DropTable(
                 name: "ScrimDamageAssist");

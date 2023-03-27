@@ -271,64 +271,18 @@ public class ScrimRulesetManager : IScrimRulesetManager
     public async Task SeedDefaultRulesetAsync(CancellationToken ct = default)
     {
         _logger.LogInformation("Seeding Default Ruleset...");
-
-        Stopwatch stopWatchSetup = new();
-        Stopwatch stopWatchCollections = new();
-        Stopwatch stopWatchOverlay = new();
-        Stopwatch stopWatchActionRules = new();
-        Stopwatch stopWatchItemRules = new();
-        Stopwatch stopWatchItemCategoryRules = new();
-        Stopwatch stopWatchFacilityRules = new();
-        Stopwatch stopWatchFinalize = new();
-
         Stopwatch stopWatchTotal = Stopwatch.StartNew();
-        stopWatchSetup.Start();
 
         await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
-        Models.Ruleset? storeRuleset = await dbContext.Rulesets.FirstOrDefaultAsync
+        bool rulesetExistsInDb = true;
+        Models.Ruleset? storeRuleset = await _rulesetDataService.GetRulesetFromIdAsync
         (
-            r => r.Id == DEFAULT_RULESET_ID,
-            cancellationToken: ct
+            DEFAULT_RULESET_ID,
+            ct
         );
 
-        bool rulesetExistsInDb = false;
-
-        RulesetOverlayConfiguration? storeOverlayConfiguration = null;
-
-        List<RulesetActionRule>? storeActionRules = new();
-        List<RulesetItemCategoryRule>? storeItemCategoryRules = new();
-        List<RulesetItemRule>? storeItemRules = null;
-        List<RulesetFacilityRule>? storeFacilityRules = new();
-
-        if (storeRuleset != null)
-        {
-            stopWatchCollections.Start();
-
-            Models.Ruleset? storeRulesetWithCollections = await _rulesetDataService.GetRulesetFromIdAsync
-            (
-                storeRuleset.Id,
-                ct
-            );
-
-            if (storeRulesetWithCollections is not null)
-            {
-                storeOverlayConfiguration = storeRulesetWithCollections.RulesetOverlayConfiguration;
-
-                if (storeRulesetWithCollections.RulesetActionRules is not null)
-                    storeActionRules = storeRulesetWithCollections.RulesetActionRules.ToList();
-                if (storeRulesetWithCollections.RulesetItemCategoryRules is not null)
-                    storeItemCategoryRules = storeRulesetWithCollections.RulesetItemCategoryRules.ToList();
-                if (storeRulesetWithCollections.RulesetItemRules is not null)
-                    storeItemRules = storeRulesetWithCollections.RulesetItemRules.ToList();
-                if (storeRulesetWithCollections.RulesetFacilityRules is not null)
-                    storeFacilityRules = storeRulesetWithCollections.RulesetFacilityRules.ToList();
-            }
-
-            rulesetExistsInDb = true;
-            stopWatchCollections.Stop();
-        }
-        else
+        if (storeRuleset is null)
         {
             storeRuleset = new Models.Ruleset
             {
@@ -338,16 +292,20 @@ public class ScrimRulesetManager : IScrimRulesetManager
                 IsDefault = true,
                 DefaultEndRoundOnFacilityCapture = false
             };
+
+            rulesetExistsInDb = false;
         }
 
-        stopWatchSetup.Stop();
-        stopWatchOverlay.Start();
+        storeRuleset.RulesetActionRules ??= new List<RulesetActionRule>();
+        storeRuleset.RulesetItemCategoryRules ??= new List<RulesetItemCategoryRule>();
+        storeRuleset.RulesetItemRules ??= new List<RulesetItemRule>();
+        storeRuleset.RulesetFacilityRules ??= new List<RulesetFacilityRule>();
 
-        #region Overlay Configuration
+        // Setup overlay if required
 
-        if (storeOverlayConfiguration == null)
+        if (storeRuleset.RulesetOverlayConfiguration is null)
         {
-            storeOverlayConfiguration = new RulesetOverlayConfiguration
+            storeRuleset.RulesetOverlayConfiguration = new RulesetOverlayConfiguration
             {
                 RulesetId = DEFAULT_RULESET_ID,
                 UseCompactLayout = false,
@@ -355,324 +313,132 @@ public class ScrimRulesetManager : IScrimRulesetManager
                 ShowStatusPanelScores = null
             };
 
-            dbContext.RulesetOverlayConfigurations.Add(storeOverlayConfiguration);
+            dbContext.RulesetOverlayConfigurations.Add(storeRuleset.RulesetOverlayConfiguration);
         }
-        else
+
+        // Add new action rules, remove old ones
+
+        Dictionary<ScrimActionType, RulesetActionRule?> knownActionRules = Enum.GetValues<ScrimActionType>()
+            .Where(t => t is not (ScrimActionType.None or ScrimActionType.Login or ScrimActionType.Logout))
+            .ToDictionary(t => t, _ => (RulesetActionRule?)null);
+
+        foreach (RulesetActionRule rule in GetDefaultActionRules())
         {
-            storeOverlayConfiguration.UseCompactLayout = false;
-            storeOverlayConfiguration.StatsDisplayType = OverlayStatsDisplayType.InfantryScores;
-            storeOverlayConfiguration.ShowStatusPanelScores = null;
-
-            dbContext.RulesetOverlayConfigurations.Update(storeOverlayConfiguration);
+            // Ensure that the action type exists, the defaults could be outdated
+            if (knownActionRules.ContainsKey(rule.ScrimActionType))
+                knownActionRules[rule.ScrimActionType] = rule;
         }
 
-        #endregion Overlay Configuration
-
-        stopWatchOverlay.Stop();
-
-        stopWatchActionRules.Start();
-
-        #region Action rules
-
-        RulesetActionRule[] defaultActionRules = GetDefaultActionRules();
-        List<RulesetActionRule> createdActionRules = new();
-        List<RulesetActionRule> allActionRules = new();
-
-        List<ScrimActionType> allActionEnumValues = Enum.GetValues<ScrimActionType>()
-            .Where
-            (
-                a => a is not (ScrimActionType.None or ScrimActionType.Login or ScrimActionType.Logout)
-            )
-            .ToList();
-
-        List<ScrimActionType> allActionValues = new();
-        allActionValues.AddRange(allActionEnumValues);
-        allActionValues.AddRange(storeActionRules.Select(ar => ar.ScrimActionType).Where(a => !allActionValues.Contains(a)).ToList());
-
-        foreach (ScrimActionType actionType in allActionValues)
+        foreach (RulesetActionRule dbActionRule in storeRuleset.RulesetActionRules)
         {
-            RulesetActionRule? storeEntity = storeActionRules?.FirstOrDefault(r => r.ScrimActionType == actionType);
-            RulesetActionRule? defaultEntity = defaultActionRules.FirstOrDefault(r => r.ScrimActionType == actionType);
-
-            bool isValidAction = storeEntity == null || allActionEnumValues.Any(enumValue => enumValue == storeEntity.ScrimActionType);
-
-            if (storeEntity == null)
-            {
-                if (defaultEntity != null)
-                {
-                    defaultEntity.RulesetId = DEFAULT_RULESET_ID;
-                    createdActionRules.Add(defaultEntity);
-                    allActionRules.Add(defaultEntity);
-                }
-                else
-                {
-                    RulesetActionRule newEntity = BuildRulesetActionRule(DEFAULT_RULESET_ID, actionType);
-                    createdActionRules.Add(newEntity);
-                    allActionRules.Add(newEntity);
-                }
-            }
-            else if (isValidAction)
-            {
-                if (defaultEntity != null)
-                {
-                    storeEntity.Points = defaultEntity.Points;
-                    storeEntity.DeferToItemCategoryRules = defaultEntity.DeferToItemCategoryRules;
-                    storeEntity.ScrimActionTypeDomain = defaultEntity.ScrimActionTypeDomain;
-                }
-                else
-                {
-                    storeEntity.Points = 0;
-                    storeEntity.ScrimActionTypeDomain = storeEntity.ScrimActionType.GetDomain();
-                }
-
-                dbContext.RulesetActionRules.Update(storeEntity);
-                allActionRules.Add(storeEntity);
-            }
-            else
-            {
-                dbContext.RulesetActionRules.Remove(storeEntity);
-            }
+            bool removed = knownActionRules.Remove(dbActionRule.ScrimActionType);
+            if (!removed)
+                dbContext.RulesetActionRules.Remove(dbActionRule);
         }
 
-        if (createdActionRules.Any())
+        foreach ((ScrimActionType action, RulesetActionRule? rule) in knownActionRules)
         {
-            dbContext.RulesetActionRules.AddRange(createdActionRules);
+            RulesetActionRule toInsert = rule ?? BuildDefaultActionRule(action, 0, true);
+            dbContext.RulesetActionRules.Add(toInsert);
         }
-        #endregion Action rules
 
-        stopWatchActionRules.Stop();
-
-        stopWatchItemCategoryRules.Start();
-
-        #region Item Category Rules
+        // Add new item category rules, remove old ones
 
         IEnumerable<uint>? allWeaponItemCategoryIds = await _itemCategoryService.GetWeaponItemCategoryIdsAsync(ct);
 
-        RulesetItemCategoryRule[] defaultItemCategoryRules = GetDefaultItemCategoryRules();
-        List<RulesetItemCategoryRule> createdItemCategoryRules = new();
-
-        List<RulesetItemCategoryRule> allItemCategoryRules = new();
-
         if (allWeaponItemCategoryIds is not null)
         {
-            foreach (uint categoryId in allWeaponItemCategoryIds)
+            Dictionary<uint, RulesetItemCategoryRule?> knownItemCategoryRules = allWeaponItemCategoryIds
+                .ToDictionary(x => x, _ => (RulesetItemCategoryRule?)null);
+
+            foreach (RulesetItemCategoryRule defaultCategoryRule in GetDefaultItemCategoryRules())
             {
-                RulesetItemCategoryRule? storeEntity = storeItemCategoryRules?.FirstOrDefault(r => r.ItemCategoryId == categoryId);
-                RulesetItemCategoryRule? defaultEntity = defaultItemCategoryRules.FirstOrDefault(r => r.ItemCategoryId == categoryId);
+                // Ensure that the category exists, the defaults could be outdated
+                if (knownItemCategoryRules.ContainsKey(defaultCategoryRule.ItemCategoryId))
+                    knownItemCategoryRules[defaultCategoryRule.ItemCategoryId] = defaultCategoryRule;
+            }
 
-                if (storeEntity is null)
-                {
-                    if (defaultEntity is not null)
-                    {
-                        defaultEntity.RulesetId = DEFAULT_RULESET_ID;
-                        createdItemCategoryRules.Add(defaultEntity);
-                        allItemCategoryRules.Add(defaultEntity);
-                    }
-                    else
-                    {
-                        RulesetItemCategoryRule newEntity = BuildRulesetItemCategoryRule(DEFAULT_RULESET_ID, categoryId);
-                        createdItemCategoryRules.Add(newEntity);
-                        allItemCategoryRules.Add(newEntity);
-                    }
-                }
-                else
-                {
-                    storeEntity.Points = defaultEntity?.Points ?? 0;
-                    storeEntity.IsBanned = defaultEntity?.IsBanned ?? false;
-                    storeEntity.DeferToItemRules = defaultEntity?.DeferToItemRules ?? false;
+            foreach (RulesetItemCategoryRule dbItemCategoryRule in storeRuleset.RulesetItemCategoryRules)
+            {
+                bool removed = knownItemCategoryRules.Remove(dbItemCategoryRule.ItemCategoryId);
+                if (!removed)
+                    dbContext.RulesetItemCategoryRules.Remove(dbItemCategoryRule);
+            }
 
-                    dbContext.RulesetItemCategoryRules.Update(storeEntity);
-                    allItemCategoryRules.Add(storeEntity);
-                }
+            foreach ((uint itemCategory, RulesetItemCategoryRule? rule) in knownItemCategoryRules)
+            {
+                RulesetItemCategoryRule toInsert = rule
+                    ?? BuildDefaultItemCategoryRule(itemCategory, deferToItemRules: true);
+
+                dbContext.RulesetItemCategoryRules.Add(toInsert);
+                storeRuleset.RulesetItemCategoryRules.Add(toInsert);
             }
         }
 
-        if (createdItemCategoryRules.Any())
-        {
-            dbContext.RulesetItemCategoryRules.AddRange(createdItemCategoryRules);
-        }
-        #endregion Item Category Rules
-
-        stopWatchItemCategoryRules.Stop();
-
-        stopWatchItemRules.Start();
-
-        #region Item Rules
-
-
-        RulesetItemRule[] defaultItemRules = GetDefaultItemRules();
-        List<RulesetItemRule> createdItemRules = new();
-
-        List<uint> allItemIds = new(defaultItemRules.Select(r => r.ItemId));
-        if (storeItemRules != null)
-        {
-            allItemIds.AddRange(storeItemRules.Where(r => !allItemIds.Contains(r.ItemId)).Select(r => r.ItemId));
-        }
+        // Add new item rules, remove old ones
 
         IReadOnlyList<CensusItem>? allWeaponItems = await _itemService.GetAllWeaponsAsync(ct);
-        List<RulesetItemRule> allItemRules = new();
 
         if (allWeaponItems is not null)
         {
-            allItemIds.AddRange
-            (
-                allWeaponItems.Where(r => !allItemIds.Contains(r.ItemId))
-                    .Select(r => r.ItemId)
-            );
+            Dictionary<uint, RulesetItemRule> knownItemRules = allWeaponItems
+                .ToDictionary
+                (
+                    x => x.ItemId,
+                    x => BuildDefaultItemRule
+                    (
+                        x.ItemId,
+                        x.ItemCategoryId,
+                        storeRuleset.RulesetItemCategoryRules
+                            .FirstOrDefault(c => c.ItemCategoryId == x.ItemCategoryId)?.Points ?? 0
+                    )
+                );
 
-            foreach (uint itemId in allItemIds)
+            foreach (RulesetItemRule defaultItemRule in GetDefaultItemRules())
             {
-                bool isWeaponItem = allWeaponItems.Any(r => r.ItemId == itemId);
-                RulesetItemRule? storeEntity = storeItemRules?.FirstOrDefault(r => r.ItemId == itemId);
-                RulesetItemRule? defaultEntity = defaultItemRules.FirstOrDefault(r => r.ItemId == itemId);
-                uint? categoryId = allWeaponItems.FirstOrDefault(i => i.ItemId == itemId)?.ItemCategoryId;
-
-                bool categoryDefersToItems = false;
-
-                if (categoryId != null)
-                {
-                    categoryDefersToItems = allItemCategoryRules.Any(r => r.ItemCategoryId == categoryId && r.DeferToItemRules);
-                }
-
-                if (storeEntity == null)
-                {
-                    if (defaultEntity != null)
-                    {
-                        defaultEntity.RulesetId = DEFAULT_RULESET_ID;
-
-                        createdItemRules.Add(defaultEntity);
-                        allItemRules.Add(defaultEntity);
-                    }
-                    else if (isWeaponItem && categoryDefersToItems)
-                    {
-                        int defaultPoints = allItemCategoryRules.Where(r => r.ItemCategoryId == categoryId)
-                            .Select(r => r.Points)
-                            .FirstOrDefault();
-
-                        RulesetItemRule newEntity = BuildRulesetItemRule(DEFAULT_RULESET_ID, itemId, categoryId ?? 0, defaultPoints);
-
-                        createdItemRules.Add(newEntity);
-                        allItemRules.Add(newEntity);
-                    }
-                }
-                else
-                {
-                    if (defaultEntity != null)
-                    {
-                        if (categoryId.HasValue && categoryId != defaultEntity.ItemCategoryId)
-                        {
-                            defaultEntity.ItemCategoryId = categoryId.Value;
-                        }
-
-                        defaultEntity.RulesetId = DEFAULT_RULESET_ID;
-
-                        storeEntity = defaultEntity;
-
-                        dbContext.RulesetItemRules.Update(storeEntity);
-                        allItemRules.Add(storeEntity);
-                    }
-                    else if (!isWeaponItem || !categoryDefersToItems)
-                    {
-                        dbContext.RulesetItemRules.Remove(storeEntity);
-                    }
-                }
+                // Ensure that the item exists, the defaults could be outdated
+                if (knownItemRules.ContainsKey(defaultItemRule.ItemId))
+                    knownItemRules[defaultItemRule.ItemId] = defaultItemRule;
             }
-        }
 
-        if (createdItemRules.Any())
-        {
-            dbContext.RulesetItemRules.AddRange(createdItemRules);
-        }
-        #endregion Item Rules
-
-        stopWatchItemRules.Stop();
-
-        stopWatchFacilityRules.Start();
-
-        #region Facility Rules
-        RulesetFacilityRule[] defaultFacilityRules = GetDefaultFacilityRules();
-
-        List<RulesetFacilityRule> createdFacilityRules = new();
-
-        List<RulesetFacilityRule> allFacilityRules = new(storeFacilityRules);
-        allFacilityRules.AddRange(defaultFacilityRules.Where(d => allFacilityRules.All(a => a.FacilityId != d.FacilityId)));
-
-        foreach (RulesetFacilityRule facilityRule in allFacilityRules)
-        {
-            RulesetFacilityRule? storeEntity = storeFacilityRules?.FirstOrDefault(r => r.FacilityId == facilityRule.FacilityId);
-            RulesetFacilityRule? defaultEntity = defaultFacilityRules.FirstOrDefault(r => r.FacilityId == facilityRule.FacilityId);
-
-            if (storeEntity == null)
+            foreach (RulesetItemRule dbItemRule in storeRuleset.RulesetItemRules)
             {
-                if (defaultEntity != null)
-                {
-                    defaultEntity.RulesetId = DEFAULT_RULESET_ID;
-
-                    createdFacilityRules.Add(defaultEntity);
-
-                }
+                bool removed = knownItemRules.Remove(dbItemRule.ItemId);
+                if (!removed)
+                    dbContext.RulesetItemRules.Remove(dbItemRule);
             }
-            else
-            {
-                if (defaultEntity == null)
-                {
-                    dbContext.RulesetFacilityRules.Remove(storeEntity);
-                    allFacilityRules.Remove(storeEntity);
-                }
-            }
+
+            foreach (RulesetItemRule itemRule in knownItemRules.Values)
+                dbContext.RulesetItemRules.Add(itemRule);
         }
 
-        if (createdFacilityRules.Any())
+        // Add new facility rules, remove old ones
+
+        Dictionary<uint, RulesetFacilityRule> knownFacilityRules = GetDefaultFacilityRules()
+            .ToDictionary(x => x.FacilityId, x => x);
+
+        foreach (RulesetFacilityRule dbFacilityRule in storeRuleset.RulesetFacilityRules)
         {
-            dbContext.RulesetFacilityRules.AddRange(createdFacilityRules);
+            bool removed = knownFacilityRules.Remove(dbFacilityRule.FacilityId);
+            if (!removed)
+                dbContext.RulesetFacilityRules.Remove(dbFacilityRule);
         }
-        #endregion Facility Rules
 
-        stopWatchFacilityRules.Stop();
-
-        stopWatchFinalize.Start();
-
-        storeRuleset.RulesetOverlayConfiguration = storeOverlayConfiguration;
-
-        storeRuleset.RulesetActionRules = allActionRules;
-        storeRuleset.RulesetItemCategoryRules = allItemCategoryRules;
-        storeRuleset.RulesetItemRules = allItemRules;
-        storeRuleset.RulesetFacilityRules = allFacilityRules;
+        foreach (RulesetFacilityRule facilityRule in knownFacilityRules.Values)
+            dbContext.RulesetFacilityRules.Add(facilityRule);
 
         if (rulesetExistsInDb)
-        {
             dbContext.Rulesets.Update(storeRuleset);
-        }
         else
-        {
             dbContext.Rulesets.Add(storeRuleset);
-        }
 
         await dbContext.SaveChangesAsync(ct);
 
-        stopWatchFinalize.Stop();
         stopWatchTotal.Stop();
-
         _logger.LogInformation
         (
-            "Finished seeding default ruleset (elapsed: {TotalTime})" +
-            "\n\tSetup: {SetupTime}" +
-            "\n\t\t Get Collections: {CollectionsTime}" +
-            "\n\t\tOverlay Configuration: {OverlayTime}" +
-            "\n\tAction Rules: {ActionsTime}" +
-            "\n\tItem Category Rules: {ItemCategoriesTime}" +
-            "\n\tItem Rules: {ItemsTime}" +
-            "\n\tFacility Rules: {FacilitiesTime}" +
-            "\n\tFinalize: {FinalizeTime}",
-            stopWatchTotal.Elapsed,
-            stopWatchSetup.Elapsed,
-            stopWatchCollections.Elapsed,
-            stopWatchOverlay.Elapsed,
-            stopWatchActionRules.Elapsed,
-            stopWatchItemCategoryRules.Elapsed,
-            stopWatchItemRules.Elapsed,
-            stopWatchFacilityRules.Elapsed,
-            stopWatchFinalize.Elapsed
+            "Finished seeding default ruleset (elapsed: {TotalTime})",
+            stopWatchTotal.Elapsed
         );
     }
 
@@ -680,24 +446,24 @@ public class ScrimRulesetManager : IScrimRulesetManager
     {
         return new[]
         {
-            BuildRulesetItemCategoryRule(2, 1, false, true),    // Knife
-            BuildRulesetItemCategoryRule(3, 1, false, true),    // Pistol
-            BuildRulesetItemCategoryRule(4, 1, false, true),    // Shotgun
-            BuildRulesetItemCategoryRule(5, 1, false, true),    // SMG
-            BuildRulesetItemCategoryRule(6, 1, false, true),    // LMG
-            BuildRulesetItemCategoryRule(7, 1, false, true),    // Assault Rifle
-            BuildRulesetItemCategoryRule(8, 1, false, true),    // Carbine
-            BuildRulesetItemCategoryRule(11, 1, false, true),   // Sniper Rifle
-            BuildRulesetItemCategoryRule(13, 0, false, true),   // Rocket Launcher
-            BuildRulesetItemCategoryRule(24, 1, false, false),  // Crossbow
-            BuildRulesetItemCategoryRule(100, 1, false, false), // Infantry (Nothing)
-            BuildRulesetItemCategoryRule(157, 1, false, true),  // Hybrid Rifle (NSX-A Kuwa)
+            BuildDefaultItemCategoryRule(2, 1, false, true),    // Knife
+            BuildDefaultItemCategoryRule(3, 1, false, true),    // Pistol
+            BuildDefaultItemCategoryRule(4, 1, false, true),    // Shotgun
+            BuildDefaultItemCategoryRule(5, 1, false, true),    // SMG
+            BuildDefaultItemCategoryRule(6, 1, false, true),    // LMG
+            BuildDefaultItemCategoryRule(7, 1, false, true),    // Assault Rifle
+            BuildDefaultItemCategoryRule(8, 1, false, true),    // Carbine
+            BuildDefaultItemCategoryRule(11, 1, false, true),   // Sniper Rifle
+            BuildDefaultItemCategoryRule(13, 0, false, true),   // Rocket Launcher
+            BuildDefaultItemCategoryRule(24, 1, false, false),  // Crossbow
+            BuildDefaultItemCategoryRule(100, 1, false, false), // Infantry (Nothing)
+            BuildDefaultItemCategoryRule(157, 1, false, true),  // Hybrid Rifle (NSX-A Kuwa)
 
             // Universal Bans
-            BuildRulesetItemCategoryRule(12, 0, true, false),  // Scout Rifle
-            BuildRulesetItemCategoryRule(14, 0, true, false),  // Heavy Weapon
-            BuildRulesetItemCategoryRule(19, 0, true, false),  // Battle Rifle
-            BuildRulesetItemCategoryRule(102, 1, true, false)  // Infantry Weapons (AI Mana Turrets)
+            BuildDefaultItemCategoryRule(12, 0, true, false),  // Scout Rifle
+            BuildDefaultItemCategoryRule(14, 0, true, false),  // Heavy Weapon
+            BuildDefaultItemCategoryRule(19, 0, true, false),  // Battle Rifle
+            BuildDefaultItemCategoryRule(102, 1, true, false)  // Infantry Weapons (AI Mana Turrets)
         };
     }
 
@@ -706,125 +472,125 @@ public class ScrimRulesetManager : IScrimRulesetManager
         return new[]
         {
             // One-Hit Knives
-            BuildRulesetItemRule(271, 2, 0, true),     // Carver
-            BuildRulesetItemRule(285, 2, 0, true),     // Ripper
-            BuildRulesetItemRule(286, 2, 0, true),     // Lumine Edge
-            BuildRulesetItemRule(6005453, 2, 0, true), // Carver AE
-            BuildRulesetItemRule(6005452, 2, 0, true), // Ripper AE
-            BuildRulesetItemRule(6005451, 2, 0, true), // Lumine Edge AE
-            BuildRulesetItemRule(6009600, 2, 0, true), // NS Firebug
+            BuildDefaultItemRule(271, 2, 0, true),     // Carver
+            BuildDefaultItemRule(285, 2, 0, true),     // Ripper
+            BuildDefaultItemRule(286, 2, 0, true),     // Lumine Edge
+            BuildDefaultItemRule(6005453, 2, 0, true), // Carver AE
+            BuildDefaultItemRule(6005452, 2, 0, true), // Ripper AE
+            BuildDefaultItemRule(6005451, 2, 0, true), // Lumine Edge AE
+            BuildDefaultItemRule(6009600, 2, 0, true), // NS Firebug
 
             // Directive Rewards
-            BuildRulesetItemRule(800623, 18, 0, true),   // C-4 ARX
-            BuildRulesetItemRule(77822, 7, 0, true),     // Gauss Prime
-            BuildRulesetItemRule(1909, 7, 0, true),      // Darkstar
-            BuildRulesetItemRule(1904, 7, 0, true),      // T1A Unity
-            BuildRulesetItemRule(1919, 8, 0, true),      // Eclipse VE3A
-            BuildRulesetItemRule(1869, 8, 0, true),      // 19A Fortuna
-            BuildRulesetItemRule(1914, 8, 0, true),      // TRAC-Shot
-            BuildRulesetItemRule(6005967, 157, 0, true), // NSX-A Kuwa
-            BuildRulesetItemRule(6009583, 17, 0, true),  // Infernal Grenade
-            BuildRulesetItemRule(6003418, 17, 0, true),  // NSX Fujin
-            BuildRulesetItemRule(802025, 2, 0, true),    // Auraxium Slasher
-            BuildRulesetItemRule(800626, 2, 0, true),    // Auraxium Force-Blade
-            BuildRulesetItemRule(800624, 2, 0, true),    // Auraxium Mag-Cutter
-            BuildRulesetItemRule(800625, 2, 0, true),    // Auraxium Chainblade
-            BuildRulesetItemRule(803699, 6, 0, true),    // NS-15 Gallows (Bounty Directive)
-            BuildRulesetItemRule(1894, 6, 0, true),      // Betelgeuse 54-A
-            BuildRulesetItemRule(1879, 6, 0, true),      // NC6A GODSAW
-            BuildRulesetItemRule(1924, 6, 0, true),      // T9A "Butcher"
-            BuildRulesetItemRule(6005969, 3, 0, true),   // NSX-A Yawara (NSX Pistol)
-            BuildRulesetItemRule(1959, 3, 0, true),      // The Immortal
-            BuildRulesetItemRule(1889, 3, 0, true),      // The Executive
-            BuildRulesetItemRule(1954, 3, 0, true),      // The President
-            BuildRulesetItemRule(1964, 13, 0, true),     // The Kraken
-            BuildRulesetItemRule(1939, 4, 0, true),      // Chaos
-            BuildRulesetItemRule(1884, 4, 0, true),      // The Brawler
-            BuildRulesetItemRule(1934, 4, 0, true),      // Havoc
-            BuildRulesetItemRule(6005968, 5, 0, true),   // NSX-A Kappa
-            BuildRulesetItemRule(1949, 5, 0, true),      // Skorpios
-            BuildRulesetItemRule(1899, 5, 0, true),      // Tempest
-            BuildRulesetItemRule(1944, 5, 0, true),      // Shuriken
-            BuildRulesetItemRule(1979, 11, 0, true),     // Parsec VX3-A
-            BuildRulesetItemRule(1969, 11, 0, true),     // The Moonshot
-            BuildRulesetItemRule(1974, 11, 0, true),     // Bighorn .50M
+            BuildDefaultItemRule(800623, 18, 0, true),   // C-4 ARX
+            BuildDefaultItemRule(77822, 7, 0, true),     // Gauss Prime
+            BuildDefaultItemRule(1909, 7, 0, true),      // Darkstar
+            BuildDefaultItemRule(1904, 7, 0, true),      // T1A Unity
+            BuildDefaultItemRule(1919, 8, 0, true),      // Eclipse VE3A
+            BuildDefaultItemRule(1869, 8, 0, true),      // 19A Fortuna
+            BuildDefaultItemRule(1914, 8, 0, true),      // TRAC-Shot
+            BuildDefaultItemRule(6005967, 157, 0, true), // NSX-A Kuwa
+            BuildDefaultItemRule(6009583, 17, 0, true),  // Infernal Grenade
+            BuildDefaultItemRule(6003418, 17, 0, true),  // NSX Fujin
+            BuildDefaultItemRule(802025, 2, 0, true),    // Auraxium Slasher
+            BuildDefaultItemRule(800626, 2, 0, true),    // Auraxium Force-Blade
+            BuildDefaultItemRule(800624, 2, 0, true),    // Auraxium Mag-Cutter
+            BuildDefaultItemRule(800625, 2, 0, true),    // Auraxium Chainblade
+            BuildDefaultItemRule(803699, 6, 0, true),    // NS-15 Gallows (Bounty Directive)
+            BuildDefaultItemRule(1894, 6, 0, true),      // Betelgeuse 54-A
+            BuildDefaultItemRule(1879, 6, 0, true),      // NC6A GODSAW
+            BuildDefaultItemRule(1924, 6, 0, true),      // T9A "Butcher"
+            BuildDefaultItemRule(6005969, 3, 0, true),   // NSX-A Yawara (NSX Pistol)
+            BuildDefaultItemRule(1959, 3, 0, true),      // The Immortal
+            BuildDefaultItemRule(1889, 3, 0, true),      // The Executive
+            BuildDefaultItemRule(1954, 3, 0, true),      // The President
+            BuildDefaultItemRule(1964, 13, 0, true),     // The Kraken
+            BuildDefaultItemRule(1939, 4, 0, true),      // Chaos
+            BuildDefaultItemRule(1884, 4, 0, true),      // The Brawler
+            BuildDefaultItemRule(1934, 4, 0, true),      // Havoc
+            BuildDefaultItemRule(6005968, 5, 0, true),   // NSX-A Kappa
+            BuildDefaultItemRule(1949, 5, 0, true),      // Skorpios
+            BuildDefaultItemRule(1899, 5, 0, true),      // Tempest
+            BuildDefaultItemRule(1944, 5, 0, true),      // Shuriken
+            BuildDefaultItemRule(1979, 11, 0, true),     // Parsec VX3-A
+            BuildDefaultItemRule(1969, 11, 0, true),     // The Moonshot
+            BuildDefaultItemRule(1974, 11, 0, true),     // Bighorn .50M
 
             // Semi-Auto Snipers
-            BuildRulesetItemRule(6008652, 11, 0, true), // NSX "Ivory" Daimyo
-            BuildRulesetItemRule(6008670, 11, 0, true), // NSX "Networked" Daimyo
-            BuildRulesetItemRule(804255, 11, 0, true),  // NSX Daimyo
-            BuildRulesetItemRule(26002, 11, 0, true),   // Phantom VA23
-            BuildRulesetItemRule(7337, 11, 0, true),    // Phaseshift VX-S
-            BuildRulesetItemRule(89, 11, 0, true),      // VA39 Spectre
-            BuildRulesetItemRule(24000, 11, 0, true),   // Gauss SPR
-            BuildRulesetItemRule(24002, 11, 0, true),   // Impetus
-            BuildRulesetItemRule(88, 11, 0, true),      // 99SV
-            BuildRulesetItemRule(25002, 11, 0, true),   // KSR-35
+            BuildDefaultItemRule(6008652, 11, 0, true), // NSX "Ivory" Daimyo
+            BuildDefaultItemRule(6008670, 11, 0, true), // NSX "Networked" Daimyo
+            BuildDefaultItemRule(804255, 11, 0, true),  // NSX Daimyo
+            BuildDefaultItemRule(26002, 11, 0, true),   // Phantom VA23
+            BuildDefaultItemRule(7337, 11, 0, true),    // Phaseshift VX-S
+            BuildDefaultItemRule(89, 11, 0, true),      // VA39 Spectre
+            BuildDefaultItemRule(24000, 11, 0, true),   // Gauss SPR
+            BuildDefaultItemRule(24002, 11, 0, true),   // Impetus
+            BuildDefaultItemRule(88, 11, 0, true),      // 99SV
+            BuildDefaultItemRule(25002, 11, 0, true),   // KSR-35
 
             // Gen-1 SMGs
-            BuildRulesetItemRule(29000, 5, 0, true),    // Eridani SX5
-            BuildRulesetItemRule(6002772, 5, 0, true),  // Eridani SX5-AE
-            BuildRulesetItemRule(29005, 5, 0, true),    // Eridani SX5G
-            BuildRulesetItemRule(27000, 5, 0, true),    // AF-4 Cyclone
-            BuildRulesetItemRule(6002824, 5, 0, true),  // AF-4AE Cyclone
-            BuildRulesetItemRule(27005, 5, 0, true),    // AF-4G Cyclone
-            BuildRulesetItemRule(28000, 5, 0, true),    // SMG-46 Armistice
-            BuildRulesetItemRule(6002800, 5, 0, true),  // SMG-46AE Armistice
-            BuildRulesetItemRule(28005, 5, 0, true),    // SMG-46G Armistice
+            BuildDefaultItemRule(29000, 5, 0, true),    // Eridani SX5
+            BuildDefaultItemRule(6002772, 5, 0, true),  // Eridani SX5-AE
+            BuildDefaultItemRule(29005, 5, 0, true),    // Eridani SX5G
+            BuildDefaultItemRule(27000, 5, 0, true),    // AF-4 Cyclone
+            BuildDefaultItemRule(6002824, 5, 0, true),  // AF-4AE Cyclone
+            BuildDefaultItemRule(27005, 5, 0, true),    // AF-4G Cyclone
+            BuildDefaultItemRule(28000, 5, 0, true),    // SMG-46 Armistice
+            BuildDefaultItemRule(6002800, 5, 0, true),  // SMG-46AE Armistice
+            BuildDefaultItemRule(28005, 5, 0, true),    // SMG-46G Armistice
 
             // Gen-3 SMGs
-            BuildRulesetItemRule(6003925, 5, 0, true), // VE-S Canis
-            BuildRulesetItemRule(6003850, 5, 0, true), // MGR-S1 Gladius
-            BuildRulesetItemRule(6003879, 5, 0, true), // MG-S1 Jackal
+            BuildDefaultItemRule(6003925, 5, 0, true), // VE-S Canis
+            BuildDefaultItemRule(6003850, 5, 0, true), // MGR-S1 Gladius
+            BuildDefaultItemRule(6003879, 5, 0, true), // MG-S1 Jackal
 
             // Anti-Personnel Explosives
-            BuildRulesetItemRule(650, 18, 0, true),     // Tank Mine
-            BuildRulesetItemRule(6005961, 18, 0, true), // Tank Mine
-            BuildRulesetItemRule(6005962, 18, 0, true), // Tank Mine
-            BuildRulesetItemRule(1045, 18, 0, true),    // Proximity Mine
-            BuildRulesetItemRule(1044, 18, 0, true),    // Bouncing Betty
-            BuildRulesetItemRule(429, 18, 0, true),     // Claymore
-            BuildRulesetItemRule(6005243, 18, 0, true), // F.U.S.E. (Anti-Infantry)
-            BuildRulesetItemRule(6005963, 18, 0, true), // Proximity Mine
-            BuildRulesetItemRule(6005422, 18, 0, true), // Proximity Mine
+            BuildDefaultItemRule(650, 18, 0, true),     // Tank Mine
+            BuildDefaultItemRule(6005961, 18, 0, true), // Tank Mine
+            BuildDefaultItemRule(6005962, 18, 0, true), // Tank Mine
+            BuildDefaultItemRule(1045, 18, 0, true),    // Proximity Mine
+            BuildDefaultItemRule(1044, 18, 0, true),    // Bouncing Betty
+            BuildDefaultItemRule(429, 18, 0, true),     // Claymore
+            BuildDefaultItemRule(6005243, 18, 0, true), // F.U.S.E. (Anti-Infantry)
+            BuildDefaultItemRule(6005963, 18, 0, true), // Proximity Mine
+            BuildDefaultItemRule(6005422, 18, 0, true), // Proximity Mine
 
             // A7 Weapons
-            BuildRulesetItemRule(6003943, 3, 0, true),  // NS-357 IA
-            BuildRulesetItemRule(6003793, 3, 0, true),  // NS-44L Showdown
-            BuildRulesetItemRule(6004992, 11, 0, true), // NS-AM8 Shortbow
+            BuildDefaultItemRule(6003943, 3, 0, true),  // NS-357 IA
+            BuildDefaultItemRule(6003793, 3, 0, true),  // NS-44L Showdown
+            BuildDefaultItemRule(6004992, 11, 0, true), // NS-AM8 Shortbow
 
             // Campaign Reward Weapons
-            BuildRulesetItemRule(6009524, 17, 0, true), // Condensate Grenade
-            BuildRulesetItemRule(6009515, 2, 0, true),  // NS Icebreaker
-            BuildRulesetItemRule(6009516, 2, 0, true),  // NS Icebreaker
-            BuildRulesetItemRule(6009517, 2, 0, true),  // NS Icebreaker
-            BuildRulesetItemRule(6009518, 2, 0, true),  // NS Icebreaker
-            BuildRulesetItemRule(6009463, 2, 0, true),  // NS Icebreaker
+            BuildDefaultItemRule(6009524, 17, 0, true), // Condensate Grenade
+            BuildDefaultItemRule(6009515, 2, 0, true),  // NS Icebreaker
+            BuildDefaultItemRule(6009516, 2, 0, true),  // NS Icebreaker
+            BuildDefaultItemRule(6009517, 2, 0, true),  // NS Icebreaker
+            BuildDefaultItemRule(6009518, 2, 0, true),  // NS Icebreaker
+            BuildDefaultItemRule(6009463, 2, 0, true),  // NS Icebreaker
 
             // Misc. Weapons
-            BuildRulesetItemRule(6050, 17, 0, true),    // Decoy Grenade
-            BuildRulesetItemRule(6004750, 17, 0, true), // Flamewake Grenade
-            BuildRulesetItemRule(6009459, 17, 0, true), // Lightning Grenade
-            BuildRulesetItemRule(6005472, 17, 0, true), // NSX Raijin
-            BuildRulesetItemRule(6005304, 17, 0, true), // Smoke Grenade
-            BuildRulesetItemRule(882, 17, 0, true),     // Sticky Grenade
-            BuildRulesetItemRule(880, 17, 0, true),     // Sticky Grenade
-            BuildRulesetItemRule(881, 17, 0, true),     // Sticky Grenade
-            BuildRulesetItemRule(6005328, 17, 0, true), // Sticky Grenade
-            BuildRulesetItemRule(804795, 2, 0, true),   // NSX Amaterasu
+            BuildDefaultItemRule(6050, 17, 0, true),    // Decoy Grenade
+            BuildDefaultItemRule(6004750, 17, 0, true), // Flamewake Grenade
+            BuildDefaultItemRule(6009459, 17, 0, true), // Lightning Grenade
+            BuildDefaultItemRule(6005472, 17, 0, true), // NSX Raijin
+            BuildDefaultItemRule(6005304, 17, 0, true), // Smoke Grenade
+            BuildDefaultItemRule(882, 17, 0, true),     // Sticky Grenade
+            BuildDefaultItemRule(880, 17, 0, true),     // Sticky Grenade
+            BuildDefaultItemRule(881, 17, 0, true),     // Sticky Grenade
+            BuildDefaultItemRule(6005328, 17, 0, true), // Sticky Grenade
+            BuildDefaultItemRule(804795, 2, 0, true),   // NSX Amaterasu
 
             // NSX Weapons
-            BuildRulesetItemRule(44705, 17, 0, true),  // Plasma Grenade (NSX Defector Grenade Printer)
-            BuildRulesetItemRule(6008687, 2, 0, true), // Defector Claws
+            BuildDefaultItemRule(44705, 17, 0, true),  // Plasma Grenade (NSX Defector Grenade Printer)
+            BuildDefaultItemRule(6008687, 2, 0, true), // Defector Claws
 
             // Proposed Bans
-            BuildRulesetItemRule(75490, 3, 0, true),  // NS Patriot Flare Gun
-            BuildRulesetItemRule(75521, 3, 0, true),  // VS Patriot Flare Gun
-            BuildRulesetItemRule(803009, 3, 0, true), // VS Triumph Flare Gun
-            BuildRulesetItemRule(75517, 3, 0, true),  // NC Patriot Flare Gun
-            BuildRulesetItemRule(803007, 3, 0, true), // NC Triumph Flare Gun
-            BuildRulesetItemRule(75519, 3, 0, true),  // TR Patriot Flare Gun
-            BuildRulesetItemRule(803008, 3, 0, true)  // TR Triumph Flare Gun
+            BuildDefaultItemRule(75490, 3, 0, true),  // NS Patriot Flare Gun
+            BuildDefaultItemRule(75521, 3, 0, true),  // VS Patriot Flare Gun
+            BuildDefaultItemRule(803009, 3, 0, true), // VS Triumph Flare Gun
+            BuildDefaultItemRule(75517, 3, 0, true),  // NC Patriot Flare Gun
+            BuildDefaultItemRule(803007, 3, 0, true), // NC Triumph Flare Gun
+            BuildDefaultItemRule(75519, 3, 0, true),  // TR Patriot Flare Gun
+            BuildDefaultItemRule(803008, 3, 0, true)  // TR Triumph Flare Gun
         };
     }
 
@@ -833,18 +599,18 @@ public class ScrimRulesetManager : IScrimRulesetManager
         // MaxKillInfantry & MaxKillMax are worth 0 points
         return new[]
         {
-            BuildRulesetActionRule(ScrimActionType.FirstBaseCapture, 9), // PIL 1: 18
-            BuildRulesetActionRule(ScrimActionType.SubsequentBaseCapture, 18), // PIL 1: 36
-            BuildRulesetActionRule(ScrimActionType.InfantryKillMax, 6), // PIL 1: -12
-            BuildRulesetActionRule(ScrimActionType.InfantryTeamkillInfantry, -2), // PIL 1: -3
-            BuildRulesetActionRule(ScrimActionType.InfantryTeamkillMax, -8), // PIL 1: -15
-            BuildRulesetActionRule(ScrimActionType.InfantrySuicide, -2), // PIL 1: -3
-            BuildRulesetActionRule(ScrimActionType.MaxTeamkillMax, -8), // PIL 1: -15
-            BuildRulesetActionRule(ScrimActionType.MaxTeamkillInfantry, -2), // PIL 1: -3
-            BuildRulesetActionRule(ScrimActionType.MaxSuicide, -8), // PIL 1: -12
-            BuildRulesetActionRule(ScrimActionType.MaxKillInfantry, 0), // PIL 1: 0
-            BuildRulesetActionRule(ScrimActionType.MaxKillMax, 0), // PIL 1: 0
-            BuildRulesetActionRule(ScrimActionType.InfantryKillInfantry, 0, true) // PIL 1: 0
+            BuildDefaultActionRule(ScrimActionType.FirstBaseCapture, 10),
+            BuildDefaultActionRule(ScrimActionType.SubsequentBaseCapture, 20),
+            BuildDefaultActionRule(ScrimActionType.InfantryKillMax, 6), // PIL 1: -12
+            BuildDefaultActionRule(ScrimActionType.InfantryTeamkillInfantry, -2), // PIL 1: -3
+            BuildDefaultActionRule(ScrimActionType.InfantryTeamkillMax, -8), // PIL 1: -15
+            BuildDefaultActionRule(ScrimActionType.InfantrySuicide, -2), // PIL 1: -3
+            BuildDefaultActionRule(ScrimActionType.MaxTeamkillMax, -8), // PIL 1: -15
+            BuildDefaultActionRule(ScrimActionType.MaxTeamkillInfantry, -2), // PIL 1: -3
+            BuildDefaultActionRule(ScrimActionType.MaxSuicide, -8), // PIL 1: -12
+            BuildDefaultActionRule(ScrimActionType.MaxKillInfantry, 0), // PIL 1: 0
+            BuildDefaultActionRule(ScrimActionType.MaxKillMax, 0), // PIL 1: 0
+            BuildDefaultActionRule(ScrimActionType.InfantryKillInfantry, 0, true) // PIL 1: 0
         };
     }
 
@@ -853,47 +619,33 @@ public class ScrimRulesetManager : IScrimRulesetManager
         return new[]
         {
             /* Hossin */
-            BuildRulesetFacilityRule(266000), // Kessel's Crossing
-            BuildRulesetFacilityRule(272000), // Bridgewater Shipping
-            BuildRulesetFacilityRule(283000), // Nettlemire
-            BuildRulesetFacilityRule(286000), // Four Fingers
-            BuildRulesetFacilityRule(287070), // Fort Liberty
-            BuildRulesetFacilityRule(302030), // Acan South
-            BuildRulesetFacilityRule(303030), // Bitol Eastern
-            BuildRulesetFacilityRule(305010), // Ghanan South
-            BuildRulesetFacilityRule(307010), // Chac Fusion
+            BuildDefaultFacilityRule(266000), // Kessel's Crossing
+            BuildDefaultFacilityRule(272000), // Bridgewater Shipping
+            BuildDefaultFacilityRule(283000), // Nettlemire
+            BuildDefaultFacilityRule(286000), // Four Fingers
+            BuildDefaultFacilityRule(287070), // Fort Liberty
+            BuildDefaultFacilityRule(302030), // Acan South
+            BuildDefaultFacilityRule(303030), // Bitol Eastern
+            BuildDefaultFacilityRule(305010), // Ghanan South
+            BuildDefaultFacilityRule(307010), // Chac Fusion
 
             /* Esamir */
-            BuildRulesetFacilityRule(239000), // Pale Canyon
-            BuildRulesetFacilityRule(244610), // Rime Analtyics
-            BuildRulesetFacilityRule(244620), // The Rink
-            BuildRulesetFacilityRule(252020), // Elli Barracks
-            BuildRulesetFacilityRule(254010), // Eisa Mountain Pass
+            BuildDefaultFacilityRule(239000), // Pale Canyon
+            BuildDefaultFacilityRule(244610), // Rime Analytics
+            BuildDefaultFacilityRule(244620), // The Rink
 
             /* Indar */
-            BuildRulesetFacilityRule(219), // Ceres
-            BuildRulesetFacilityRule(230), // Xenotech
-            BuildRulesetFacilityRule(3430), // Peris Eastern
-            BuildRulesetFacilityRule(3620), // Rashnu
+            BuildDefaultFacilityRule(219), // Ceres
+            BuildDefaultFacilityRule(230), // Xenotech
+            BuildDefaultFacilityRule(3430), // Peris Eastern
+            BuildDefaultFacilityRule(3620), // Rashnu
 
             /* Amerish */
-            BuildRulesetFacilityRule(210002) // Wokuk Shipping
+            BuildDefaultFacilityRule(210002) // Wokuk Shipping
         };
     }
 
-    private static RulesetActionRule BuildRulesetActionRule(int rulesetId, ScrimActionType actionType, int points = 0, bool deferToItemCategoryRules = false)
-    {
-        return new RulesetActionRule
-        {
-            RulesetId = rulesetId,
-            ScrimActionType = actionType,
-            Points = points,
-            DeferToItemCategoryRules = deferToItemCategoryRules,
-            ScrimActionTypeDomain = actionType.GetDomain()
-        };
-    }
-
-    private static RulesetActionRule BuildRulesetActionRule
+    private static RulesetActionRule BuildDefaultActionRule
     (
         ScrimActionType actionType,
         int points,
@@ -902,6 +654,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
     {
         return new RulesetActionRule
         {
+            RulesetId = DEFAULT_RULESET_ID,
             ScrimActionType = actionType,
             Points = points,
             DeferToItemCategoryRules = deferToItemCategoryRules,
@@ -909,9 +662,8 @@ public class ScrimRulesetManager : IScrimRulesetManager
         };
     }
 
-    private static RulesetItemCategoryRule BuildRulesetItemCategoryRule
+    private static RulesetItemCategoryRule BuildDefaultItemCategoryRule
     (
-        int rulesetId,
         uint itemCategoryId,
         int points = 0,
         bool isBanned = false,
@@ -924,7 +676,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
         return new RulesetItemCategoryRule
         {
-            RulesetId = rulesetId,
+            RulesetId = DEFAULT_RULESET_ID,
             ItemCategoryId = itemCategoryId,
             Points = points,
             IsBanned = isBanned,
@@ -947,45 +699,8 @@ public class ScrimRulesetManager : IScrimRulesetManager
         };
     }
 
-    private static RulesetItemCategoryRule BuildRulesetItemCategoryRule
+    private static RulesetItemRule BuildDefaultItemRule
     (
-        uint itemCategoryId,
-        int points = 0,
-        bool isBanned = false,
-        bool deferToItemRules = false,
-        bool deferToPlanetsideClassSettings = false,
-        PlanetsideClassRuleSettings? planetsideClassSettings = null
-    )
-    {
-        planetsideClassSettings ??= new PlanetsideClassRuleSettings();
-
-        return new RulesetItemCategoryRule
-        {
-            ItemCategoryId = itemCategoryId,
-            Points = points,
-            IsBanned = isBanned,
-            DeferToItemRules = deferToItemRules,
-
-            DeferToPlanetsideClassSettings = deferToPlanetsideClassSettings,
-
-            InfiltratorIsBanned = planetsideClassSettings.InfiltratorIsBanned,
-            InfiltratorPoints = planetsideClassSettings.InfiltratorPoints,
-            LightAssaultIsBanned = planetsideClassSettings.LightAssaultIsBanned,
-            LightAssaultPoints = planetsideClassSettings.LightAssaultPoints,
-            MedicIsBanned = planetsideClassSettings.MedicIsBanned,
-            MedicPoints = planetsideClassSettings.MedicPoints,
-            EngineerIsBanned = planetsideClassSettings.EngineerIsBanned,
-            EngineerPoints = planetsideClassSettings.EngineerPoints,
-            HeavyAssaultIsBanned = planetsideClassSettings.HeavyAssaultIsBanned,
-            HeavyAssaultPoints = planetsideClassSettings.HeavyAssaultPoints,
-            MaxIsBanned = planetsideClassSettings.MaxIsBanned,
-            MaxPoints = planetsideClassSettings.MaxPoints
-        };
-    }
-
-    private static RulesetItemRule BuildRulesetItemRule
-    (
-        int rulesetId,
         uint itemId,
         uint itemCategoryId,
         int points = 0,
@@ -998,7 +713,7 @@ public class ScrimRulesetManager : IScrimRulesetManager
 
         return new RulesetItemRule
         {
-            RulesetId = rulesetId,
+            RulesetId = DEFAULT_RULESET_ID,
             ItemId = itemId,
             ItemCategoryId = itemCategoryId,
             Points = points,
@@ -1021,45 +736,10 @@ public class ScrimRulesetManager : IScrimRulesetManager
         };
     }
 
-    private static RulesetItemRule BuildRulesetItemRule
-    (
-        uint itemId,
-        uint itemCategoryId,
-        int points = 0,
-        bool isBanned = false,
-        bool deferToPlanetsideClassSettings = false,
-        PlanetsideClassRuleSettings? planetsideClassSettings = null
-    )
-    {
-        planetsideClassSettings ??= new PlanetsideClassRuleSettings();
-
-        return new RulesetItemRule
-        {
-            ItemId = itemId,
-            ItemCategoryId = itemCategoryId,
-            Points = points,
-            IsBanned = isBanned,
-
-            DeferToPlanetsideClassSettings = deferToPlanetsideClassSettings,
-
-            InfiltratorIsBanned = planetsideClassSettings.InfiltratorIsBanned,
-            InfiltratorPoints = planetsideClassSettings.InfiltratorPoints,
-            LightAssaultIsBanned = planetsideClassSettings.LightAssaultIsBanned,
-            LightAssaultPoints = planetsideClassSettings.LightAssaultPoints,
-            MedicIsBanned = planetsideClassSettings.MedicIsBanned,
-            MedicPoints = planetsideClassSettings.MedicPoints,
-            EngineerIsBanned = planetsideClassSettings.EngineerIsBanned,
-            EngineerPoints = planetsideClassSettings.EngineerPoints,
-            HeavyAssaultIsBanned = planetsideClassSettings.HeavyAssaultIsBanned,
-            HeavyAssaultPoints = planetsideClassSettings.HeavyAssaultPoints,
-            MaxIsBanned = planetsideClassSettings.MaxIsBanned,
-            MaxPoints = planetsideClassSettings.MaxPoints
-        };
-    }
-
-    private static RulesetFacilityRule BuildRulesetFacilityRule(uint facilityId)
+    private static RulesetFacilityRule BuildDefaultFacilityRule(uint facilityId)
         => new()
         {
+            RulesetId = DEFAULT_RULESET_ID,
             FacilityId = facilityId
         };
 }

@@ -9,17 +9,6 @@ namespace squittal.ScrimPlanetmans.App.Data;
 
 public class PlanetmansDbContext : DbContext
 {
-    public PlanetmansDbContext(DbContextOptions<PlanetmansDbContext> options)
-        : base(options)
-    {
-    }
-
-    #region Stream Event DbSets
-    //public DbSet<Death> Deaths { get; set; }
-    //public DbSet<PlayerLogin> PlayerLogins { get; set; }
-    //public DbSet<PlayerLogout> PlayerLogouts { get; set; }
-    #endregion
-
     #region Scrim Match DbSets
     public DbSet<Ruleset> Rulesets { get; set; }
     public DbSet<RulesetOverlayConfiguration> RulesetOverlayConfigurations { get; set; }
@@ -60,16 +49,14 @@ public class PlanetmansDbContext : DbContext
     public DbSet<ScrimMatchReportInfantryPlayerWeaponStats> ScrimMatchReportInfantryPlayerWeaponStats { get; set; }
     #endregion Views
 
+    public PlanetmansDbContext(DbContextOptions<PlanetmansDbContext> options)
+        : base(options)
+    {
+    }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
-
-        #region Stream Configuration
-        //builder.ApplyConfiguration(new DeathConfiguration());
-        //builder.ApplyConfiguration(new PlayerLoginConfiguration());
-        //builder.ApplyConfiguration(new PlayerLogoutConfiguration());
-        #endregion
 
         #region Scrim Match DbSets
         builder.ApplyConfiguration(new RulesetConfiguration());
