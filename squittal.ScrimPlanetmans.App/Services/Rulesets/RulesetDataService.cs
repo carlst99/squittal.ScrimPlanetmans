@@ -523,10 +523,14 @@ public partial class RulesetDataService : IRulesetDataService
 
                 await dbContext.SaveChangesAsync(ct);
 
-                if (storeRuleset is not null && previousConfiguration is not null)
+                if (storeRuleset is not null)
                 {
-                    // TODO: Is this going to create issues because we're not sending updates going from no config to new config?
-                    RulesetOverlayConfigurationChangeMessage message = new(storeRuleset, newConfiguration, previousConfiguration);
+                    RulesetOverlayConfigurationChangeMessage message = new
+                    (
+                        storeRuleset,
+                        newConfiguration,
+                        previousConfiguration
+                    );
                     _messageService.BroadcastRulesetOverlayConfigurationChangeMessage(message);
                 }
 
