@@ -24,9 +24,7 @@ public class RulesetFileService : IRulesetFileService
     public RulesetFileService(ILogger<RulesetFileService> logger, IOptions<LooseFileOptions> looseFileOptions)
     {
         _logger = logger;
-
-        string basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
-        _rulesetsDirectory = Path.Combine(basePath, looseFileOptions.Value.RulesetsDirectory);
+        _rulesetsDirectory = looseFileOptions.Value.RulesetsDirectory;
     }
 
     /// <inheritdoc />

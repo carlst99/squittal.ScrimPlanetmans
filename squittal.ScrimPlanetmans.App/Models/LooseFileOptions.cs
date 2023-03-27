@@ -1,24 +1,30 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace squittal.ScrimPlanetmans.App.Models;
 
 public class LooseFileOptions
 {
-    private readonly string DefaultAdhocDirectory = Path.Combine("..", "..", "..", "..", "sql_adhoc");
-    private readonly string DefaultRulesetsDirectory = Path.Combine("..", "..", "..", "..", "rulesets");
+    public const string OptionsName = "LooseFileOptions";
 
     private readonly string? _adhoc;
     private readonly string? _rulesets;
 
     public string AdHocSqlScriptsDirectory
     {
-        get => string.IsNullOrEmpty(_adhoc) ? DefaultAdhocDirectory : _adhoc;
+        get => string.IsNullOrEmpty(_adhoc) ? GetDefaultPath("sql_adhoc") : _adhoc;
         init => _adhoc = value;
     }
 
     public string RulesetsDirectory
     {
-        get => string.IsNullOrEmpty(_rulesets) ? DefaultRulesetsDirectory : _rulesets;
+        get => string.IsNullOrEmpty(_rulesets) ? GetDefaultPath("rulesets") : _rulesets;
         init => _rulesets = value;
+    }
+
+    private static string GetDefaultPath(string directoryName)
+    {
+        string basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+        return Path.Combine(basePath, "..", "..", "..", "..", directoryName);
     }
 }

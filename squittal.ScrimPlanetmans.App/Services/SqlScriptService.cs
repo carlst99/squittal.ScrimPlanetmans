@@ -30,7 +30,7 @@ public class SqlScriptService : ISqlScriptService
 
         string basePath = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
         _scriptDirectory = Path.Combine(basePath, _sqlDirectory);
-        _adhocScriptDirectory = Path.Combine(basePath, looseFileOptions.Value.AdHocSqlScriptsDirectory);
+        _adhocScriptDirectory = looseFileOptions.Value.AdHocSqlScriptsDirectory;
 
         string? dbConnectionString = configuration.GetConnectionString("PlanetmansDbContext");
         if (dbConnectionString is null)

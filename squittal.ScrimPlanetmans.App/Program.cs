@@ -22,6 +22,7 @@ using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.Control;
 using squittal.ScrimPlanetmans.App.CensusEventStreamHandlers.PreDispatch;
 using squittal.ScrimPlanetmans.App.Data;
 using squittal.ScrimPlanetmans.App.Data.Interfaces;
+using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset;
@@ -63,6 +64,13 @@ public class Program
 
         IServiceCollection services = builder.Services;
 
+        // Read configuration
+
+        services.Configure<LooseFileOptions>(builder.Configuration.GetSection(LooseFileOptions.OptionsName))
+            .Configure<EventStreamOptions>(builder.Configuration.GetSection("EventStreamOptions"))
+            .Configure<CensusQueryOptions>(builder.Configuration.GetSection("CensusQueryOptions"))
+            .Configure<CensusQueryOptions>("sanctuary", builder.Configuration.GetSection("CensusQueryOptions"));
+
         services.AddMediatR(c => c.RegisterServicesFromAssemblyContaining<Program>());
 
         services.AddRazorPages();
@@ -70,6 +78,7 @@ public class Program
         services.AddSignalR();
 
         // Register the database
+
         services.AddDbContext<PlanetmansDbContext>
             (
                 options => options.UseSqlServer
@@ -112,17 +121,11 @@ public class Program
         services.AddTransient<ISqlScriptService, SqlScriptService>();
 
         // Register Census REST services
-        builder.Services.Configure<CensusQueryOptions>(builder.Configuration.GetSection(nameof(CensusQueryOptions)))
-            .Configure<CensusQueryOptions>(o => o.LanguageCode = CensusLanguage.English)
+
+        services.Configure<CensusQueryOptions>(o => o.LanguageCode = CensusLanguage.English)
             .Configure<CensusQueryOptions>(o => o.Limit = 50);
 
-        // Configure a second query options to point towards Sanctuary.Census
         services.Configure<CensusQueryOptions>
-            (
-                "sanctuary",
-                builder.Configuration.GetSection(nameof(CensusQueryOptions))
-            )
-            .Configure<CensusQueryOptions>
             (
                 "sanctuary",
                 o =>
@@ -146,7 +149,6 @@ public class Program
             .AddTransient<ICensusZoneService, CensusZoneService>();
 
         // Register Census EventStream Services
-        builder.Services.Configure<EventStreamOptions>(builder.Configuration.GetSection(nameof(EventStreamOptions)));
 
         services.AddCensusEventHandlingServices()
             .RegisterPreDispatchHandler<EventFilterPreDispatchHandler>()
@@ -205,10 +207,10 @@ public class Program
         {
             app.UseExceptionHandler("/Error");
             // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-            app.UseHsts();
+            //app.UseHsts();
         }
 
-        app.UseHttpsRedirection();
+        //app.UseHttpsRedirection();
         app.UseStaticFiles();
 
         app.UseRouting();
