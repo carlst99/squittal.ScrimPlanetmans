@@ -693,7 +693,7 @@ public partial class RulesetDataService : IRulesetDataService
 
                 List<Task> TaskList = new();
 
-                foreach (RulesetItemCategoryRule rule in dbContext.RulesetItemCategoryRules)
+                foreach (RulesetItemCategoryRule rule in dbContext.RulesetItemCategoryRules.Where(r => r.RulesetId == rulesetId))
                 {
                     Task itemRulesTask = UpdateItemRulesForItemCategoryRuleAsync(dbContext, rule, ct);
                     TaskList.Add(itemRulesTask);
