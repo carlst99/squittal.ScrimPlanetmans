@@ -687,7 +687,7 @@
             _isSavingRules = true;
             InvokeAsyncStateHasChanged();
 
-            await RulesetDataService.SaveRulesetItemCategoryRules(_renderedRulesetId, _changedRules.Values.AsEnumerable());
+            await RulesetDataService.SaveRulesetItemCategoryRules(_renderedRulesetId, _changedRules.Values);
 
             _originalRulePoints.Clear();
             _originalRuleBans.Clear();

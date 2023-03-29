@@ -83,10 +83,8 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
     {
         _logger.LogInformation("Updating rulesets post-Item Category Store Refresh");
 
-        IEnumerable<uint>? getWeaponItemCategoryIds = await _itemCategoryService.GetWeaponItemCategoryIdsAsync
-        (
-            ct
-        );
+        IEnumerable<uint>? getWeaponItemCategoryIds = await _itemCategoryService
+            .GetWeaponItemCategoryIdsAsync(ct);
         if (getWeaponItemCategoryIds is null)
             return;
 
@@ -518,12 +516,8 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
                     storeConfiguration = rulesetOverlayConfiguration;
                     dbContext.RulesetOverlayConfigurations.Update(storeConfiguration);
                 }
-                Ruleset? storeRuleset = await GetRulesetFromIdAsync(rulesetId, ct, false, false);
-                if (storeRuleset != null)
-                {
-                    storeRuleset.DateLastModified = DateTime.UtcNow;
-                    dbContext.Rulesets.Update(storeRuleset);
-                }
+
+                Ruleset? storeRuleset = await UpdateRulesetLastModifiedAsync(rulesetId, dbContext, false, ct);
 
                 await dbContext.SaveChangesAsync(ct);
 
@@ -607,12 +601,7 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
                     dbContext.RulesetActionRules.AddRange(newEntities);
                 }
 
-                Ruleset? storeRuleset = await GetRulesetFromIdAsync(rulesetId, ct, false, false);
-                if (storeRuleset != null)
-                {
-                    storeRuleset.DateLastModified = DateTime.UtcNow;
-                    dbContext.Rulesets.Update(storeRuleset);
-                }
+                Ruleset? storeRuleset = await UpdateRulesetLastModifiedAsync(rulesetId, dbContext, false, ct);
 
                 await dbContext.SaveChangesAsync(ct);
 
@@ -641,29 +630,20 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
         CancellationToken ct = default
     )
     {
-        if (rulesetId == DefaultRulesetId)
-        {
+        // ReSharper disable twice PossibleMultipleEnumeration
+        if (!rules.Any())
             return;
-        }
 
         using (await _itemCategoryRulesLock.WaitAsync($"{rulesetId}", ct))
         {
-            List<RulesetItemCategoryRule> ruleUpdates = rules.Where(rule => rule.RulesetId == rulesetId).ToList();
-
-            if (!ruleUpdates.Any())
-            {
-                return;
-            }
-
             try
             {
                 await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
-                List<RulesetItemCategoryRule> newEntities = new();
-                RulesetItemCategoryRule[] storeRules = (await GetRulesetItemCategoryRulesAsync(rulesetId, ct))
-                    .ToArray();
+                Dictionary<uint, RulesetItemCategoryRule> storeRules = (await GetRulesetItemCategoryRulesAsync(rulesetId, ct))
+                    .ToDictionary(x => x.ItemCategoryId, x => x);
 
-                foreach (RulesetItemCategoryRule rule in ruleUpdates)
+                foreach (RulesetItemCategoryRule rule in rules)
                 {
                     // Only allow deferring to either Planetside Class Settings or Item Rules. Give Preference to Item Rules
                     if (rule is { DeferToItemRules: true, DeferToPlanetsideClassSettings: true })
@@ -671,43 +651,26 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
                         rule.DeferToPlanetsideClassSettings = false;
                     }
 
-                    RulesetItemCategoryRule? storeEntity = storeRules.FirstOrDefault(r => r.ItemCategoryId == rule.ItemCategoryId);
+                    storeRules.TryGetValue(rule.ItemCategoryId, out RulesetItemCategoryRule? storeEntity);
 
                     if (storeEntity == null)
                     {
-                        newEntities.Add(rule);
+                        dbContext.RulesetItemCategoryRules.Add(rule);
                     }
                     else
                     {
-                        storeEntity = rule;
-                        dbContext.RulesetItemCategoryRules.Update(storeEntity);
+                        dbContext.RulesetItemCategoryRules.Update(rule);
+                        storeRules.Remove(rule.ItemCategoryId);
                     }
                 }
 
-                if (newEntities.Any())
-                {
-                    dbContext.RulesetItemCategoryRules.AddRange(newEntities);
-                }
+                foreach (RulesetItemCategoryRule oldRule in storeRules.Values)
+                    dbContext.RulesetItemCategoryRules.Remove(oldRule);
 
-                Ruleset? storeRuleset = await dbContext.Rulesets.Where(r => r.Id == rulesetId)
-                    .FirstOrDefaultAsync(cancellationToken: ct);
-
-                if (storeRuleset != null)
-                {
-                    storeRuleset.DateLastModified = DateTime.UtcNow;
-                    dbContext.Rulesets.Update(storeRuleset);
-                }
-
-
-                List<Task> TaskList = new();
+                Ruleset? storeRuleset = await UpdateRulesetLastModifiedAsync(rulesetId, dbContext, false, ct);
 
                 foreach (RulesetItemCategoryRule rule in dbContext.RulesetItemCategoryRules.Where(r => r.RulesetId == rulesetId))
-                {
-                    Task itemRulesTask = UpdateItemRulesForItemCategoryRuleAsync(dbContext, rule, ct);
-                    TaskList.Add(itemRulesTask);
-                }
-
-                await Task.WhenAll(TaskList);
+                    await UpdateItemRulesForItemCategoryRuleAsync(dbContext, rule, ct);
 
                 await dbContext.SaveChangesAsync(ct);
 
@@ -736,55 +699,38 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
         CancellationToken ct = default
     )
     {
-        if (rulesetId == DefaultRulesetId)
-        {
+        // ReSharper disable twice PossibleMultipleEnumeration
+        if (!rules.Any())
             return;
-        }
 
         using (await _itemRulesLock.WaitAsync($"{rulesetId}", ct))
         {
-            List<RulesetItemRule> ruleUpdates = rules.Where(rule => rule.RulesetId == rulesetId).ToList();
-
-            if (!ruleUpdates.Any())
-            {
-                return;
-            }
-
             try
             {
                 await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
-                RulesetItemRule[] storeRules = (await GetRulesetItemRulesAsync(rulesetId, ct)).ToArray();
-                List<RulesetItemRule> newEntities = new();
+                Dictionary<uint, RulesetItemRule> storeRules = (await GetRulesetItemRulesAsync(rulesetId, ct))
+                    .ToDictionary(x => x.ItemId, x => x);
 
-                foreach (RulesetItemRule rule in ruleUpdates)
+                foreach (RulesetItemRule rule in rules)
                 {
-                    RulesetItemRule? storeEntity = storeRules.FirstOrDefault(r => r.ItemId == rule.ItemId);
+                    storeRules.TryGetValue(rule.ItemId, out RulesetItemRule? storeEntity);
 
                     if (storeEntity == null)
                     {
-                        newEntities.Add(rule);
+                        dbContext.RulesetItemRules.Add(rule);
                     }
                     else
                     {
-                        storeEntity = rule;
-                        dbContext.RulesetItemRules.Update(storeEntity);
+                        dbContext.RulesetItemRules.Update(rule);
+                        storeRules.Remove(rule.ItemId);
                     }
                 }
 
-                if (newEntities.Any())
-                {
-                    dbContext.RulesetItemRules.AddRange(newEntities);
-                }
+                foreach (RulesetItemRule oldRule in storeRules.Values)
+                    dbContext.RulesetItemRules.Remove(oldRule);
 
-                Ruleset? storeRuleset = await dbContext.Rulesets.Where(r => r.Id == rulesetId)
-                    .FirstOrDefaultAsync(cancellationToken: ct);
-
-                if (storeRuleset != null)
-                {
-                    storeRuleset.DateLastModified = DateTime.UtcNow;
-                    dbContext.Rulesets.Update(storeRuleset);
-                }
+                Ruleset? storeRuleset = await UpdateRulesetLastModifiedAsync(rulesetId, dbContext, false, ct);
 
                 await dbContext.SaveChangesAsync(ct);
 
@@ -860,15 +806,7 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
                     dbContext.RulesetFacilityRules.AddRange(newEntities);
                 }
 
-                Ruleset? storeRuleset = await dbContext.Rulesets
-                    .Where(r => r.Id == rulesetId)
-                    .FirstOrDefaultAsync(ct);
-
-                if (storeRuleset != null)
-                {
-                    storeRuleset.DateLastModified = DateTime.UtcNow;
-                    dbContext.Rulesets.Update(storeRuleset);
-                }
+                Ruleset? storeRuleset = await UpdateRulesetLastModifiedAsync(rulesetId, dbContext, false, ct);
 
                 await dbContext.SaveChangesAsync(ct);
 
@@ -1204,7 +1142,12 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
         }
     }
 
-    private async Task UpdateItemRulesForItemCategoryRuleAsync(PlanetmansDbContext dbContext, RulesetItemCategoryRule itemCategoryRule, CancellationToken ct)
+    private async Task UpdateItemRulesForItemCategoryRuleAsync
+    (
+        PlanetmansDbContext dbContext,
+        RulesetItemCategoryRule itemCategoryRule,
+        CancellationToken ct
+    )
     {
         int rulesetId = itemCategoryRule.RulesetId;
         uint itemCategoryId = itemCategoryRule.ItemCategoryId;
@@ -1473,6 +1416,30 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
             return null;
         }
     }
+
+    private static async Task<Ruleset?> UpdateRulesetLastModifiedAsync
+    (
+        int rulesetId,
+        PlanetmansDbContext dbContext,
+        bool saveChanges,
+        CancellationToken ct
+    )
+    {
+        Ruleset? storeRuleset = await dbContext.Rulesets
+            .FirstOrDefaultAsync(r => r.Id == rulesetId, cancellationToken: ct);
+
+        if (storeRuleset is not null)
+        {
+            storeRuleset.DateLastModified = DateTime.UtcNow;
+            dbContext.Rulesets.Update(storeRuleset);
+        }
+
+        if (saveChanges)
+            await dbContext.SaveChangesAsync(ct);
+
+        return storeRuleset;
+    }
+
     #endregion Ruleset Activation / Defaulting / Favoriting
 
     #region Import / Export JSON

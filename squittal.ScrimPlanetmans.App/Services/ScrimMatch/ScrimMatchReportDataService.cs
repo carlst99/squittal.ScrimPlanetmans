@@ -59,7 +59,7 @@ public class ScrimMatchReportDataService : IScrimMatchReportDataService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get historical scrim matches");
-            return new PaginatedList<ScrimMatchInfo>(Array.Empty<ScrimMatchInfo>(), 0, 1, 0);
+            return new PaginatedList<ScrimMatchInfo>(SCRIM_MATCH_BROWSER_PAGE_SIZE);
         }
     }
 

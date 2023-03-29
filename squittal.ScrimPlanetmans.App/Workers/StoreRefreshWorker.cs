@@ -35,7 +35,7 @@ public class StoreRefreshWorker : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to run an interation of the StoreRefreshWorker");
+                _logger.LogError(ex, "Failed to run an iteration of the StoreRefreshWorker");
             }
 
             await timer.WaitForNextTickAsync(ct);
