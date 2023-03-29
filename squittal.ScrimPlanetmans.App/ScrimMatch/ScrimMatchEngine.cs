@@ -104,7 +104,7 @@ public class ScrimMatchEngine : IScrimMatchEngine
         }
         else
         {
-            Ruleset.Models.Ruleset? activeRuleset = await _rulesetManager.GetActiveRulesetAsync();
+            Ruleset.Models.Ruleset? activeRuleset = _rulesetManager.ActiveRuleset;
             if (activeRuleset is not null)
             {
                 MatchConfiguration.TrySetEndRoundOnFacilityCapture

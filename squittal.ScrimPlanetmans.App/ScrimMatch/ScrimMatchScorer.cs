@@ -1,63 +1,35 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DbgCensus.EventStream.Abstractions.Objects.Events.Characters;
 using squittal.ScrimPlanetmans.App.Abstractions.Services.Planetside;
-using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch;
 using squittal.ScrimPlanetmans.App.Models;
 using squittal.ScrimPlanetmans.App.Models.CensusRest;
-using squittal.ScrimPlanetmans.App.ScrimMatch.Events;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Models;
 using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch;
 
-public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
+public sealed class ScrimMatchScorer : IScrimMatchScorer
 {
     private readonly IScrimRulesetManager _rulesets;
     private readonly IScrimTeamsManager _teamsManager;
-    private readonly IScrimMessageBroadcastService _messageService;
     private readonly ILoadoutService _loadoutService;
 
-    private Ruleset.Models.Ruleset? _activeRuleset;
+    private Ruleset.Models.Ruleset? _activeRuleset => _rulesets.ActiveRuleset;
 
     public ScrimMatchScorer
     (
         IScrimRulesetManager rulesets,
         IScrimTeamsManager teamsManager,
-        IScrimMessageBroadcastService messageService,
         ILoadoutService loadoutService
     )
     {
         _rulesets = rulesets;
         _teamsManager = teamsManager;
-        _messageService = messageService;
         _loadoutService = loadoutService;
 
-        _messageService.RaiseActiveRulesetChangeEvent += OnActiveRulesetChangeEvent;
-        _messageService.RaiseRulesetRuleChangeEvent += OnRulesetRuleChangeEvent;
-    }
-
-    private async void OnActiveRulesetChangeEvent(object? sender, ScrimMessageEventArgs<ActiveRulesetChangeMessage> e)
-    {
-        await SetActiveRulesetAsync();
-    }
-
-    private async void OnRulesetRuleChangeEvent(object? sender, ScrimMessageEventArgs<RulesetRuleChangeMessage> e)
-    {
-        if (_activeRuleset?.Id == e.Message.Ruleset.Id)
-        {
-            await SetActiveRulesetAsync();
-        }
-
-        // TODO: specific methods for only updating Rule Type that changed (Action Rules or Item Category Rules)
-    }
-
-    public async Task SetActiveRulesetAsync(CancellationToken ct = default)
-    {
-        _activeRuleset = await _rulesets.GetActiveRulesetAsync(ct: ct);
     }
 
     #region Death Events
@@ -652,11 +624,4 @@ public sealed class ScrimMatchScorer : IScrimMatchScorer, IDisposable
     }
 
     #endregion Rule Handling
-
-    /// <inheritdoc />
-    public void Dispose()
-    {
-        _messageService.RaiseActiveRulesetChangeEvent -= OnActiveRulesetChangeEvent;
-        _messageService.RaiseRulesetRuleChangeEvent -= OnRulesetRuleChangeEvent;
-    }
 }

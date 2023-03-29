@@ -377,7 +377,7 @@
     {
         _isLoadingActiveRulesetConfig = true;
 
-        _activeRuleset = await RulesetManager.GetActiveRulesetAsync();
+        _activeRuleset = RulesetManager.ActiveRuleset;
 
         if (_activeRuleset != null)
         {
@@ -390,12 +390,7 @@
                 _matchConfiguration.TrySetEndRoundOnFacilityCapture(_activeRuleset.DefaultEndRoundOnFacilityCapture, false);
 
                 string oldTitle = _matchConfiguration.Title;
-                string? newTitle = _activeRuleset.DefaultMatchTitle;
-
-                if (newTitle == null)
-                {
-                    newTitle = string.Empty;
-                }
+                string newTitle = _activeRuleset.DefaultMatchTitle;
 
                 if (_matchConfiguration.TrySetTitle(newTitle, true))
                 {

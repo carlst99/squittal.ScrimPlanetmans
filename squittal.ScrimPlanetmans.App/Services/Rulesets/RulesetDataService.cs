@@ -21,7 +21,7 @@ using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
 namespace squittal.ScrimPlanetmans.App.Services.Rulesets;
 
-public partial class RulesetDataService : IRulesetDataService
+public partial class RulesetDataService : IRulesetDataService, IDisposable
 {
     private const int RULESET_BROWSER_PAGE_SIZE = 15;
 
@@ -45,6 +45,8 @@ public partial class RulesetDataService : IRulesetDataService
     private readonly KeyedSemaphoreSlim _rulesetExportLock = new();
     private readonly AutoResetEvent _defaultRulesetAutoEvent = new(true);
 
+    private bool _isDisposed;
+
     public int ActiveRulesetId { get; private set; }
     public int CustomDefaultRulesetId { get; private set; }
     public int DefaultRulesetId => 1;
@@ -67,6 +69,8 @@ public partial class RulesetDataService : IRulesetDataService
         _itemCategoryService = itemCategoryService;
         _messageService = messageService;
         _rulesetFileService = rulesetFileService;
+
+        _messageService.RaiseActiveRulesetChangeEvent += OnActiveRulesetChanged;
     }
 
     public async Task RefreshRulesetsAsync(CancellationToken ct = default)
@@ -79,54 +83,54 @@ public partial class RulesetDataService : IRulesetDataService
     {
         _logger.LogInformation("Updating rulesets post-Item Category Store Refresh");
 
-            IEnumerable<uint>? getWeaponItemCategoryIds = await _itemCategoryService.GetWeaponItemCategoryIdsAsync
+        IEnumerable<uint>? getWeaponItemCategoryIds = await _itemCategoryService.GetWeaponItemCategoryIdsAsync
+        (
+            ct
+        );
+        if (getWeaponItemCategoryIds is null)
+            return;
+
+        uint[] weaponItemCategoryIds = getWeaponItemCategoryIds.ToArray();
+
+        Ruleset[] storeRulesets = (await GetAllRulesetsAsync(ct)).ToArray();
+
+        if (storeRulesets.Length is 0)
+        {
+            _logger.LogInformation
             (
-                ct
+                "Finished updating rulesets post-Item Category Store Refresh. No store rulesets found"
             );
-            if (getWeaponItemCategoryIds is null)
-                return;
 
-            uint[] weaponItemCategoryIds = getWeaponItemCategoryIds.ToArray();
+            return;
+        }
 
-            Ruleset[] storeRulesets = (await GetAllRulesetsAsync(ct)).ToArray();
+        foreach (Ruleset ruleset in storeRulesets)
+        {
+            IEnumerable<RulesetItemCategoryRule> rulesetItemCategoryRules
+                = await GetRulesetItemCategoryRulesAsync(ruleset.Id, ct);
 
-            if (storeRulesets.Length is 0)
-            {
-                _logger.LogInformation
+            uint[] missingItemCategoryIds = weaponItemCategoryIds
+                .Where(id => rulesetItemCategoryRules.All(rule => rule.ItemCategoryId != id))
+                .ToArray();
+
+            if (missingItemCategoryIds.Length is 0)
+                continue;
+
+            RulesetItemCategoryRule[] newRules = missingItemCategoryIds.Select
                 (
-                    "Finished updating rulesets post-Item Category Store Refresh. No store rulesets found"
-                );
+                    id => BuildRulesetItemCategoryRule(ruleset.Id, id)
+                )
+                .ToArray();
+            await SaveRulesetItemCategoryRules(ruleset.Id, newRules, ct);
 
-                return;
-            }
-
-            foreach (Ruleset ruleset in storeRulesets)
-            {
-                IEnumerable<RulesetItemCategoryRule> rulesetItemCategoryRules
-                    = await GetRulesetItemCategoryRulesAsync(ruleset.Id, ct);
-
-                uint[] missingItemCategoryIds = weaponItemCategoryIds
-                    .Where(id => rulesetItemCategoryRules.All(rule => rule.ItemCategoryId != id))
-                    .ToArray();
-
-                if (missingItemCategoryIds.Length is 0)
-                    continue;
-
-                RulesetItemCategoryRule[] newRules = missingItemCategoryIds.Select
-                    (
-                        id => BuildRulesetItemCategoryRule(ruleset.Id, id)
-                    )
-                    .ToArray();
-                await SaveRulesetItemCategoryRules(ruleset.Id, newRules, ct);
-
-                _logger.LogInformation
-                (
-                    "Updated Item Category Rules for Ruleset {ID} post-Item Category Store Refresh. " +
-                    "New Rules: {Count}",
-                    ruleset.Id,
-                    newRules.Length
-                );
-            }
+            _logger.LogInformation
+            (
+                "Updated Item Category Rules for Ruleset {ID} post-Item Category Store Refresh. " +
+                "New Rules: {Count}",
+                ruleset.Id,
+                newRules.Length
+            );
+        }
 
         _logger.LogInformation("Finished updating rulesets post-Item Category Store Refresh");
     }
@@ -1405,10 +1409,9 @@ public partial class RulesetDataService : IRulesetDataService
     #endregion Helper Methods
 
     #region Ruleset Activation / Defaulting / Favoriting
-    public void SetActiveRulesetId(int rulesetId)
-    {
-        ActiveRulesetId = rulesetId;
-    }
+
+    private void OnActiveRulesetChanged(object? sender, ScrimMessageEventArgs<ActiveRulesetChangeMessage> e)
+        => ActiveRulesetId = e.Message.ActiveRuleset.Id;
 
     public async Task<Ruleset?> SetCustomDefaultRulesetAsync(int rulesetId, CancellationToken ct = default)
     {
@@ -1795,4 +1798,22 @@ public partial class RulesetDataService : IRulesetDataService
 
     [GeneratedRegex("^([A-Za-z0-9()\\[\\]\\-_'.][ ]{0,1}){1,49}[A-Za-z0-9()\\[\\]\\-_'.]$", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
     private static partial Regex GetRulesetNameRegex();
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposeManaged)
+    {
+        if (_isDisposed)
+            return;
+
+        if (disposeManaged)
+            _messageService.RaiseActiveRulesetChangeEvent -= OnActiveRulesetChanged;
+
+        _isDisposed = true;
+    }
 }

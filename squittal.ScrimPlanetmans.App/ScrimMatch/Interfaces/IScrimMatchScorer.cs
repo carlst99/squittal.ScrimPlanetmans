@@ -12,7 +12,6 @@ public interface IScrimMatchScorer
     ScrimEventScoringResult ScoreFacilityControlEvent(ScrimFacilityControlActionEvent control);
     void HandlePlayerLogin(IPlayerLogin login);
     void HandlePlayerLogout(IPlayerLogout login);
-    Task SetActiveRulesetAsync(CancellationToken ct = default);
     Task<ScrimEventScoringResult> ScoreReviveEventAsync(ScrimReviveActionEvent revive, CancellationToken ct = default);
     Task<ScrimEventScoringResult> ScoreAssistEventAsync(ScrimAssistActionEvent assist, CancellationToken ct = default);
     Task<ScrimEventScoringResult> ScoreObjectiveTickEventAsync(ScrimObjectiveTickActionEvent objective, CancellationToken ct = default);

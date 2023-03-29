@@ -87,5 +87,4 @@ public interface IScrimMessageBroadcastService
     void BroadcastRulesetSettingChangeMessage(RulesetSettingChangeMessage message);
     void BroadcastRulesetOverlayConfigurationChangeMessage(RulesetOverlayConfigurationChangeMessage message);
     void BroadcastRulesetRuleChangeMessage(RulesetRuleChangeMessage message);
-
 }

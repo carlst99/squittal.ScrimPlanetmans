@@ -43,7 +43,6 @@ public interface IRulesetDataService
     Task SaveRulesetItemRules(int rulesetId, IEnumerable<RulesetItemRule> rules, CancellationToken ct = default);
     Task SaveRulesetFacilityRulesAsync(int rulesetId, IEnumerable<RulesetFacilityRuleChange> rules, CancellationToken ct = default);
 
-    void SetActiveRulesetId(int rulesetId);
     Task<Ruleset?> SetCustomDefaultRulesetAsync(int rulesetId, CancellationToken ct = default);
 
     Task<bool> CanDeleteRuleset(int rulesetId, CancellationToken cancellationToken);

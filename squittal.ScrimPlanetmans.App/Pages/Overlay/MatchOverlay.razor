@@ -1,11 +1,9 @@
 ﻿@page "/Overlay"
+
 @using Microsoft.AspNetCore.WebUtilities 
+@using Microsoft.Extensions.Primitives
 @using squittal.ScrimPlanetmans.App.Abstractions.Services.ScrimMatch
 @using squittal.ScrimPlanetmans.App.Models
-@*for QueryHelpers*@
-@using squittal.ScrimPlanetmans.App.Pages.Overlay.TeamPlayers;
-@using squittal.ScrimPlanetmans.App.Pages.Overlay.Scoreboard;
-@using squittal.ScrimPlanetmans.App.Pages.Overlay.MatchReports;
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Events
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Interfaces
 @using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models
@@ -21,8 +19,15 @@
 
 @if (_players && _activeStatsDisplayType != null)
 {
-    <TeamPlayerStatusesContainer i_TeamOrdinal="TeamDefinition.Team1" i_Compact=_compact i_StatsType=(OverlayStatsDisplayType)_activeStatsDisplayType i_ShowPlayerScoresSetting=_showStatusPanelScores />
-    <TeamPlayerStatusesContainer i_TeamOrdinal="TeamDefinition.Team2" i_Compact=_compact i_StatsType=(OverlayStatsDisplayType)_activeStatsDisplayType i_ShowPlayerScoresSetting=_showStatusPanelScores />
+    <TeamPlayerStatusesContainer i_TeamOrdinal="@TeamDefinition.Team1"
+                                 i_Compact="@_compact"
+                                 i_StatsType="@((OverlayStatsDisplayType)_activeStatsDisplayType)"
+                                 i_ShowPlayerScoresSetting="@_showStatusPanelScores" />
+
+    <TeamPlayerStatusesContainer i_TeamOrdinal="@TeamDefinition.Team2"
+                                 i_Compact="@_compact"
+                                 i_StatsType="@((OverlayStatsDisplayType)_activeStatsDisplayType)"
+                                 i_ShowPlayerScoresSetting="@_showStatusPanelScores" />
 }
 
 @if (_scoreboard)
@@ -32,12 +37,15 @@
 
 @if (_report && _activeStatsDisplayType != null)
 {
-    <MatchReportContainer i_ShowHsr=_showHsr i_StatsType=(OverlayStatsDisplayType)_activeStatsDisplayType i_Compact=_compact i_ShowPlayerScoresSetting=_showStatusPanelScores />
+    <MatchReportContainer i_ShowHsr="@_showHsr"
+                          i_StatsType="@((OverlayStatsDisplayType)_activeStatsDisplayType)"
+                          i_Compact="@_compact"
+                          i_ShowPlayerScoresSetting="@_showStatusPanelScores" />
 }
 
 @if (_feed)
 {
-    <Feed i_legacyUi=_legacyUi />
+    <Feed i_legacyUi="@_legacyUi" />
 }
 
 @code {
@@ -57,19 +65,18 @@
     public bool _title { get; set; } = true;
 
     [Parameter]
-    public bool _legacyUi { get; set; } = false;
+    public bool _legacyUi { get; set; }
 
     [Parameter]
     public bool _showHsr { get; set; } = true;
 
     [Parameter]
-    public bool _compact { get; set; } = false;
-    private bool _compactIsManual { get; set; } = false;
+    public bool _compact { get; set; }
+    private bool _compactIsManual { get; set; }
 
-    private bool _objectiveStats { get; set; } = false;
-    private bool? _showStatusPanelScores { get; set; } = null;
+    private bool? _showStatusPanelScores { get; set; }
 
-    private Ruleset _activeRuleset { get; set; }
+    private Ruleset? _activeRuleset { get; set; }
     private OverlayStatsDisplayType? _activeStatsDisplayType { get; set; }
 
 
@@ -88,6 +95,16 @@
 
         MessageService.RaiseActiveRulesetChangeEvent -= OnActiveRulesetChanged;
         MessageService.RaiseRulesetOverlayConfigurationChangeEvent -= OnRulesetOverlayConfigurationChanged;
+
+        _activeRuleset = RulesetManager.ActiveRuleset;
+        if (_activeRuleset?.RulesetOverlayConfiguration is null)
+            return;
+
+        if (!_compactIsManual)
+            _compact = _activeRuleset.RulesetOverlayConfiguration.UseCompactLayout;
+
+        _activeStatsDisplayType = _activeRuleset.RulesetOverlayConfiguration.StatsDisplayType;
+        _showStatusPanelScores = _activeRuleset.RulesetOverlayConfiguration.ShowStatusPanelScores;
     }
 
     protected override void OnParametersSet()
@@ -95,33 +112,10 @@
         UpdateUriParameters();
     }
 
-    protected override async Task OnInitializedAsync()
-    {
-        try
-        {
-            _activeRuleset = await RulesetManager.GetActiveRulesetAsync(false);
-
-            if (!_compactIsManual)
-            {
-                _compact = _activeRuleset.RulesetOverlayConfiguration.UseCompactLayout;
-            }
-
-            _activeStatsDisplayType = _activeRuleset.RulesetOverlayConfiguration.StatsDisplayType;
-
-            _objectiveStats = (_activeStatsDisplayType == OverlayStatsDisplayType.InfantryObjective) ? true : false;
-
-            _showStatusPanelScores = _activeRuleset.RulesetOverlayConfiguration.ShowStatusPanelScores;
-        }
-        catch
-        {
-            // Ignore
-        }
-    }
-
     #endregion Initialization Methods
 
     #region Event Handling
-    private void OnLocationChanged(object sender, LocationChangedEventArgs args)
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
     {
         if (UpdateUriParameters())
         {
@@ -129,15 +123,17 @@
         }
     }
 
-    private void OnActiveRulesetChanged(object sender, ScrimMessageEventArgs<ActiveRulesetChangeMessage> args)
+    private void OnActiveRulesetChanged(object? sender, ScrimMessageEventArgs<ActiveRulesetChangeMessage> args)
     {
-        var ruleset = args.Message.ActiveRuleset;
+        Ruleset ruleset = args.Message.ActiveRuleset;
+        if (ruleset.RulesetOverlayConfiguration is null)
+            return;
 
-        var newRulesetCompact = ruleset.RulesetOverlayConfiguration.UseCompactLayout;
-        var newRulesetOverlayStatsDisplayType = ruleset.RulesetOverlayConfiguration.StatsDisplayType;
-        var newRulesetShowStatusPanelScores = ruleset.RulesetOverlayConfiguration.ShowStatusPanelScores;
+        bool newRulesetCompact = ruleset.RulesetOverlayConfiguration.UseCompactLayout;
+        OverlayStatsDisplayType newRulesetOverlayStatsDisplayType = ruleset.RulesetOverlayConfiguration.StatsDisplayType;
+        bool? newRulesetShowStatusPanelScores = ruleset.RulesetOverlayConfiguration.ShowStatusPanelScores;
 
-        var stateChanged = false;
+        bool stateChanged = false;
 
         if (newRulesetCompact != _compact && !_compactIsManual)
         {
@@ -148,9 +144,6 @@
         if (newRulesetOverlayStatsDisplayType != _activeStatsDisplayType)
         {
             _activeStatsDisplayType = newRulesetOverlayStatsDisplayType;
-
-            _objectiveStats = (_activeStatsDisplayType == OverlayStatsDisplayType.InfantryObjective) ? true : false;
-
             stateChanged = true;
         }
 
@@ -161,23 +154,21 @@
         }
 
         if (stateChanged)
-        {
             InvokeAsyncStateHasChanged();
-        }
     }
 
-    private void OnRulesetOverlayConfigurationChanged(object sender, ScrimMessageEventArgs<RulesetOverlayConfigurationChangeMessage> args)
+    private void OnRulesetOverlayConfigurationChanged(object? sender, ScrimMessageEventArgs<RulesetOverlayConfigurationChangeMessage> args)
     {
-        var changes = args.Message.ChangedSettings;
-        var ruleset = args.Message.Ruleset;
-        var configuration = args.Message.OverlayConfiguration;
+        List<RulesetOverlayConfigurationChange> changes = args.Message.ChangedSettings;
+        Ruleset ruleset = args.Message.Ruleset;
+        RulesetOverlayConfiguration configuration = args.Message.OverlayConfiguration;
 
-        if (ruleset.Id != _activeRuleset.Id)
+        if (ruleset.Id != _activeRuleset?.Id)
         {
             return;
         }
 
-        var stateChanged = false;
+        bool stateChanged = false;
 
         if (changes.Contains(RulesetOverlayConfigurationChange.UseCompactLayout))
         {
@@ -193,9 +184,6 @@
             if (configuration.StatsDisplayType != _activeStatsDisplayType)
             {
                 _activeStatsDisplayType = configuration.StatsDisplayType;
-
-                _objectiveStats = (_activeStatsDisplayType == OverlayStatsDisplayType.InfantryObjective) ? true : false;
-
                 stateChanged = true;
             }
         }
@@ -220,12 +208,12 @@
 
     private bool UpdateUriParameters()
     {
-        var uri = NavManager.ToAbsoluteUri(NavManager.Uri);
-        var stateChanged = false;
+        Uri uri = NavManager.ToAbsoluteUri(NavManager.Uri);
+        bool stateChanged = false;
 
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("report", out var qReport))
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("report", out StringValues qReport))
         {
-            if (bool.TryParse(qReport, out var report))
+            if (bool.TryParse(qReport, out bool report))
             {
                 if (report != _report)
                 {
@@ -240,9 +228,9 @@
             }
         }
 
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("feed", out var qFeed))
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("feed", out StringValues qFeed))
         {
-            if (bool.TryParse(qFeed, out var feed))
+            if (bool.TryParse(qFeed, out bool feed))
             {
                 if (feed != _feed)
                 {
@@ -257,9 +245,9 @@
             }
         }
 
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("players", out var qPlayers))
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("players", out StringValues qPlayers))
         {
-            if (bool.TryParse(qPlayers, out var players))
+            if (bool.TryParse(qPlayers, out bool players))
             {
                 if (players != _players)
                 {
@@ -274,9 +262,9 @@
             }
         }
 
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("scoreboard", out var qScoreboard))
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("scoreboard", out StringValues qScoreboard))
         {
-            if (bool.TryParse(qScoreboard, out var scoreboard))
+            if (bool.TryParse(qScoreboard, out bool scoreboard))
             {
                 if (scoreboard != _scoreboard)
                 {
@@ -291,9 +279,9 @@
             }
         }
 
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("title", out var qTitle))
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("title", out StringValues qTitle))
         {
-            if (bool.TryParse(qTitle, out var title))
+            if (bool.TryParse(qTitle, out bool title))
             {
                 if (title != _title)
                 {
@@ -308,9 +296,9 @@
             }
         }
 
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("legacy", out var qLegacy))
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("legacy", out StringValues qLegacy))
         {
-            if (bool.TryParse(qLegacy, out var legacy))
+            if (bool.TryParse(qLegacy, out bool legacy))
             {
                 if (legacy != _legacyUi)
                 {
@@ -325,9 +313,9 @@
             }
         }
 
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("reportHsr", out var qShowHsr))
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("reportHsr", out StringValues qShowHsr))
         {
-            if (bool.TryParse(qShowHsr, out var showHsr))
+            if (bool.TryParse(qShowHsr, out bool showHsr))
             {
                 if (showHsr != _showHsr)
                 {
@@ -342,9 +330,9 @@
             }
         }
 
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("compact", out var qCompact))
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("compact", out StringValues qCompact))
         {
-            if (bool.TryParse(qCompact, out var compact))
+            if (bool.TryParse(qCompact, out bool compact))
             {
                 if (compact != _compact)
                 {
@@ -354,7 +342,7 @@
 
                 _compactIsManual = true;
             }
-            else if (_activeRuleset != null)
+            else if (_activeRuleset?.RulesetOverlayConfiguration is not null)
             {
                 _compact = _activeRuleset.RulesetOverlayConfiguration.UseCompactLayout;
                 _compactIsManual = false;
@@ -366,10 +354,5 @@
     }
 
     private void InvokeAsyncStateHasChanged()
-    {
-        InvokeAsync(() =>
-        {
-            StateHasChanged();
-        });
-    }
+        => InvokeAsync(StateHasChanged);
 }

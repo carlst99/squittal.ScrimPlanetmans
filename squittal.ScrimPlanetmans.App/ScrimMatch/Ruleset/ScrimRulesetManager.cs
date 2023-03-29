@@ -19,7 +19,7 @@ using squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models;
 
 namespace squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset;
 
-public class ScrimRulesetManager : IScrimRulesetManager
+public class ScrimRulesetManager : IScrimRulesetManager, IDisposable
 {
     private const int DEFAULT_RULESET_ID = 1;
 
@@ -29,9 +29,11 @@ public class ScrimRulesetManager : IScrimRulesetManager
     private readonly ICensusItemService _itemService;
     private readonly IRulesetDataService _rulesetDataService;
     private readonly IScrimMessageBroadcastService _messageService;
+    private readonly SemaphoreSlim _activateRulesetSempahore;
+
+    private bool _isDisposed;
 
     public Models.Ruleset? ActiveRuleset { get; private set; }
-    private readonly AutoResetEvent _activateRulesetAutoEvent = new(true);
 
     public ScrimRulesetManager
     (
@@ -49,8 +51,9 @@ public class ScrimRulesetManager : IScrimRulesetManager
         _rulesetDataService = rulesetDataService;
         _messageService = messageService;
         _logger = logger;
+        _activateRulesetSempahore = new SemaphoreSlim(1, 1);
 
-        _messageService.RaiseRulesetRuleChangeEvent += HandleRulesetRuleChangeMesssage;
+        _messageService.RaiseRulesetRuleChangeEvent += OnRulesetRuleChange;
         _messageService.RaiseRulesetSettingChangeEvent += HandleRulesetSettingChangeMessage;
         _messageService.RaiseRulesetOverlayConfigurationChangeEvent += HandleRulesetOverlayConfigurationChangeMessage;
     }
@@ -58,48 +61,24 @@ public class ScrimRulesetManager : IScrimRulesetManager
     public async Task<IEnumerable<Models.Ruleset>> GetRulesetsAsync(CancellationToken ct)
         =>  await _rulesetDataService.GetAllRulesetsAsync(ct);
 
-    public async Task<Models.Ruleset?> GetActiveRulesetAsync(bool forceRefresh = false, CancellationToken ct = default)
-    {
-        if (ActiveRuleset == null)
-        {
-            await ActivateDefaultRulesetAsync(ct);
-            return ActiveRuleset;
-        }
-
-        if (forceRefresh
-            || ActiveRuleset.RulesetActionRules == null
-            || !ActiveRuleset.RulesetActionRules.Any()
-            || ActiveRuleset.RulesetItemCategoryRules == null
-            || !ActiveRuleset.RulesetItemCategoryRules.Any())
-        {
-            await SetUpActiveRulesetAsync(ct);
-        }
-
-        return ActiveRuleset;
-    }
-
     public async Task<bool> ActivateRulesetAsync(int rulesetId, CancellationToken ct = default)
     {
-        _activateRulesetAutoEvent.WaitOne();
+        await _activateRulesetSempahore.WaitAsync(ct);
 
         try
         {
-            if (ActiveRuleset?.Id == rulesetId)
-                return true;
-
             Models.Ruleset? currentActiveRuleset = ActiveRuleset;
- 
+
             Models.Ruleset? newActiveRuleset = await _rulesetDataService.GetRulesetFromIdAsync(rulesetId, ct);
             if (newActiveRuleset == null)
+            {
+                _logger.LogWarning("Ruleset does not exist; cannot activate (ID: {Id})", rulesetId);
                 return false;
+            }
 
-            _rulesetDataService.SetActiveRulesetId(rulesetId);
             ActiveRuleset = newActiveRuleset;
 
-            ActiveRulesetChangeMessage message = currentActiveRuleset == null
-                ? new ActiveRulesetChangeMessage(ActiveRuleset)
-                : new ActiveRulesetChangeMessage(ActiveRuleset, currentActiveRuleset);
-
+            ActiveRulesetChangeMessage message = new(ActiveRuleset, currentActiveRuleset);
             _messageService.BroadcastActiveRulesetChangeMessage(message);
             _logger.LogInformation("Active ruleset loaded: {Name}", ActiveRuleset.Name);
 
@@ -107,12 +86,12 @@ public class ScrimRulesetManager : IScrimRulesetManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to activate a ruleset");
+            _logger.LogError(ex, "Failed to activate a ruleset (ID: {Id})", rulesetId);
             return false;
         }
         finally
         {
-            _activateRulesetAutoEvent.Set();
+            _activateRulesetSempahore.Release();
         }
     }
 
@@ -120,87 +99,40 @@ public class ScrimRulesetManager : IScrimRulesetManager
     {
         await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
-        Models.Ruleset? ruleset = await dbContext.Rulesets.FirstOrDefaultAsync
-        (
-            r => r.IsCustomDefault,
-            cancellationToken: ct
-        );
+        var firstCustomRuleset = await dbContext.Rulesets
+            .Select(r => new
+            {
+                r.Id,
+                r.IsCustomDefault
+            })
+            .FirstOrDefaultAsync
+            (
+                r => r.IsCustomDefault,
+                cancellationToken: ct
+            );
 
-        if (ruleset is null)
-        {
-            _logger.LogDebug("No custom default ruleset found. Loading default ruleset...");
-            ruleset = await dbContext.Rulesets.FirstOrDefaultAsync(r => r.IsDefault, cancellationToken: ct);
-        }
+        int defaultId = firstCustomRuleset?.Id ?? DEFAULT_RULESET_ID;
+        await ActivateRulesetAsync(defaultId, ct);
 
-        if (ruleset is null)
-        {
-            _logger.LogError("Failed to activate default ruleset: no ruleset found");
-            return false;
-        }
-
-        await ActivateRulesetAsync(ruleset.Id, ct);
         return true;
     }
 
-    public async Task SetUpActiveRulesetAsync(CancellationToken ct = default)
+    private void OnRulesetRuleChange(object? sender, ScrimMessageEventArgs<RulesetRuleChangeMessage> e)
     {
-        _activateRulesetAutoEvent.WaitOne();
-
-        try
-        {
-            Models.Ruleset? currentActiveRuleset = ActiveRuleset;
-
-            if (currentActiveRuleset == null)
-            {
-                _logger.LogError($"Failed to set up active ruleset: no ruleset found");
-
-                _activateRulesetAutoEvent.Set();
-
-                return;
-            }
-
-            Models.Ruleset? tempRuleset = await _rulesetDataService.GetRulesetFromIdAsync(currentActiveRuleset.Id, ct);
-
-            if (tempRuleset == null)
-            {
-                _logger.LogError($"Failed to set up active ruleset: temp ruleset is null");
-
-                _activateRulesetAutoEvent.Set();
-
-                return;
-            }
-
-            ActiveRuleset = tempRuleset;
-
-            _rulesetDataService.SetActiveRulesetId(ActiveRuleset.Id);
-
-            _logger.LogInformation("Active ruleset collections loaded: {Name}", ActiveRuleset.Name);
-
-            _activateRulesetAutoEvent.Set();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to set up active ruleset");
-
-            _activateRulesetAutoEvent.Set();
-        }
-    }
-
-    private void HandleRulesetRuleChangeMesssage(object? sender, ScrimMessageEventArgs<RulesetRuleChangeMessage> e)
-    {
-        int changedRulesetId = e.Message.Ruleset.Id;
-
-        if (changedRulesetId != ActiveRuleset?.Id)
+        if (e.Message.Ruleset.Id != ActiveRuleset?.Id)
             return;
 
-        try
+        Task.Run(async () =>
         {
-            SetUpActiveRulesetAsync().Wait();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to setup active ruleset after recieving change message");
-        }
+            try
+            {
+                await ActivateRulesetAsync(e.Message.Ruleset.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to handle a ruleset rule change");
+            }
+        });
     }
 
     private void HandleRulesetSettingChangeMessage(object? sender, ScrimMessageEventArgs<RulesetSettingChangeMessage> e)
@@ -209,21 +141,17 @@ public class ScrimRulesetManager : IScrimRulesetManager
             return;
 
         Models.Ruleset ruleset = e.Message.Ruleset;
-
-        _activateRulesetAutoEvent.WaitOne();
-
-        if (ruleset.Id != ActiveRuleset.Id)
-        {
-            _activateRulesetAutoEvent.Set();
+        if (ruleset.Id != ActiveRuleset?.Id)
             return;
-        }
+
+        _activateRulesetSempahore.Wait();
 
         ActiveRuleset.Name = ruleset.Name;
         ActiveRuleset.DefaultMatchTitle = ruleset.DefaultMatchTitle;
         ActiveRuleset.DefaultRoundLength = ruleset.DefaultRoundLength;
         ActiveRuleset.DefaultEndRoundOnFacilityCapture = ruleset.DefaultEndRoundOnFacilityCapture;
 
-        _activateRulesetAutoEvent.Set();
+        _activateRulesetSempahore.Release();
     }
 
     private void HandleRulesetOverlayConfigurationChangeMessage(object? sender, ScrimMessageEventArgs<RulesetOverlayConfigurationChangeMessage> e)
@@ -234,38 +162,16 @@ public class ScrimRulesetManager : IScrimRulesetManager
         Models.Ruleset ruleset = e.Message.Ruleset;
         RulesetOverlayConfiguration overlayConfiguration = e.Message.OverlayConfiguration;
 
-        _activateRulesetAutoEvent.WaitOne();
-
-        if (ruleset.Id != ActiveRuleset.Id)
-        {
-            _activateRulesetAutoEvent.Set();
+        if (ruleset.Id != ActiveRuleset?.Id || ActiveRuleset.RulesetOverlayConfiguration is null)
             return;
-        }
 
-        if (ActiveRuleset.RulesetOverlayConfiguration is not null)
-        {
-            ActiveRuleset.RulesetOverlayConfiguration.UseCompactLayout = overlayConfiguration.UseCompactLayout;
-            ActiveRuleset.RulesetOverlayConfiguration.StatsDisplayType = overlayConfiguration.StatsDisplayType;
-            ActiveRuleset.RulesetOverlayConfiguration.ShowStatusPanelScores = overlayConfiguration.ShowStatusPanelScores;
-        }
+        _activateRulesetSempahore.Wait();
 
-        _activateRulesetAutoEvent.Set();
-    }
+        ActiveRuleset.RulesetOverlayConfiguration.UseCompactLayout = overlayConfiguration.UseCompactLayout;
+        ActiveRuleset.RulesetOverlayConfiguration.StatsDisplayType = overlayConfiguration.StatsDisplayType;
+        ActiveRuleset.RulesetOverlayConfiguration.ShowStatusPanelScores = overlayConfiguration.ShowStatusPanelScores;
 
-    public async Task<Models.Ruleset?> GetDefaultRulesetAsync(CancellationToken ct = default)
-    {
-        await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
-
-        Models.Ruleset? ruleset = await dbContext.Rulesets.FirstOrDefaultAsync(r => r.IsDefault, cancellationToken: ct);
-
-        if (ruleset == null)
-        {
-            return null;
-        }
-
-        ruleset = await _rulesetDataService.GetRulesetFromIdAsync(ruleset.Id, ct);
-
-        return ruleset;
+        _activateRulesetSempahore.Release();
     }
 
     public async Task SeedDefaultRulesetAsync(CancellationToken ct = default)
@@ -742,4 +648,26 @@ public class ScrimRulesetManager : IScrimRulesetManager
             RulesetId = DEFAULT_RULESET_ID,
             FacilityId = facilityId
         };
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposeManaged)
+    {
+        if (_isDisposed)
+            return;
+
+        if (disposeManaged)
+        {
+            _messageService.RaiseRulesetRuleChangeEvent -= OnRulesetRuleChange;
+            _messageService.RaiseRulesetSettingChangeEvent -= HandleRulesetSettingChangeMessage;
+            _messageService.RaiseRulesetOverlayConfigurationChangeEvent -= HandleRulesetOverlayConfigurationChangeMessage;
+        }
+
+        _isDisposed = true;
+    }
 }
