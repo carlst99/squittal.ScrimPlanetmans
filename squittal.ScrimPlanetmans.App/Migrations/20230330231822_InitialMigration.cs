@@ -467,8 +467,7 @@ namespace squittal.ScrimPlanetmans.App.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ScrimMatch_RulesetId",
                 table: "ScrimMatch",
-                column: "RulesetId",
-                unique: true);
+                column: "RulesetId");
         }
 
         /// <inheritdoc />

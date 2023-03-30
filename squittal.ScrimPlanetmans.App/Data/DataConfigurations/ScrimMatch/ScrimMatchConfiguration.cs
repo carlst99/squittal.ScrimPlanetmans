@@ -16,7 +16,7 @@ public class ScrimMatchConfiguration : IEntityTypeConfiguration<Models.ScrimMatc
         builder.Ignore(e => e.Ruleset);
 
         builder.HasOne(e => e.Ruleset)
-            .WithOne();
+            .WithMany();
 
         builder.Property(e => e.RulesetId).HasDefaultValue(-1);
 

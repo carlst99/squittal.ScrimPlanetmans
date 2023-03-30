@@ -12,7 +12,7 @@ using squittal.ScrimPlanetmans.App.Data;
 namespace squittal.ScrimPlanetmans.App.Migrations
 {
     [DbContext(typeof(PlanetmansDbContext))]
-    [Migration("20230327010758_InitialMigration")]
+    [Migration("20230330231822_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -267,8 +267,7 @@ namespace squittal.ScrimPlanetmans.App.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RulesetId")
-                        .IsUnique();
+                    b.HasIndex("RulesetId");
 
                     b.ToTable("ScrimMatch", (string)null);
                 });
@@ -2452,8 +2451,8 @@ namespace squittal.ScrimPlanetmans.App.Migrations
             modelBuilder.Entity("squittal.ScrimPlanetmans.App.Data.Models.ScrimMatch", b =>
                 {
                     b.HasOne("squittal.ScrimPlanetmans.App.ScrimMatch.Ruleset.Models.Ruleset", "Ruleset")
-                        .WithOne()
-                        .HasForeignKey("squittal.ScrimPlanetmans.App.Data.Models.ScrimMatch", "RulesetId")
+                        .WithMany()
+                        .HasForeignKey("RulesetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

@@ -2718,7 +2718,12 @@ public class ScrimTeamsManager : IScrimTeamsManager
         {
             await using PlanetmansDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(ct);
 
-            ScrimMatchTeamResult? storeResultEntity = await dbContext.ScrimMatchTeamResults.FirstOrDefaultAsync(result => result.ScrimMatchId == currentScrimMatchId && result.TeamOrdinal == teamOrdinal);
+            ScrimMatchTeamResult? storeResultEntity = await dbContext.ScrimMatchTeamResults
+                .FirstOrDefaultAsync
+                (
+                    result => result.ScrimMatchId == currentScrimMatchId && result.TeamOrdinal == teamOrdinal,
+                    ct
+                );
 
             if (storeResultEntity == null)
             {
@@ -2745,40 +2750,36 @@ public class ScrimTeamsManager : IScrimTeamsManager
                 .Where(e => allAdjustments.All(a => a.Timestamp != e.Timestamp))
                 .ToList());
 
-            List<ScrimMatchTeamPointAdjustment> createdAdjustments = new();
-
             foreach (PointAdjustment adjustment in allAdjustments)
             {
                 ScrimMatchTeamPointAdjustment? storeEntity = storeAdjustmentEntities.FirstOrDefault(e => e.Timestamp == adjustment.Timestamp);
                 PointAdjustment? updateAdjustment = updateAdjustments.FirstOrDefault(a => a.Timestamp == adjustment.Timestamp);
 
-                if (storeEntity == null)
+                if (updateAdjustment is not null)
                 {
-                    ScrimMatchTeamPointAdjustment updateEntity = BuildScrimMatchTeamPointAdjustment(currentScrimMatchId, teamOrdinal, updateAdjustment);
-                    createdAdjustments.Add(updateEntity);
+                    ScrimMatchTeamPointAdjustment updateEntity = BuildScrimMatchTeamPointAdjustment
+                    (
+                        currentScrimMatchId,
+                        teamOrdinal,
+                        updateAdjustment
+                    );
+
+                    if (storeEntity is null)
+                        dbContext.ScrimMatchTeamPointAdjustments.Add(updateEntity);
+                    else
+                        dbContext.ScrimMatchTeamPointAdjustments.Update(updateEntity);
                 }
-                else if (updateAdjustment == null)
+                else if (storeEntity is not null)
                 {
                     dbContext.ScrimMatchTeamPointAdjustments.Remove(storeEntity);
                 }
-                else
-                {
-                    ScrimMatchTeamPointAdjustment updateEntity = BuildScrimMatchTeamPointAdjustment(currentScrimMatchId, teamOrdinal, updateAdjustment);
-                    storeEntity = updateEntity;
-                    dbContext.ScrimMatchTeamPointAdjustments.Update(storeEntity);
-                }
             }
 
-            if (createdAdjustments.Any())
-            {
-                dbContext.ScrimMatchTeamPointAdjustments.AddRange(createdAdjustments);
-            }
-
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            _logger.LogError(ex, "Failed to save a team's match results to the DB");
         }
     }
     #endregion Match Results/Scores
