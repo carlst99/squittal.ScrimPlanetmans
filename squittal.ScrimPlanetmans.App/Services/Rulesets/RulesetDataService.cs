@@ -119,7 +119,7 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
                     id => BuildRulesetItemCategoryRule(ruleset.Id, id)
                 )
                 .ToArray();
-            await SaveRulesetItemCategoryRules(ruleset.Id, newRules, ct);
+            await SaveRulesetItemCategoryRules(ruleset.Id, newRules, ct: ct);
 
             _logger.LogInformation
             (
@@ -186,7 +186,7 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
                     w => BuildRulesetItemRule(ruleset.Id, w.ItemId, w.ItemCategoryId)
                 )
                 .ToArray();
-            await SaveRulesetItemRules(ruleset.Id, newRules, ct);
+            await SaveRulesetItemRules(ruleset.Id, newRules, ct: ct);
 
             _logger.LogInformation
             (
@@ -627,6 +627,7 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
     (
         int rulesetId,
         IEnumerable<RulesetItemCategoryRule> rules,
+        bool removeOld = false,
         CancellationToken ct = default
     )
     {
@@ -664,8 +665,11 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
                     }
                 }
 
-                foreach (RulesetItemCategoryRule oldRule in storeRules.Values)
-                    dbContext.RulesetItemCategoryRules.Remove(oldRule);
+                if (removeOld)
+                {
+                    foreach (RulesetItemCategoryRule oldRule in storeRules.Values)
+                        dbContext.RulesetItemCategoryRules.Remove(oldRule);
+                }
 
                 Ruleset? storeRuleset = await UpdateRulesetLastModifiedAsync(rulesetId, dbContext, false, ct);
 
@@ -696,6 +700,7 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
     (
         int rulesetId,
         IEnumerable<RulesetItemRule> rules,
+        bool removeOld = false,
         CancellationToken ct = default
     )
     {
@@ -727,8 +732,11 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
                     }
                 }
 
-                foreach (RulesetItemRule oldRule in storeRules.Values)
-                    dbContext.RulesetItemRules.Remove(oldRule);
+                if (removeOld)
+                {
+                    foreach (RulesetItemRule oldRule in storeRules.Values)
+                        dbContext.RulesetItemRules.Remove(oldRule);
+                }
 
                 Ruleset? storeRuleset = await UpdateRulesetLastModifiedAsync(rulesetId, dbContext, false, ct);
 
@@ -1158,52 +1166,34 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
         {
             try
             {
-                Dictionary<uint, RulesetItemRule> defaultItemRules
-                    = (await GetRulesetItemRulesForItemCategoryIdAsync(DefaultRulesetId, itemCategoryId, ct))
-                        .ToDictionary(x => x.ItemId, x => x);
-
                 Dictionary<uint, RulesetItemRule> storeItemRules
                     = (await GetRulesetItemRulesForItemCategoryIdAsync(rulesetId, itemCategoryId, ct))
                         .ToDictionary(x => x.ItemId, x => x);
 
-                IReadOnlyList<CensusItem>? allStoreItems = await _itemService.GetByCategoryAsync(itemCategoryId, ct);
-                if (allStoreItems is null)
+                IReadOnlyList<CensusItem>? censusItems = await _itemService.GetByCategoryAsync(itemCategoryId, ct);
+                if (censusItems is null)
                     return;
 
-                List<RulesetItemRule> createdRules = new();
-
-                foreach (CensusItem item in allStoreItems)
+                foreach (CensusItem item in censusItems)
                 {
-                    defaultItemRules.TryGetValue(item.ItemId, out RulesetItemRule? defaultRule);
-                    storeItemRules.TryGetValue(item.ItemId, out RulesetItemRule? storeRule);
+                    // If the Census item already exists as a rule, carry on
+                    if (storeItemRules.Remove(item.ItemId))
+                        continue;
 
-                    if (storeRule == null)
-                    {
-                        if (defaultRule != null)
-                        {
-                            int points = itemCategoryPoints != 0 && defaultRule.Points != 0 ? itemCategoryPoints : defaultRule.Points;
-                            bool isBanned = isItemCategoryBanned ? isItemCategoryBanned : defaultRule.IsBanned;
-
-                            RulesetItemRule newRule = BuildRulesetItemRule(rulesetId, item.ItemId, itemCategoryId, points, isBanned);
-                            createdRules.Add(newRule);
-                        }
-                        else
-                        {
-                            RulesetItemRule newRule = BuildRulesetItemRule(rulesetId, item.ItemId, itemCategoryId, itemCategoryPoints, isItemCategoryBanned);
-                            createdRules.Add(newRule);
-                        }
-                    }
-                    else
-                    {
-                        // Do Nothing, for now
-                        // Other Considerations: updating storeRule.IsBanned and/or storeRule.Points to match ItemCategoryRule
-                    }
+                    // Otherwise, add a new item rule
+                    dbContext.RulesetItemRules.Add(BuildRulesetItemRule
+                    (
+                        rulesetId,
+                        item.ItemId,
+                        itemCategoryId,
+                        itemCategoryPoints,
+                        isItemCategoryBanned
+                    ));
                 }
 
-                if (createdRules.Any())
-                {
-                    dbContext.RulesetItemRules.AddRange(createdRules);
-                }
+                // Now we only have rules about items that Census doesn't contain; let's remove them
+                foreach (RulesetItemRule itemRule in storeItemRules.Values)
+                    dbContext.RulesetItemRules.Remove(itemRule);
 
                 await dbContext.SaveChangesAsync(ct);
             }
@@ -1528,7 +1518,7 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
                     .Select(r => ConvertToDbModel(ruleset.Id, r))
                     .ToList();
 
-                Task itemCategoryRulesTask = SaveRulesetItemCategoryRules(ruleset.Id, ruleset.RulesetItemCategoryRules, ct);
+                Task itemCategoryRulesTask = SaveRulesetItemCategoryRules(ruleset.Id, ruleset.RulesetItemCategoryRules, ct: ct);
                 TaskList.Add(itemCategoryRulesTask);
 
                 List<RulesetItemRule> rulesetItemRules = new();
@@ -1553,7 +1543,7 @@ public partial class RulesetDataService : IRulesetDataService, IDisposable
 
                 ruleset.RulesetItemRules = new List<RulesetItemRule>(rulesetItemRules);
 
-                Task itemRulesTask = SaveRulesetItemRules(ruleset.Id, ruleset.RulesetItemRules, ct);
+                Task itemRulesTask = SaveRulesetItemRules(ruleset.Id, ruleset.RulesetItemRules, ct: ct);
                 TaskList.Add(itemRulesTask);
             }
 

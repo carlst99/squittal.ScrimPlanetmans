@@ -39,8 +39,8 @@ public interface IRulesetDataService
     Task<bool> UpdateRulesetInfo(Ruleset rulesetUpdate, CancellationToken ct);
     Task<bool> SaveRulesetOverlayConfiguration(int rulesetId, RulesetOverlayConfiguration rulesetOverlayConfiguration, CancellationToken ct);
     Task SaveRulesetActionRules(int rulesetId, IEnumerable<RulesetActionRule> rules, CancellationToken ct = default);
-    Task SaveRulesetItemCategoryRules(int rulesetId, IEnumerable<RulesetItemCategoryRule> rules, CancellationToken ct = default);
-    Task SaveRulesetItemRules(int rulesetId, IEnumerable<RulesetItemRule> rules, CancellationToken ct = default);
+    Task SaveRulesetItemCategoryRules(int rulesetId, IEnumerable<RulesetItemCategoryRule> rules, bool removeOld = false, CancellationToken ct = default);
+    Task SaveRulesetItemRules(int rulesetId, IEnumerable<RulesetItemRule> rules, bool removeOld = false, CancellationToken ct = default);
     Task SaveRulesetFacilityRulesAsync(int rulesetId, IEnumerable<RulesetFacilityRuleChange> rules, CancellationToken ct = default);
 
     Task<Ruleset?> SetCustomDefaultRulesetAsync(int rulesetId, CancellationToken ct = default);
