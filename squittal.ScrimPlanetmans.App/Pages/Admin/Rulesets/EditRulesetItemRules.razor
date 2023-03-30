@@ -71,7 +71,9 @@
                             <div style="display: inline; margin-right: 4px;">Item Category:</div>
                             <InputSelect style="margin-right: 5px; width: 250px; padding: 0.1rem;"
                                          TValue="uint"
-                                         Value="@_selectedItemCategoryId">
+                                         Value="@_selectedItemCategoryId"
+                                         ValueChanged="@(OnSelectItemCategoryId)"
+                                         ValueExpression="@(() => _selectedItemCategoryId)">
                                 <option value="0">None</option>
 
                                 @foreach (ItemCategoryDomain domain in _itemCategoryDomains)
@@ -122,9 +124,8 @@
                                     @foreach (RulesetItemRule itemRule in _itemRules.Where(r => r.ItemCategoryId == _selectedItemCategoryId))
                                     {
                                         _items.TryGetValue(itemRule.ItemId, out CensusItem? item);
-                                        string itemName = item?.Name.English.HasValue is true
-                                            ? item.Name.English.Value
-                                            : $"Item{itemRule.ItemId}";
+                                        string itemName = item?.Name?.English.GetValueOrDefault()
+                                            ?? $"Item{itemRule.ItemId}";
 
                                         <tr class="sans-serif-font">
                                             <td style="color: var(--sq-black);">@itemName <span class="mono-font" style="color: var(--sq-gray); font-size: smaller;">[@itemRule.ItemId]</span></td>
@@ -344,6 +345,12 @@
         _originalRuleBans = new ConcurrentDictionary<uint, bool>();
         _originalRuleDeferToPlanetsideClasses = new ConcurrentDictionary<uint, bool>();
         _originalRulePlanetsideClassSettings = new ConcurrentDictionary<uint, PlanetsideClassRuleSettings>();
+    }
+
+    private void OnSelectItemCategoryId(uint itemCategoryId)
+    {
+        _selectedItemCategoryId = itemCategoryId;
+        InvokeAsyncStateHasChanged();
     }
 
     public void Dispose()

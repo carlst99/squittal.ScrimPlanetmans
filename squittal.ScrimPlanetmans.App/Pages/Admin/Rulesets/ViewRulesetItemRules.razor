@@ -78,9 +78,8 @@
                                 @foreach (var itemRule in _itemRules.Where(r => r.ItemCategoryId == _selectedItemCategoryId))
                                 {
                                     _items.TryGetValue(itemRule.ItemId, out CensusItem? item);
-                                    string itemName = item?.Name.English.HasValue is true
-                                        ? item.Name.English.Value
-                                        : $"Item{itemRule.ItemId}";
+                                    string itemName = item?.Name?.English.GetValueOrDefault()
+                                        ?? $"Item{itemRule.ItemId}";
 
                                     <tr class="sans-serif-font">
                                         <td style="color: var(--sq-black);">@itemName <span class="mono-font" style="color: var(--sq-gray); font-size: smaller;">[@itemRule.ItemId]</span></td>

@@ -82,7 +82,9 @@ public class DeathEventHandler : IPayloadHandler<IDeath>
             (
                 weaponItem.ItemId,
                 weaponItem.ItemCategoryId,
-                weaponItem.Name.English.HasValue ? weaponItem.Name.English.Value : "Unknown weapon",
+                weaponItem.Name?.English.HasValue is true
+                    ? weaponItem.Name.English.Value
+                    : "Unknown weapon",
                 weaponItem.IsVehicleWeapon
             );
         }

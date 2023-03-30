@@ -72,7 +72,7 @@ else
                         _weaponItems?.TryGetValue((uint)weaponStats.WeaponId, out weaponItem);
 
                         FactionDefinition weaponFaction = weaponItem?.FactionId ?? FactionDefinition.None;
-                        string weaponName = weaponItem?.Name.English.GetValueOrDefault() ?? "Unknown Weapon";
+                        string weaponName = weaponItem?.Name?.English.GetValueOrDefault() ?? "Unknown Weapon";
 
                         <tr class="@SqCssHelper.GetFactionClassFromId(weaponFaction)" style="color: var(--sq-ov-ps2-primary-dark);">
                             <td style="color: var(--sq-ps2-primary); text-align: left; line-height: 1.5rem;" title="@weaponName [@(weaponStats.WeaponId)]">

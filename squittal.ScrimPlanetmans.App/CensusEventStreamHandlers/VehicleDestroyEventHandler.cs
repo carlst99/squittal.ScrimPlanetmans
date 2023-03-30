@@ -81,7 +81,9 @@ public class VehicleDestroyEventHandler : IPayloadHandler<IVehicleDestroy>
             (
                 weaponItem.ItemId,
                 weaponItem.ItemCategoryId,
-                weaponItem.Name.English.HasValue ? weaponItem.Name.English.Value : "Unknown weapon",
+                weaponItem.Name?.English.HasValue is true
+                    ? weaponItem.Name.English.Value
+                    : "Unknown weapon",
                 weaponItem.IsVehicleWeapon
             );
         }

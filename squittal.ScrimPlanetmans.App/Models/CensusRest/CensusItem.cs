@@ -7,6 +7,6 @@ public record CensusItem
     uint ItemId,
     uint ItemCategoryId,
     bool IsVehicleWeapon,
-    GlobalizedString Name,
+    GlobalizedString? Name,
     FactionDefinition FactionId
 );
