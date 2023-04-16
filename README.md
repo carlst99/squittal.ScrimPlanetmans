@@ -1,4 +1,4 @@
-> **Info**:
+> **Note**:
 > This fork is maintained with the written permission of the original owner, squittal (a.k.a Chirtle).
 
 # squittal.ScrimPlanetmans
