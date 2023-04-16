@@ -1,3 +1,6 @@
+> **Info**:
+> This fork is maintained with the written permission of the original owner, squittal (a.k.a Chirtle).
+
 # squittal.ScrimPlanetmans
 
 An app for running, streaming, and collecting data for Planetside 2 scrims.
